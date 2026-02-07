@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Plus, Calendar, IndianRupee, Target, Users, Loader2, AlertCircle, Clock, Edit, Trash2, Eye, Settings, GitBranch, ChevronDown, ChevronUp } from "lucide-react";
+import { Plus, Calendar, IndianRupee, Target, Users, Loader2, AlertCircle, Clock, Edit, Trash2, Eye, Settings, GitBranch, ChevronDown, ChevronUp, FileText } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";

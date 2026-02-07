@@ -5,7 +5,7 @@ class SystemTemplates {
   static getTemplates() {
     return {
       system_maintenance: {
-        template: 'Dear {name}, Baithuzzakath Kerala system will be under maintenance from {startTime} to {endTime} on {date}. - BZKRLA',
+        template: "Dear {name}, People's Foundation ERP system will be under maintenance from {startTime} to {endTime} on {date}. - PFERP",
         variables: ['name', 'startTime', 'endTime', 'date'],
         category: 'transactional',
         dltTemplateId: 'DLT_TEMPLATE_MAINTENANCE'
@@ -19,7 +19,7 @@ class SystemTemplates {
       },
       
       policy_update: {
-        template: 'Dear {name}, important policy updates have been made to Baithuzzakath Kerala services. Please review online. - BZKRLA',
+        template: "Dear {name}, important policy updates have been made to People's Foundation ERP services. Please review online. - PFERP",
         variables: ['name'],
         category: 'transactional',
         dltTemplateId: 'DLT_TEMPLATE_POLICY_UPDATE'

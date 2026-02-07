@@ -169,13 +169,13 @@ export default function BeneficiaryPayments() {
   };
 
   const handleDownloadReceipt = (schedule: PaymentSchedule) => {
-    // Generate beautiful HTML content for PDF receipt with Baithuzakath branding
+    // Generate beautiful HTML content for PDF receipt with People's Foundation ERP branding
     const receiptHTML = `
     <!DOCTYPE html>
     <html>
     <head>
       <meta charset="utf-8">
-      <title>Baithuzakath Payment Receipt</title>
+      <title>People's Foundation ERP Payment Receipt</title>
       <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { 
@@ -369,13 +369,13 @@ export default function BeneficiaryPayments() {
       </style>
     </head>
     <body>
-      <div class="watermark">BAITHUZAKATH</div>
+      <div class="watermark">PEOPLE'S FOUNDATION ERP</div>
       <div class="receipt-container">
         <!-- Header with Logo and Organization Info -->
         <div class="header">
           <div class="logo-section">
             <div class="logo">BZ</div>
-            <div class="org-name">BAITHUZAKATH</div>
+            <div class="org-name">PEOPLE'S FOUNDATION ERP</div>
             <div class="org-tagline">Empowering Communities Through Compassionate Support</div>
           </div>
         </div>
@@ -465,7 +465,7 @@ export default function BeneficiaryPayments() {
             This is a computer-generated receipt and does not require a signature.
           </div>
           <div class="footer-note">
-            For any queries, please contact Baithuzakath Support Team
+            For any queries, please contact People's Foundation ERP Support Team
           </div>
           <div class="footer-timestamp">
             Document generated on ${new Date().toLocaleString('en-IN')} | Receipt ID: ${schedule.paymentNumber}

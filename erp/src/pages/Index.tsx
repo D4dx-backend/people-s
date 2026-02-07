@@ -41,12 +41,12 @@ export default function Index() {
   return (
     <div className="min-h-screen bg-background">
       {/* Header/Navbar */}
-      <header className="border-b bg-card sticky top-0 z-50 shadow-sm">
+      <header className="border-b border-border bg-background sticky top-0 z-50 shadow-sm">
         <div className="container mx-auto px-4 py-3 flex justify-between items-center">
           <div className="flex items-center gap-3">
-            <img src={logo} alt="Baithuzzakath Kerala" className="h-12 w-12 rounded-full" />
+            <img src={logo} alt="People's Foundation ERP" className="h-12 w-12 rounded-full" />
             <div>
-              <h1 className="text-lg font-bold">Baithuzzakath Kerala</h1>
+              <h1 className="text-lg font-bold">People's Foundation ERP</h1>
               <p className="text-xs text-muted-foreground hidden sm:block">Empowering Communities</p>
             </div>
           </div>
@@ -69,13 +69,13 @@ export default function Index() {
           <div className="flex flex-col items-center text-center space-y-6">
             <img 
               src={logo} 
-              alt="Baithuzzakath Kerala" 
+              alt="People's Foundation ERP" 
               className="h-24 w-24 md:h-32 md:w-32 rounded-full shadow-glow animate-in zoom-in duration-500"
             />
             
             <div className="space-y-3 animate-in fade-in slide-in-from-bottom duration-700">
               <h1 className="text-3xl md:text-5xl font-bold text-primary-foreground">
-                Baithuzzakath Kerala
+                People's Foundation ERP
               </h1>
               <p className="text-lg md:text-xl text-primary-foreground/90 max-w-2xl">
                 Empowering Communities Through Zakat and Charitable Programs
@@ -88,7 +88,7 @@ export default function Index() {
             <div className="flex flex-col sm:flex-row gap-3 animate-in fade-in slide-in-from-bottom duration-1000">
               <Button 
                 size="lg" 
-                className="bg-secondary text-secondary-foreground hover:bg-secondary/90 shadow-glow"
+                className="bg-primary text-primary-foreground hover:bg-primary/90 shadow-glow"
                 onClick={() => navigate('/schemes')}
               >
                 Browse Schemes
@@ -96,7 +96,8 @@ export default function Index() {
               </Button>
               <Button 
                 size="lg" 
-                className="bg-secondary text-secondary-foreground hover:bg-secondary/90 shadow-glow"
+                variant="outline"
+                className="bg-white/10 text-primary-foreground border-2 border-primary-foreground hover:bg-white/20 shadow-glow"
                 onClick={() => navigate('/login')}
               >
                 Apply Now
@@ -111,9 +112,9 @@ export default function Index() {
       <section className="py-12 md:py-16 bg-background">
         <div className="container mx-auto px-4">
           <div className="max-w-3xl mx-auto text-center mb-12">
-            <h2 className="text-2xl md:text-3xl font-bold mb-4">About Baithuzzakath Kerala</h2>
+            <h2 className="text-2xl md:text-3xl font-bold mb-4">About People's Foundation ERP</h2>
             <p className="text-muted-foreground leading-relaxed">
-              Baithuzzakath Kerala is dedicated to the transparent and effective distribution of Zakat funds 
+              People's Foundation ERP is dedicated to the transparent and effective distribution of Zakat funds 
               to support the underprivileged communities across Kerala. We run comprehensive programs in 
               education, healthcare, housing, and livelihood development, ensuring that assistance reaches 
               those who need it most.
@@ -271,14 +272,14 @@ export default function Index() {
       </section>
 
       {/* Footer */}
-      <footer className="bg-card border-t py-8">
+      <footer className="bg-muted/40 border-t border-border py-8">
         <div className="container mx-auto px-4">
           <div className="grid gap-8 md:grid-cols-3 mb-8">
             <div>
               <div className="flex items-center gap-3 mb-4">
                 <img src={logo} alt="Logo" className="h-10 w-10 rounded-full" />
                 <div>
-                  <h3 className="font-bold">Baithuzzakath Kerala</h3>
+                  <h3 className="font-bold">People's Foundation ERP</h3>
                   <p className="text-xs text-muted-foreground">Empowering Communities</p>
                 </div>
               </div>
@@ -322,7 +323,7 @@ export default function Index() {
           </div>
           
           <div className="border-t pt-6 text-center text-sm text-muted-foreground">
-            <p>&copy; 2025 Baithuzzakath Kerala. All rights reserved.</p>
+            <p>&copy; 2025 People's Foundation ERP. All rights reserved.</p>
           </div>
         </div>
       </footer>

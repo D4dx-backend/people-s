@@ -26,9 +26,9 @@ class DXingTemplates {
    */
   static createTemplate(type, variables = {}) {
     const templates = {
-      otp: `Dear ${variables.name || 'User'}, your OTP for Baithuzzakath Kerala is ${variables.otp}. Valid for ${variables.validity || '10 minutes'}. Do not share with anyone.`,
+      otp: `Dear ${variables.name || 'User'}, your OTP for People's Foundation ERP is ${variables.otp}. Valid for ${variables.validity || '10 minutes'}. Do not share with anyone.`,
       
-      welcome: `Welcome to Baithuzzakath Kerala, ${variables.name}! Your account has been created successfully. Login with your registered mobile number.`,
+      welcome: `Welcome to People's Foundation ERP, ${variables.name}! Your account has been created successfully. Login with your registered mobile number.`,
       
       application_submitted: `Dear ${variables.name}, your application ${variables.applicationNumber} has been submitted successfully. You will be notified about the status updates.`,
       

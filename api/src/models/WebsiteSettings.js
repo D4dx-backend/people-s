@@ -5,7 +5,7 @@ const websiteSettingsSchema = new mongoose.Schema({
   aboutUs: {
     title: {
       type: String,
-      default: 'About Baithuzzakath Kerala'
+      default: "About People's Foundation ERP"
     },
     description: {
       type: String,

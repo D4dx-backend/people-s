@@ -14,7 +14,7 @@ class WebsiteController {
       if (!settings) {
         settings = await WebsiteSettings.create({
           aboutUs: {
-            title: 'About Baithuzzakath Kerala',
+            title: "About People's Foundation ERP",
             description: 'Empowering Communities Through Zakat and Charitable Programs'
           },
           counts: [],

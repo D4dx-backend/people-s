@@ -49,10 +49,10 @@ export function Header({ onMenuClick }: HeaderProps) {
             </Button>
           )}
           <div className="flex items-center gap-3">
-            <img src={logo} alt="Baithuzzakath Kerala" className="h-10 w-10 rounded-full" />
+            <img src={logo} alt="People's Foundation ERP" className="h-10 w-10 rounded-full" />
             <div className="hidden md:block">
-              <h1 className="text-lg font-bold text-foreground">Baithuzzakath Kerala</h1>
-              <p className="text-xs text-muted-foreground">NGO Management System</p>
+              <h1 className="text-lg font-bold text-foreground">People's Foundation ERP</h1>
+              <p className="text-xs text-muted-foreground">ERP Solution for NGOs</p>
             </div>
           </div>
         </div>

@@ -87,7 +87,7 @@ export default function PublicSchemes() {
           <div className="flex items-center gap-3">
             <img src={logo} alt="Logo" className="h-12 w-12 rounded-full" />
             <div>
-              <h1 className="text-lg font-bold">Baithuzzakath Kerala</h1>
+              <h1 className="text-lg font-bold">People's Foundation ERP</h1>
               <p className="text-xs text-muted-foreground">Empowering Communities</p>
             </div>
           </div>
@@ -194,7 +194,7 @@ export default function PublicSchemes() {
       {/* Footer */}
       <footer className="bg-card border-t py-8 mt-12">
         <div className="container mx-auto px-4 text-center text-muted-foreground">
-          <p>&copy; 2025 Baithuzzakath Kerala. All rights reserved.</p>
+          <p>&copy; 2025 People's Foundation ERP. All rights reserved.</p>
         </div>
       </footer>
     </div>

@@ -29,9 +29,9 @@ class PDFReceiptService {
         margin: 50,
         info: {
           Title: `Payment Receipt - ${paymentData.paymentNumber}`,
-          Author: 'Baithuzzakath Kerala',
+          Author: "People's Foundation ERP",
           Subject: 'Payment Receipt',
-          Creator: 'Baithuzzakath ERP System'
+          Creator: "People's Foundation ERP System"
         }
       });
 
@@ -79,7 +79,7 @@ class PDFReceiptService {
     // Organization details
     doc.fontSize(20)
        .font('Helvetica-Bold')
-       .text('BAITHUZZAKATH KERALA', 150, 60);
+       .text("PEOPLE'S FOUNDATION ERP", 150, 60);
     
     doc.fontSize(12)
        .font('Helvetica')
@@ -364,7 +364,7 @@ class PDFReceiptService {
     // Footer
     doc.fontSize(8)
        .font('Helvetica')
-       .text(`Generated on: ${this.formatDate(new Date())} | System: Baithuzzakath ERP`, 50, 750, {
+       .text(`Generated on: ${this.formatDate(new Date())} | System: People's Foundation ERP`, 50, 750, {
          align: 'center'
        });
   }

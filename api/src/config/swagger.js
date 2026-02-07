@@ -4,12 +4,12 @@ const options = {
   definition: {
     openapi: '3.0.0',
     info: {
-      title: 'Baithuzzakath Kerala - Complete API Documentation',
+      title: "People's Foundation ERP - Complete API Documentation",
       version: '1.0.0',
       description: `
-# Baithuzzakath Kerala ERP System API
+# People's Foundation ERP System API
 
-Complete API documentation for Baithuzzakath Kerala ERP system serving all user roles.
+Complete API documentation for People's Foundation ERP system serving all user roles.
 
 ## Authentication Endpoints by Role
 
@@ -38,7 +38,7 @@ Complete API documentation for Baithuzzakath Kerala ERP system serving all user 
 3. Use token in Authorization header: \`Bearer <token>\`
       `,
       contact: {
-        name: 'Baithuzzakath Kerala',
+        name: "People's Foundation ERP",
         email: 'support@baithuzzakath.org'
       },
       license: {

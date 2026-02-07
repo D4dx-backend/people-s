@@ -42,7 +42,7 @@ interface ConfigProviderProps {
 }
 
 export const ConfigProvider: React.FC<ConfigProviderProps> = ({ children }) => {
-  const [colorTheme, setColorTheme] = useState<ColorTheme>('green');
+  const [colorTheme, setColorTheme] = useState<ColorTheme>('blue');
   const [darkMode, setDarkMode] = useState<boolean>(false);
   const [menuStyle, setMenuStyle] = useState<MenuStyle>('comfortable');
   const [sidebarSearchEnabled, setSidebarSearchEnabled] = useState<boolean>(true);
@@ -91,15 +91,15 @@ export const ConfigProvider: React.FC<ConfigProviderProps> = ({ children }) => {
         }
         
         // Apply theme to document immediately
-        console.log('✨ Applying theme to document:', theme?.colorTheme || 'green', theme?.darkMode || false);
-        applyTheme(theme?.colorTheme || 'green', theme?.darkMode || false);
+        console.log('✨ Applying theme to document:', theme?.colorTheme || 'blue', theme?.darkMode || false);
+        applyTheme(theme?.colorTheme || 'blue', theme?.darkMode || false);
       }
     } catch (error) {
       console.error('Failed to fetch configuration:', error);
       toast.error('Failed to load application configuration');
       
       // Apply default theme on error
-      applyTheme('green', false);
+      applyTheme('blue', false);
     } finally {
       setLoading(false);
     }

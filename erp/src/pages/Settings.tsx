@@ -58,7 +58,7 @@ export default function Settings() {
               <div className="grid gap-4 md:grid-cols-2">
                 <div className="space-y-2">
                   <Label>Organization Name</Label>
-                  <Input defaultValue="Baithuzzakath Kerala" />
+                  <Input defaultValue="People's Foundation ERP" />
                 </div>
                 <div className="space-y-2">
                   <Label>Registration Number</Label>

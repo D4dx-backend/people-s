@@ -419,7 +419,7 @@ class AuthService {
 
       return {
         success: true,
-        message: 'Registration completed successfully! Welcome to Baithuzzakath Kerala.',
+        message: "Registration completed successfully! Welcome to People's Foundation ERP.",
         user: userData,
         tokens,
         authMethod: 'otp_only'

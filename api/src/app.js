@@ -69,7 +69,7 @@ app.use(activityLogger({
 app.get('/health', (req, res) => {
   res.status(200).json({
     success: true,
-    message: 'Baithuzzakath API is running',
+    message: "People's Foundation ERP API is running",
     timestamp: new Date().toISOString(),
     uptime: process.uptime(),
     environment: config.NODE_ENV,
@@ -80,7 +80,7 @@ app.get('/health', (req, res) => {
 // Swagger API Documentation
 app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpecs, {
   customCss: '.swagger-ui .topbar { display: none }',
-  customSiteTitle: 'Baithuzzakath API Documentation',
+  customSiteTitle: "People's Foundation ERP API Documentation",
   explorer: true
 }));
 

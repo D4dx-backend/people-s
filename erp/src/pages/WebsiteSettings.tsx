@@ -203,7 +203,7 @@ export default function WebsiteSettings() {
             <Input
               value={aboutTitle}
               onChange={(e) => setAboutTitle(e.target.value)}
-              placeholder="About Baithuzzakath Kerala"
+              placeholder="About People's Foundation ERP"
               disabled={!canEdit}
             />
           </div>

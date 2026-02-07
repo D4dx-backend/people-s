@@ -1,7 +1,7 @@
 {
   "name": "baithuzkath-api",
   "version": "1.0.0",
-  "description": "Baithuzzakath Kerala NGO Management System API",
+  "description": "People's Foundation ERP NGO Management System API",
   "main": "src/app.js",
   "type": "commonjs",
   "scripts": {
@@ -22,6 +22,7 @@
     "seed:clear": "node scripts/seed.js clear",
     "seed:test": "node seed-applications.js",
     "clear:test": "node clear-test-data.js",
+    "migrate:users": "node src/scripts/migrateUsers.js",
     "rbac:init": "node src/scripts/initRBACProduction.js",
     "rbac:debug": "node src/scripts/debugUserPermissions.js",
     "rbac:cleanup": "node -e \"require('./src/services/rbacService').cleanupExpiredAssignments().then(console.log)\"",
@@ -37,7 +38,7 @@
     "api",
     "nodejs"
   ],
-  "author": "Baithuzzakath Kerala",
+  "author": "People's Foundation ERP",
   "license": "MIT",
   "dependencies": {
     "aws-sdk": "^2.1692.0",

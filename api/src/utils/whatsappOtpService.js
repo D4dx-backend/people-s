@@ -125,14 +125,14 @@ class WhatsAppOTPService {
 
     const action = purposeText[purpose] || 'authenticate on';
     
-    return `🔐 *Baithuzzakath Kerala ERP*\n\n` +
+    return `🔐 *People's Foundation ERP*\n\n` +
            `Dear ${name},\n\n` +
-           `Your OTP to ${action} Baithuzzakath Kerala is:\n\n` +
+           `Your OTP to ${action} People's Foundation ERP is:\n\n` +
            `*${otp}*\n\n` +
            `⏰ Valid for 10 minutes\n` +
            `🔒 Do not share with anyone\n\n` +
            `If you didn't request this, please ignore this message.\n\n` +
-           `- Team Baithuzzakath Kerala`;
+           `- Team People's Foundation ERP`;
   }
 
   /**
