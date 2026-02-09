@@ -10,6 +10,7 @@ import { dashboard, budgetApi, donationsApi } from "@/lib/api";
 import { toast } from "@/hooks/use-toast";
 import { useRBAC } from "@/hooks/useRBAC";
 import { useAuth } from "@/hooks/useAuth";
+import { cn } from "@/lib/utils";
 
 const statusColors = {
   pending: "bg-warning/10 text-warning border-warning/20",
@@ -163,13 +164,21 @@ export default function Dashboard() {
     );
   }
   return (
-    <div className="space-y-6 animate-in fade-in duration-500">
-      <div>
-        <h1 className="text-xl font-bold">Dashboard</h1>
-        <p className="text-muted-foreground mt-1">Welcome back! Here's an overview of your NGO operations.</p>
+    <div className="space-y-8 animate-in fade-in duration-500">
+      <div className="relative overflow-hidden rounded-3xl border border-border/40 bg-gradient-to-r from-primary/10 via-background to-secondary/10 p-6 md:p-8 shadow-elegant">
+        <div className="pointer-events-none absolute -right-10 -top-10 h-40 w-40 rounded-full bg-primary/20 blur-3xl" />
+        <div className="flex items-center gap-4">
+          <div className="rounded-2xl bg-gradient-primary p-3 shadow-elegant">
+            <LayoutDashboard className="h-6 w-6 text-primary-foreground" />
+          </div>
+          <div>
+            <h1 className="text-xl font-bold">Dashboard</h1>
+            <p className="text-muted-foreground mt-1">Welcome back! Here's an overview of your NGO operations.</p>
+          </div>
+        </div>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-5 md:grid-cols-2 lg:grid-cols-4">
         <StatsCard
           title="Total Projects"
           value={overview?.totalProjects?.toString() || "0"}
@@ -197,7 +206,7 @@ export default function Dashboard() {
       </div>
 
       <div className="grid gap-6 md:grid-cols-2">
-        <Card>
+        <Card className="hover:shadow-glow transition-all duration-300">
           <CardHeader>
             <CardTitle>Recent Applications</CardTitle>
           </CardHeader>
@@ -206,26 +215,26 @@ export default function Dashboard() {
               {recentApplications.map((app) => (
                 <div
                   key={app.id}
-                  className="flex items-center justify-between border-b pb-4 last:border-0 last:pb-0"
+                  className="flex items-center justify-between rounded-2xl border border-border/40 bg-muted/30 px-4 py-3 transition-colors hover:bg-muted/50"
                 >
                   <div className="space-y-1">
                     <p className="font-medium">{app.applicant}</p>
                     <p className="text-sm text-muted-foreground">{app.scheme}</p>
                     <p className="text-xs text-muted-foreground">{app.id} • {app.date}</p>
                   </div>
-                  <Badge variant="outline" className={statusColors[app.status as keyof typeof statusColors]}>
+                  <Badge variant="outline" className={cn("rounded-full", statusColors[app.status as keyof typeof statusColors])}>
                     {app.status}
                   </Badge>
                 </div>
               ))}
             </div>
-            <Button variant="outline" className="w-full mt-4">
+            <Button variant="outline" className="w-full mt-4 rounded-full">
               View All Applications
             </Button>
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="hover:shadow-glow transition-all duration-300">
           <CardHeader>
             <CardTitle>Financial Summary</CardTitle>
           </CardHeader>
@@ -236,7 +245,7 @@ export default function Dashboard() {
                   <p className="text-sm text-muted-foreground">Total Budget</p>
                   <p className="text-xl font-bold">{formatCurrency(budgetOverview?.totalBudget || 0)}</p>
                 </div>
-                <div className="rounded-full bg-gradient-secondary p-3">
+                <div className="rounded-2xl bg-gradient-secondary p-3 shadow-elegant">
                   <TrendingUp className="h-6 w-6 text-secondary-foreground" />
                 </div>
               </div>
@@ -268,7 +277,7 @@ export default function Dashboard() {
         </Card>
       </div>
 
-      <Card>
+      <Card className="hover:shadow-glow transition-all duration-300">
         <CardHeader>
           <CardTitle>Top Projects by Budget</CardTitle>
         </CardHeader>
@@ -277,7 +286,7 @@ export default function Dashboard() {
             {projectPerformance.map((project) => (
               <div
                 key={project.id}
-                className="rounded-lg border bg-muted/50 p-4 space-y-2 hover:shadow-elegant transition-shadow"
+                className="rounded-2xl border border-border/40 bg-muted/30 p-4 space-y-2 hover:shadow-elegant transition-all hover:-translate-y-0.5"
               >
                 <h4 className="font-semibold">{project.name}</h4>
                 <div className="flex justify-between text-sm">
