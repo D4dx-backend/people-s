@@ -501,17 +501,17 @@ export function Sidebar({ isOpen = true, onClose }: SidebarProps) {
       )}
       <aside
         className={cn(
-          "fixed left-0 top-16 z-40 h-[calc(100vh-4rem)] w-64 border-r bg-card transition-transform duration-300 md:translate-x-0 overflow-y-auto",
+          "fixed left-0 top-16 z-40 h-[calc(100vh-4rem)] w-64 border-r border-border/40 bg-card/80 backdrop-blur-xl shadow-elegant transition-transform duration-300 md:translate-x-0 overflow-y-auto",
           isOpen ? "translate-x-0" : "-translate-x-full"
         )}
       >
         {sidebarSearchEnabled && (
-          <div className="p-4 border-b">
+          <div className="p-4 border-b border-border/40 bg-background/40 backdrop-blur">
             <div className="relative">
               <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
               <Input
                 placeholder="Search menu..."
-                className="pl-8 h-9"
+                className="pl-8 h-9 rounded-xl bg-background/70"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
               />
@@ -530,11 +530,11 @@ export function Sidebar({ isOpen = true, onClose }: SidebarProps) {
                 onClick={onClose}
                 className={({ isActive }) =>
                   cn(
-                    "flex items-center gap-3 rounded-lg text-sm font-medium transition-colors",
+                    "flex items-center gap-3 rounded-xl text-sm font-medium transition-all",
                     itemPaddingClass,
                     isActive
-                      ? "bg-gradient-primary text-primary-foreground shadow-elegant"
-                      : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                      ? "bg-gradient-primary text-primary-foreground shadow-glow"
+                      : "text-muted-foreground hover:bg-muted/70 hover:text-foreground hover:-translate-y-0.5"
                   )
                 }
               >
@@ -556,7 +556,7 @@ export function Sidebar({ isOpen = true, onClose }: SidebarProps) {
                     open={openCategories[category.label] ?? true}
                     onOpenChange={() => toggleCategory(category.label!)}
                   >
-                    <CollapsibleTrigger className="flex items-center justify-between w-full px-2 py-2 text-xs font-semibold text-muted-foreground uppercase tracking-wider hover:text-foreground transition-colors">
+                  <CollapsibleTrigger className="flex items-center justify-between w-full px-2 py-2 text-xs font-semibold text-muted-foreground uppercase tracking-wider hover:text-foreground transition-colors">
                       {category.label}
                       <ChevronDown
                         className={cn(
@@ -574,7 +574,7 @@ export function Sidebar({ isOpen = true, onClose }: SidebarProps) {
                             open={openCategories[item.label] ?? false}
                             onOpenChange={() => toggleCategory(item.label)}
                           >
-                            <CollapsibleTrigger className="flex items-center justify-between w-full px-3 py-2.5 text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-muted rounded-lg transition-colors">
+                          <CollapsibleTrigger className="flex items-center justify-between w-full px-3 py-2.5 text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-muted/70 rounded-xl transition-all">
                               <div className="flex items-center gap-3">
                                 <item.icon className="h-5 w-5" />
                                 {item.label}
@@ -594,11 +594,11 @@ export function Sidebar({ isOpen = true, onClose }: SidebarProps) {
                                   onClick={onClose}
                                   className={() =>
                                     cn(
-                                      "flex items-center rounded-lg text-sm font-medium transition-colors",
+                                    "flex items-center rounded-xl text-sm font-medium transition-all",
                                       itemPaddingClass,
                                       isSubmenuItemActive(subItem.to)
-                                        ? "bg-gradient-primary text-primary-foreground shadow-elegant"
-                                        : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                                      ? "bg-gradient-primary text-primary-foreground shadow-glow"
+                                      : "text-muted-foreground hover:bg-muted/70 hover:text-foreground hover:-translate-y-0.5"
                                     )
                                   }
                                 >
@@ -615,11 +615,11 @@ export function Sidebar({ isOpen = true, onClose }: SidebarProps) {
                             onClick={onClose}
                             className={({ isActive }) =>
                               cn(
-                                "flex items-center gap-3 rounded-lg text-sm font-medium transition-colors",
+                              "flex items-center gap-3 rounded-xl text-sm font-medium transition-all",
                                 itemPaddingClass,
                                 isActive
-                                  ? "bg-gradient-primary text-primary-foreground shadow-elegant"
-                                  : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                                ? "bg-gradient-primary text-primary-foreground shadow-glow"
+                                : "text-muted-foreground hover:bg-muted/70 hover:text-foreground hover:-translate-y-0.5"
                               )
                             }
                           >
@@ -640,11 +640,11 @@ export function Sidebar({ isOpen = true, onClose }: SidebarProps) {
                         onClick={onClose}
                         className={({ isActive }) =>
                           cn(
-                            "flex items-center gap-3 rounded-lg text-sm font-medium transition-colors",
+                          "flex items-center gap-3 rounded-xl text-sm font-medium transition-all",
                             itemPaddingClass,
                             isActive
-                              ? "bg-gradient-primary text-primary-foreground shadow-elegant"
-                              : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                            ? "bg-gradient-primary text-primary-foreground shadow-glow"
+                            : "text-muted-foreground hover:bg-muted/70 hover:text-foreground hover:-translate-y-0.5"
                           )
                         }
                       >

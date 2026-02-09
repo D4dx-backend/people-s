@@ -15,7 +15,7 @@ interface StatsCardProps {
 
 export function StatsCard({ title, value, icon: Icon, trend, className }: StatsCardProps) {
   return (
-    <Card className={cn("overflow-hidden", className)}>
+    <Card className={cn("group overflow-hidden hover:shadow-glow transition-all duration-300", className)}>
       <CardContent className="p-6">
         <div className="flex items-center justify-between">
           <div className="space-y-1">
@@ -30,7 +30,7 @@ export function StatsCard({ title, value, icon: Icon, trend, className }: StatsC
               </p>
             )}
           </div>
-          <div className="rounded-full bg-gradient-primary p-3">
+          <div className="rounded-2xl bg-gradient-primary p-3 shadow-elegant transition-transform duration-300 group-hover:-translate-y-0.5">
             <Icon className="h-6 w-6 text-primary-foreground" />
           </div>
         </div>

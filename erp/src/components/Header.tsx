@@ -40,16 +40,16 @@ export function Header({ onMenuClick }: HeaderProps) {
     }
   };
   return (
-    <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-      <div className="flex h-16 items-center justify-between px-4 md:px-6">
+    <header className="sticky top-0 z-50 w-full border-b border-border/40 bg-background/80 backdrop-blur-xl supports-[backdrop-filter]:bg-background/60">
+      <div className="relative flex h-16 items-center justify-between px-4 md:px-6">
         <div className="flex items-center gap-4">
           {onMenuClick && (
-            <Button variant="ghost" size="icon" onClick={onMenuClick} className="md:hidden">
+            <Button variant="ghost" size="icon" onClick={onMenuClick} className="md:hidden hover:bg-muted/70">
               <Menu className="h-5 w-5" />
             </Button>
           )}
           <div className="flex items-center gap-3">
-            <img src={logo} alt="People's Foundation ERP" className="h-10 w-10 rounded-full" />
+            <img src={logo} alt="People's Foundation ERP" className="h-10 w-10 rounded-2xl shadow-sm" />
             <div className="hidden md:block">
               <h1 className="text-lg font-bold text-foreground">People's Foundation ERP</h1>
               <p className="text-xs text-muted-foreground">ERP Solution for NGOs</p>
@@ -60,7 +60,7 @@ export function Header({ onMenuClick }: HeaderProps) {
         <div className="flex items-center gap-2">
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="icon" className="relative">
+              <Button variant="ghost" size="icon" className="relative hover:bg-muted/70">
                 <Bell className="h-5 w-5" />
                 <Badge className="absolute -right-1 -top-1 h-5 w-5 rounded-full p-0 text-xs bg-destructive">
                   3
@@ -93,7 +93,7 @@ export function Header({ onMenuClick }: HeaderProps) {
 
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="ghost" className="gap-2">
+              <Button variant="ghost" className="gap-2 hover:bg-muted/70">
                 <User className="h-5 w-5" />
                 <span className="hidden md:inline">{user?.name || "User"}</span>
               </Button>
@@ -118,6 +118,7 @@ export function Header({ onMenuClick }: HeaderProps) {
             </DropdownMenuContent>
           </DropdownMenu>
         </div>
+        <div className="pointer-events-none absolute inset-x-0 bottom-0 h-px bg-gradient-primary opacity-40" />
       </div>
     </header>
   );
