@@ -106,7 +106,13 @@ export function FormCanvas({ pages, onUpdatePages, onAddField }: FormCanvasProps
       type: fieldType,
       required: false,
       enabled: true,
-      pageId
+      pageId,
+      ...(['select', 'radio', 'checkbox', 'dropdown', 'multiselect'].includes(fieldType) ? {
+        options: [
+          { label: 'Option 1', value: 'option_1' },
+          { label: 'Option 2', value: 'option_2' }
+        ]
+      } : {})
     };
 
     const newPages = pages.map(page => {

@@ -499,6 +499,10 @@ export default function Schemes() {
                         )}
                         {canManageSchemes && (
                           <>
+                            <Button variant="outline" size="sm" onClick={() => navigate(`/form-builder?schemeId=${scheme.id}&schemeName=${encodeURIComponent(scheme.name)}`)}>
+                              <FileText className="mr-1 h-3 w-3" />
+                              Configure Form
+                            </Button>
                             <Button variant="outline" size="sm" onClick={() => handleConfigureTimeline(scheme)}>
                               <GitBranch className="mr-1 h-3 w-3" />
                               Timeline

@@ -73,7 +73,7 @@ import NewsEvents from "./pages/NewsEvents";
 import Brochures from "./pages/Brochures";
 import Partners from "./pages/Partners";
 import Banners from "./pages/Banners";
-
+import FormBuilder from "./pages/FormBuilder";
 
 const queryClient = new QueryClient();
 
@@ -106,6 +106,7 @@ const App = () => (
             <Route path="/projects" element={<AuthGuard><Layout><Projects /></Layout></AuthGuard>} />
             <Route path="/schemes" element={<AuthGuard><Layout><Schemes /></Layout></AuthGuard>} />
             <Route path="/applications" element={<AuthGuard><Layout><Applications /></Layout></AuthGuard>} />
+            <Route path="/form-builder" element={<AuthGuard><Layout><FormBuilder /></Layout></AuthGuard>} />
             <Route path="/applications/all" element={<AuthGuard><Layout><AllApplications /></Layout></AuthGuard>} />
             <Route path="/applications/pending" element={<AuthGuard><Layout><PendingApplications /></Layout></AuthGuard>} />
             <Route path="/applications/under-review" element={<AuthGuard><Layout><UnderReviewApplications /></Layout></AuthGuard>} />

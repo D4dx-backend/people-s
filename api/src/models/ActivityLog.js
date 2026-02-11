@@ -36,6 +36,7 @@ const activityLogSchema = new mongoose.Schema({
       
       // Scheme management
       'scheme_created', 'scheme_updated', 'scheme_deleted', 'scheme_activated', 'scheme_deactivated',
+      'scheme_create_failed', 'scheme_update_failed',
       
       // Payment management
       'payment_created', 'payment_updated', 'payment_approved', 'payment_rejected', 'payment_processed',
