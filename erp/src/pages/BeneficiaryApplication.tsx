@@ -233,6 +233,13 @@ export default function BeneficiaryApplication() {
   };
 
   const validateField = (field: FormField, value: any): string => {
+    if (field.type === "checkbox") {
+      if (field.required && !value) {
+        return `${field.label} is required`;
+      }
+      return "";
+    }
+
     if (field.required && (!value || value.toString().trim() === "")) {
       return `${field.label} is required`;
     }
@@ -466,7 +473,7 @@ export default function BeneficiaryApplication() {
                 <SelectValue placeholder={field.placeholder || `Select ${field.label.toLowerCase()}`} />
               </SelectTrigger>
               <SelectContent>
-                {field.options?.map((option) => (
+                {field.options?.filter((option) => option !== "").map((option) => (
                   <SelectItem key={option} value={option}>
                     {option}
                   </SelectItem>
@@ -489,6 +496,74 @@ export default function BeneficiaryApplication() {
             <Input
               id={fieldKey}
               type={field.type === "datetime" ? "datetime-local" : "date"}
+              value={value}
+              onChange={(e) => handleInputChange(fieldKey, e.target.value)}
+              className={error ? "border-red-500" : ""}
+            />
+            {field.helpText && <p className="text-xs text-muted-foreground">{field.helpText}</p>}
+            {error && <p className="text-sm text-red-500">{error}</p>}
+          </div>
+        );
+
+      case "checkbox":
+        return (
+          <div key={field.id} className="space-y-2">
+            <div className="flex items-center space-x-2">
+              <Checkbox
+                id={fieldKey}
+                checked={!!value}
+                onCheckedChange={(checked) => handleInputChange(fieldKey, checked)}
+              />
+              <Label htmlFor={fieldKey} className="text-sm font-medium leading-none">
+                {field.label}
+                {field.required && <span className="text-red-500 ml-1">*</span>}
+              </Label>
+            </div>
+            {field.helpText && <p className="text-xs text-muted-foreground">{field.helpText}</p>}
+            {error && <p className="text-sm text-red-500">{error}</p>}
+          </div>
+        );
+
+      case "radio":
+        return (
+          <div key={field.id} className="space-y-2">
+            <Label>
+              {field.label}
+              {field.required && <span className="text-red-500 ml-1">*</span>}
+            </Label>
+            <div className="space-y-2">
+              {field.options?.filter((option) => option !== "").map((option) => (
+                <div key={option} className="flex items-center space-x-2">
+                  <input
+                    type="radio"
+                    id={`${fieldKey}_${option}`}
+                    name={fieldKey}
+                    value={option}
+                    checked={value === option}
+                    onChange={(e) => handleInputChange(fieldKey, e.target.value)}
+                    className="h-4 w-4"
+                  />
+                  <Label htmlFor={`${fieldKey}_${option}`} className="text-sm font-normal">
+                    {option}
+                  </Label>
+                </div>
+              ))}
+            </div>
+            {field.helpText && <p className="text-xs text-muted-foreground">{field.helpText}</p>}
+            {error && <p className="text-sm text-red-500">{error}</p>}
+          </div>
+        );
+
+      case "time":
+        return (
+          <div key={field.id} className="space-y-2">
+            <Label htmlFor={fieldKey}>
+              {field.label}
+              {field.required && <span className="text-red-500 ml-1">*</span>}
+            </Label>
+            <Input
+              id={fieldKey}
+              type="time"
               value={value}
               onChange={(e) => handleInputChange(fieldKey, e.target.value)}
               className={error ? "border-red-500" : ""}
@@ -524,7 +599,25 @@ export default function BeneficiaryApplication() {
         );
 
       default:
-        return null;
+        // Fallback: render as text input for any unrecognized field type
+        return (
+          <div key={field.id} className="space-y-2">
+            <Label htmlFor={fieldKey}>
+              {field.label}
+              {field.required && <span className="text-red-500 ml-1">*</span>}
+            </Label>
+            <Input
+              id={fieldKey}
+              type="text"
+              value={value}
+              onChange={(e) => handleInputChange(fieldKey, e.target.value)}
+              placeholder={field.placeholder || `Enter ${field.label.toLowerCase()}`}
+              className={error ? "border-red-500" : ""}
+            />
+            {field.helpText && <p className="text-xs text-muted-foreground">{field.helpText}</p>}
+            {error && <p className="text-sm text-red-500">{error}</p>}
+          </div>
+        );
     }
   };
 
