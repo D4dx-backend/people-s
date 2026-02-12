@@ -16,6 +16,9 @@ interface Field {
   options?: string[];
   validation?: string;
   columns?: number;
+  columnTitles?: string[];
+  rows?: number;
+  rowTitles?: string[];
   conditionalLogic?: {
     field: number;
     operator: string;
@@ -112,6 +115,12 @@ export function FormCanvas({ pages, onUpdatePages, onAddField }: FormCanvasProps
           { label: 'Option 1', value: 'option_1' },
           { label: 'Option 2', value: 'option_2' }
         ]
+      } : {}),
+      ...(fieldType === 'row' ? {
+        columns: 2,
+        columnTitles: ['', ''],
+        rows: 3,
+        rowTitles: ['', '', '']
       } : {})
     };
 

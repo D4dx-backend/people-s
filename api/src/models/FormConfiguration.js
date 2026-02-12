@@ -14,7 +14,7 @@ const fieldSchema = new mongoose.Schema({
   type: {
     type: String,
     required: [true, 'Field type is required'],
-    enum: ['text', 'email', 'phone', 'number', 'date', 'datetime', 'textarea', 'select', 'radio', 'checkbox', 'file', 'url', 'password']
+    enum: ['text', 'email', 'phone', 'number', 'date', 'datetime', 'textarea', 'select', 'radio', 'checkbox', 'file', 'url', 'password', 'title', 'html', 'group', 'page', 'row', 'column', 'dropdown', 'multiselect', 'yesno', 'time']
   },
   required: {
     type: Boolean,
@@ -47,9 +47,20 @@ const fieldSchema = new mongoose.Schema({
   columns: {
     type: Number,
     min: 1,
-    max: 12,
     default: 12
   },
+  columnTitles: [{
+    type: String,
+    maxlength: [200, 'Column title cannot exceed 200 characters']
+  }],
+  rows: {
+    type: Number,
+    min: 1
+  },
+  rowTitles: [{
+    type: String,
+    maxlength: [200, 'Row title cannot exceed 200 characters']
+  }],
   conditionalLogic: {
     field: Number,
     operator: {

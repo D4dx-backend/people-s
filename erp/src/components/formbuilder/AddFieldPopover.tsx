@@ -23,8 +23,8 @@ const fieldTypes = [
   { type: "radio", label: "Radio", icon: Circle },
   { type: "file", label: "File Upload", icon: Upload },
   { type: "title", label: "Title", icon: Heading1 },
-  { type: "html", label: "HTML", icon: Code },
-  { type: "group", label: "Group", icon: Users },
+  // { type: "html", label: "HTML", icon: Code },
+  // { type: "group", label: "Group", icon: Users },
   { type: "row", label: "Row/Column", icon: Table },
 ];
 

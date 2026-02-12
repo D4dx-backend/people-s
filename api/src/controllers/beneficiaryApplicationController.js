@@ -426,10 +426,12 @@ class BeneficiaryApplicationController {
       }
 
       // Extract requested amount from form data or use scheme max amount
-      const requestedAmount = formData.requestedAmount || 
-                             formData.field_12 || // If amount field is in form
-                             scheme.benefits?.amount || 
-                             0;
+      // Only use numeric values — skip arrays (table fields) or non-numeric strings
+      const rawAmount = formData.requestedAmount || formData.field_12;
+      const parsedAmount = (typeof rawAmount === 'number' || (typeof rawAmount === 'string' && !isNaN(Number(rawAmount))))
+        ? Number(rawAmount)
+        : null;
+      const requestedAmount = parsedAmount || scheme.benefits?.amount || 0;
 
       // Generate application number manually to avoid pre-save middleware issues
       const applicationCount = await Application.countDocuments();

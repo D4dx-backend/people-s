@@ -18,6 +18,9 @@ interface Field {
   options?: string[];
   validation?: string;
   columns?: number;
+  columnTitles?: string[];
+  rows?: number;
+  rowTitles?: string[];
   conditionalLogic?: {
     field: number;
     operator: string;
@@ -68,8 +71,8 @@ export function FieldEditor({ field, onUpdate, onDelete, onMoveUp, onMoveDown, a
                   <SelectItem value="radio">Radio</SelectItem>
                   <SelectItem value="file">File Upload</SelectItem>
                   <SelectItem value="title">Title/Heading</SelectItem>
-                  <SelectItem value="html">HTML Editor</SelectItem>
-                  <SelectItem value="group">Field Group</SelectItem>
+                  {/* <SelectItem value="html">HTML Editor</SelectItem> */}
+                  {/* <SelectItem value="group">Field Group</SelectItem> */}
                   <SelectItem value="row">Row/Column</SelectItem>
                 </SelectContent>
               </Select>
@@ -139,16 +142,119 @@ export function FieldEditor({ field, onUpdate, onDelete, onMoveUp, onMoveDown, a
               )}
 
               {field.type === "row" && (
-                <div className="flex items-center gap-2">
-                  <Label className="text-xs">Columns:</Label>
-                  <Input
-                    type="number"
-                    min="1"
-                    max="4"
-                    value={field.columns || 2}
-                    onChange={(e) => onUpdate({ ...field, columns: parseInt(e.target.value) })}
-                    className="h-8 w-20 text-sm"
-                  />
+                <div className="space-y-3 p-3 border rounded-md bg-muted/30">
+                  <Label className="text-xs font-semibold">Table Configuration</Label>
+
+                  {/* Rows & Columns Count */}
+                  <div className="flex items-center gap-4">
+                    <div className="flex items-center gap-2">
+                      <Label className="text-xs whitespace-nowrap">Columns:</Label>
+                      <Input
+                        type="number"
+                        min="1"
+                        value={field.columns || 2}
+                        onChange={(e) => {
+                          const cols = Math.max(1, parseInt(e.target.value) || 1);
+                          const titles = field.columnTitles || [];
+                          const newTitles = Array.from({ length: cols }, (_, i) => titles[i] || "");
+                          onUpdate({ ...field, columns: cols, columnTitles: newTitles });
+                        }}
+                        className="h-8 w-20 text-sm"
+                      />
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Label className="text-xs whitespace-nowrap">Rows:</Label>
+                      <Input
+                        type="number"
+                        min="1"
+                        value={field.rows || 3}
+                        onChange={(e) => {
+                          const rowCount = Math.max(1, parseInt(e.target.value) || 1);
+                          const titles = field.rowTitles || [];
+                          const newTitles = Array.from({ length: rowCount }, (_, i) => titles[i] || "");
+                          onUpdate({ ...field, rows: rowCount, rowTitles: newTitles });
+                        }}
+                        className="h-8 w-20 text-sm"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Column Headers */}
+                  <div className="space-y-1">
+                    <Label className="text-xs font-medium">Column Headers</Label>
+                    <div className="flex gap-2 flex-wrap">
+                      {Array.from({ length: field.columns || 2 }, (_, i) => (
+                        <Input
+                          key={`col-${i}`}
+                          value={field.columnTitles?.[i] || ""}
+                          onChange={(e) => {
+                            const titles = [...(field.columnTitles || Array(field.columns || 2).fill(""))];
+                            titles[i] = e.target.value;
+                            onUpdate({ ...field, columnTitles: titles });
+                          }}
+                          placeholder={`Column ${i + 1}`}
+                          className="h-7 text-xs flex-1 min-w-[80px]"
+                        />
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Row Labels */}
+                  <div className="space-y-1">
+                    <Label className="text-xs font-medium">Row Labels (optional)</Label>
+                    <div className="flex gap-2 flex-wrap">
+                      {Array.from({ length: field.rows || 3 }, (_, i) => (
+                        <Input
+                          key={`row-${i}`}
+                          value={field.rowTitles?.[i] || ""}
+                          onChange={(e) => {
+                            const titles = [...(field.rowTitles || Array(field.rows || 3).fill(""))];
+                            titles[i] = e.target.value;
+                            onUpdate({ ...field, rowTitles: titles });
+                          }}
+                          placeholder={`Row ${i + 1}`}
+                          className="h-7 text-xs flex-1 min-w-[80px]"
+                        />
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Table Preview */}
+                  <div className="space-y-1">
+                    <Label className="text-[10px] text-muted-foreground">Preview</Label>
+                    <div className="border rounded-md overflow-hidden">
+                      <table className="w-full text-xs">
+                        <thead>
+                          <tr className="bg-muted">
+                            {(field.rowTitles?.some(t => t) ?? false) && (
+                              <th className="border-r border-b p-1.5 text-left font-medium text-muted-foreground"></th>
+                            )}
+                            {Array.from({ length: field.columns || 2 }, (_, i) => (
+                              <th key={i} className="border-r border-b p-1.5 text-left font-medium">
+                                {field.columnTitles?.[i] || `Col ${i + 1}`}
+                              </th>
+                            ))}
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {Array.from({ length: field.rows || 3 }, (_, r) => (
+                            <tr key={r} className={r % 2 === 0 ? "" : "bg-muted/30"}>
+                              {(field.rowTitles?.some(t => t) ?? false) && (
+                                <td className="border-r border-b p-1.5 font-medium text-muted-foreground bg-muted/50 whitespace-nowrap">
+                                  {field.rowTitles?.[r] || `Row ${r + 1}`}
+                                </td>
+                              )}
+                              {Array.from({ length: field.columns || 2 }, (_, c) => (
+                                <td key={c} className="border-r border-b p-1">
+                                  <div className="h-5 bg-background rounded border border-dashed border-muted-foreground/20"></div>
+                                </td>
+                              ))}
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
                 </div>
               )}
 
