@@ -31,6 +31,9 @@ interface FormField {
     customMessage?: string;
   };
   columns?: number;
+  columnTitles?: string[];
+  rows?: number;
+  rowTitles?: string[];
   conditionalLogic?: {
     field: number;
     operator: string;
@@ -236,6 +239,16 @@ export default function BeneficiaryApplication() {
     if (field.type === "checkbox") {
       if (field.required && !value) {
         return `${field.label} is required`;
+      }
+      return "";
+    }
+
+    // Table (row/column) validation: check that at least one cell has data
+    if (field.type === "row" || field.type === "column") {
+      if (field.required) {
+        if (!Array.isArray(value) || !value.some((row: string[]) => row?.some((cell: string) => cell?.trim()))) {
+          return `${field.label} is required — please fill in at least one cell`;
+        }
       }
       return "";
     }
@@ -462,6 +475,7 @@ export default function BeneficiaryApplication() {
         );
 
       case "select":
+      case "dropdown":
         return (
           <div key={field.id} className="space-y-2">
             <Label htmlFor={fieldKey}>
@@ -484,6 +498,149 @@ export default function BeneficiaryApplication() {
             {error && <p className="text-sm text-red-500">{error}</p>}
           </div>
         );
+
+      case "yesno":
+        return (
+          <div key={field.id} className="space-y-2">
+            <Label htmlFor={fieldKey}>
+              {field.label}
+              {field.required && <span className="text-red-500 ml-1">*</span>}
+            </Label>
+            <Select value={value} onValueChange={(val) => handleInputChange(fieldKey, val)}>
+              <SelectTrigger className={error ? "border-red-500" : ""}>
+                <SelectValue placeholder={field.placeholder || "Select Yes or No"} />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="Yes">Yes</SelectItem>
+                <SelectItem value="No">No</SelectItem>
+              </SelectContent>
+            </Select>
+            {field.helpText && <p className="text-xs text-muted-foreground">{field.helpText}</p>}
+            {error && <p className="text-sm text-red-500">{error}</p>}
+          </div>
+        );
+
+      case "multiselect":
+        return (
+          <div key={field.id} className="space-y-2">
+            <Label>
+              {field.label}
+              {field.required && <span className="text-red-500 ml-1">*</span>}
+            </Label>
+            <div className="space-y-2 border rounded-md p-3">
+              {field.options?.filter((option) => option !== "").map((option) => {
+                const selected: string[] = Array.isArray(value) ? value : [];
+                return (
+                  <div key={option} className="flex items-center space-x-2">
+                    <Checkbox
+                      id={`${fieldKey}_${option}`}
+                      checked={selected.includes(option)}
+                      onCheckedChange={(checked) => {
+                        const newValue = checked
+                          ? [...selected, option]
+                          : selected.filter((v: string) => v !== option);
+                        handleInputChange(fieldKey, newValue);
+                      }}
+                    />
+                    <Label htmlFor={`${fieldKey}_${option}`} className="text-sm font-normal">
+                      {option}
+                    </Label>
+                  </div>
+                );
+              })}
+            </div>
+            {field.helpText && <p className="text-xs text-muted-foreground">{field.helpText}</p>}
+            {error && <p className="text-sm text-red-500">{error}</p>}
+          </div>
+        );
+
+      // Layout field types - rendered as visual elements, not input fields
+      case "title":
+        return (
+          <div key={field.id} className="pt-2">
+            <h3 className="text-lg font-semibold">{field.label}</h3>
+            {field.helpText && <p className="text-sm text-muted-foreground">{field.helpText}</p>}
+          </div>
+        );
+
+      case "html":
+        return (
+          <div key={field.id} className="prose prose-sm max-w-none">
+            <div dangerouslySetInnerHTML={{ __html: field.placeholder || field.label }} />
+          </div>
+        );
+
+      case "row":
+      case "column": {
+        const colCount = field.columns || 2;
+        const rowCount = field.rows || 3;
+        const hasRowLabels = field.rowTitles?.some(t => t) ?? false;
+        // Initialize table data as 2D array if not exists
+        const tableData: string[][] = Array.isArray(value) ? value :
+          Array.from({ length: rowCount }, () => Array(colCount).fill(""));
+
+        return (
+          <div key={field.id} className="space-y-2">
+            <Label>
+              {field.label}
+              {field.required && <span className="text-red-500 ml-1">*</span>}
+            </Label>
+            {field.helpText && <p className="text-xs text-muted-foreground">{field.helpText}</p>}
+            <div className="border rounded-md overflow-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="bg-muted">
+                    {hasRowLabels && <th className="border-r border-b p-2 text-left font-medium text-xs"></th>}
+                    {Array.from({ length: colCount }, (_, i) => (
+                      <th key={i} className="border-r border-b p-2 text-left font-medium text-xs">
+                        {field.columnTitles?.[i] || `Column ${i + 1}`}
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {Array.from({ length: rowCount }, (_, r) => (
+                    <tr key={r} className={r % 2 === 0 ? "" : "bg-muted/30"}>
+                      {hasRowLabels && (
+                        <td className="border-r border-b p-2 font-medium text-xs text-muted-foreground bg-muted/50 whitespace-nowrap">
+                          {field.rowTitles?.[r] || `Row ${r + 1}`}
+                        </td>
+                      )}
+                      {Array.from({ length: colCount }, (_, c) => (
+                        <td key={c} className="border-r border-b p-1">
+                          <Input
+                            value={tableData[r]?.[c] || ""}
+                            onChange={(e) => {
+                              const newData = tableData.map((row, ri) =>
+                                ri === r
+                                  ? row.map((cell, ci) => (ci === c ? e.target.value : cell))
+                                  : [...row]
+                              );
+                              // Ensure all rows have correct number of columns
+                              while (newData.length < rowCount) {
+                                newData.push(Array(colCount).fill(""));
+                              }
+                              handleInputChange(fieldKey, newData);
+                            }}
+                            placeholder="..."
+                            className={`h-8 text-sm border-0 shadow-none focus-visible:ring-1 ${error ? "bg-red-50" : ""}`}
+                          />
+                        </td>
+                      ))}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            {error && <p className="text-sm text-red-500">{error}</p>}
+          </div>
+        );
+      }
+
+      case "group":
+      case "page":
+        // Layout containers - skip rendering as input fields
+        return null;
 
       case "date":
       case "datetime":
@@ -720,7 +877,7 @@ export default function BeneficiaryApplication() {
                 <Checkbox
                   id="terms"
                   checked={agreedToTerms}
-                  onCheckedChange={setAgreedToTerms}
+                  onCheckedChange={(checked) => setAgreedToTerms(checked === true)}
                 />
                 <div className="grid gap-1.5 leading-none">
                   <Label

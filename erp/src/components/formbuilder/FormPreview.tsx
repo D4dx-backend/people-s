@@ -19,6 +19,9 @@ interface Field {
   placeholder?: string;
   options?: string[];
   columns?: number;
+  columnTitles?: string[];
+  rows?: number;
+  rowTitles?: string[];
 }
 
 interface Page {
@@ -208,14 +211,48 @@ export function FormPreview({ formTitle, formDescription, pages, schemeId, isLiv
         );
 
       case "row":
-      case "column":
+      case "column": {
+        const colCount = field.columns || 2;
+        const rowCount = field.rows || 3;
+        const hasRowLabels = field.rowTitles?.some(t => t) ?? false;
         return (
-          <div key={field.id} className="border-2 border-dashed rounded-lg p-4">
-            <p className="text-sm text-muted-foreground text-center">
-              {field.type === "row" ? "Row" : "Column"} Container ({field.columns || 2} columns)
-            </p>
+          <div key={field.id} className="space-y-2">
+            {field.label && field.label !== "New row Field" && (
+              <Label className="text-sm font-medium">{field.label}</Label>
+            )}
+            <div className="border rounded-md overflow-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="bg-muted">
+                    {hasRowLabels && <th className="border-r border-b p-2 text-left font-medium text-xs"></th>}
+                    {Array.from({ length: colCount }, (_, i) => (
+                      <th key={i} className="border-r border-b p-2 text-left font-medium text-xs">
+                        {field.columnTitles?.[i] || `Column ${i + 1}`}
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {Array.from({ length: rowCount }, (_, r) => (
+                    <tr key={r} className={r % 2 === 0 ? "" : "bg-muted/30"}>
+                      {hasRowLabels && (
+                        <td className="border-r border-b p-2 font-medium text-xs text-muted-foreground bg-muted/50 whitespace-nowrap">
+                          {field.rowTitles?.[r] || `Row ${r + 1}`}
+                        </td>
+                      )}
+                      {Array.from({ length: colCount }, (_, c) => (
+                        <td key={c} className="border-r border-b p-1.5">
+                          <Input disabled placeholder="..." className="h-7 text-xs" />
+                        </td>
+                      ))}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           </div>
         );
+      }
 
       default:
         return (

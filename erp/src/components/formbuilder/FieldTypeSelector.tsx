@@ -23,11 +23,10 @@ const fieldTypes: FieldType[] = [
   { type: "checkbox", label: "Checkboxes", icon: "☐", category: "basic" },
   { type: "file", label: "File Upload", icon: "📎", category: "basic" },
   { type: "title", label: "Title/Heading", icon: "H", category: "layout" },
-  { type: "html", label: "HTML Editor", icon: "✏️", category: "advanced" },
-  { type: "group", label: "Field Group", icon: "📦", category: "layout" },
+  // { type: "html", label: "HTML Editor", icon: "✏️", category: "advanced" },
+  // { type: "group", label: "Field Group", icon: "📦", category: "layout" },
   { type: "page", label: "Page Break", icon: "📃", category: "layout" },
-  { type: "row", label: "Row Container", icon: "⬌", category: "layout" },
-  { type: "column", label: "Column Layout", icon: "⬍", category: "layout" },
+  { type: "row", label: "Row/Column", icon: "⬌", category: "layout" },
 ];
 
 interface FieldTypeSelectorProps {
