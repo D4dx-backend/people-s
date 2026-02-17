@@ -14,7 +14,9 @@ import { useRBAC } from "@/hooks/useRBAC";
 import { payments } from "@/lib/api";
 import { GenericFilters } from "@/components/filters/GenericFilters";
 import { usePaymentFilters } from "@/hooks/usePaymentFilters";
-import { usePaymentExport } from "@/hooks/usePaymentExport";
+import { useExport } from '@/hooks/useExport';
+import ExportButton from '@/components/common/ExportButton';
+import { paymentExportColumns } from '@/utils/exportColumns';
 
 const statusConfig = {
   pending: { color: "bg-warning/10 text-warning border-warning/20", label: "Pending", icon: Clock },
@@ -35,7 +37,13 @@ export default function AllPayments() {
   const urlFilter = urlParams.get('filter') || undefined;
   
   const filterHook = usePaymentFilters(urlFilter);
-  const { exportPayments, exporting } = usePaymentExport();
+  const { exportCSV, exportPDF, printData, exporting } = useExport({
+    apiCall: (params) => payments.export(params),
+    filenamePrefix: 'payments',
+    pdfTitle: 'Payments Report',
+    pdfColumns: paymentExportColumns,
+    getFilterParams: () => filterHook.getExportParams(),
+  });
   
   const canViewPayments = hasAnyPermission(['finances.read.all', 'finances.read.regional', 'super_admin', 'state_admin']);
   const canManagePayments = hasAnyPermission(['finances.manage', 'finances.read.regional', 'finances.read.all', 'super_admin', 'state_admin']);
@@ -227,18 +235,16 @@ export default function AllPayments() {
     <div className="space-y-6">
       <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
         <div>
-          <h1 className="text-3xl font-bold">All Payments</h1>
+          <h1 className="text-lg font-bold">All Payments</h1>
           <p className="text-muted-foreground mt-1">View and manage all payment schedules</p>
         </div>
         <div className="flex items-center gap-2">
-          <Button 
-            variant="outline" 
-            onClick={() => exportPayments(filterHook.getExportParams(), 'all_payments')} 
-            disabled={exporting}
-          >
-            <Download className="mr-2 h-4 w-4" />
-            {exporting ? "Exporting..." : "Export"}
-          </Button>
+          <ExportButton
+            onExportCSV={() => exportCSV()}
+            onExportPDF={() => exportPDF()}
+            onPrint={() => printData()}
+            exporting={exporting}
+          />
           <div className="flex items-center border rounded-lg p-1">
             <Button variant={viewMode === 'cards' ? 'default' : 'ghost'} size="sm" onClick={() => setViewMode('cards')}>
               <Grid className="h-4 w-4" />
@@ -449,6 +455,7 @@ export default function AllPayments() {
                 })}
               </div>
             ) : (
+              <div className="overflow-x-auto">
               <Table>
                 <TableHeader>
                   <TableRow>
@@ -531,6 +538,7 @@ export default function AllPayments() {
                   })}
                 </TableBody>
               </Table>
+              </div>
             )}
           </CardContent>
         </Card>

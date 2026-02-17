@@ -32,7 +32,7 @@ const applicationSchema = new mongoose.Schema({
   status: {
     type: String,
     enum: [
-      'pending', 'interview_scheduled', 'interview_completed', 'pending_committee_approval',
+      'draft', 'pending', 'under_review', 'interview_scheduled', 'interview_completed', 'pending_committee_approval',
       'approved', 'rejected', 'on_hold', 'cancelled', 'disbursed', 'completed'
     ],
     default: 'pending'
@@ -41,7 +41,7 @@ const applicationSchema = new mongoose.Schema({
   // Amount
   requestedAmount: {
     type: Number,
-    required: true
+    default: 0
   },
   approvedAmount: {
     type: Number,
@@ -62,6 +62,57 @@ const applicationSchema = new mongoose.Schema({
   formData: {
     type: mongoose.Schema.Types.Mixed,
     default: {}
+  },
+
+  // Draft metadata
+  draftMetadata: {
+    lastSavedAt: { type: Date },
+    currentPage: { type: Number, default: 0 },
+    completedPages: [{ type: Number }],
+    autoSaved: { type: Boolean, default: false }
+  },
+
+  // Eligibility Score - Calculated from form data against scoring rules
+  eligibilityScore: {
+    totalPoints: {
+      type: Number,
+      default: 0
+    },
+    maxPoints: {
+      type: Number,
+      default: 0
+    },
+    percentage: {
+      type: Number,
+      default: 0
+    },
+    meetsThreshold: {
+      type: Boolean,
+      default: true
+    },
+    threshold: {
+      type: Number,
+      default: 0
+    },
+    fieldScores: [{
+      fieldId: Number,
+      fieldLabel: String,
+      earnedPoints: {
+        type: Number,
+        default: 0
+      },
+      maxPoints: {
+        type: Number,
+        default: 0
+      },
+      appliedRule: String,
+      answerValue: mongoose.Schema.Types.Mixed
+    }],
+    autoRejected: {
+      type: Boolean,
+      default: false
+    },
+    calculatedAt: Date
   },
   
   // Review Information
@@ -250,10 +301,65 @@ const applicationSchema = new mongoose.Schema({
     },
     status: {
       type: String,
-      enum: ['pending', 'in_progress', 'completed', 'skipped'],
+      enum: ['pending', 'in_progress', 'completed', 'skipped', 'reverted'],
       default: 'pending'
     },
-    notes: String
+    notes: String,
+    // Per-role comment configuration (copied from scheme)
+    commentConfig: {
+      unitAdmin: {
+        enabled: { type: Boolean, default: false },
+        required: { type: Boolean, default: false }
+      },
+      areaAdmin: {
+        enabled: { type: Boolean, default: false },
+        required: { type: Boolean, default: false }
+      },
+      districtAdmin: {
+        enabled: { type: Boolean, default: false },
+        required: { type: Boolean, default: false }
+      }
+    },
+    // Actual comments from each role
+    comments: {
+      unitAdmin: {
+        comment: String,
+        commentedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+        commentedAt: Date
+      },
+      areaAdmin: {
+        comment: String,
+        commentedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+        commentedAt: Date
+      },
+      districtAdmin: {
+        comment: String,
+        commentedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+        commentedAt: Date
+      }
+    },
+    // Required documents for this stage (copied from scheme + upload tracking)
+    requiredDocuments: [{
+      name: {
+        type: String,
+        required: true,
+        maxlength: 200
+      },
+      description: {
+        type: String,
+        maxlength: 500
+      },
+      isRequired: {
+        type: Boolean,
+        default: true
+      },
+      uploadedFile: String,
+      uploadedBy: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'User'
+      },
+      uploadedAt: Date
+    }]
   }],
 
   // Current Stage in the workflow
@@ -274,7 +380,8 @@ const applicationSchema = new mongoose.Schema({
       type: mongoose.Schema.Types.ObjectId,
       ref: 'User'
     },
-    notes: String
+    notes: String,
+    revertedTo: String // Target stage name when action is revert
   }],
 
   // Status History for tracking status changes
@@ -393,6 +500,38 @@ const applicationSchema = new mongoose.Schema({
     required: true
   },
   
+  // Renewal Tracking
+  isRenewal: {
+    type: Boolean,
+    default: false
+  },
+  parentApplication: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Application',
+    default: null
+  },
+  renewalNumber: {
+    type: Number,
+    default: 0 // 0 = original, 1 = first renewal, etc.
+  },
+  expiryDate: {
+    type: Date,
+    default: null
+  },
+  renewalDueDate: {
+    type: Date,
+    default: null
+  },
+  renewalStatus: {
+    type: String,
+    enum: ['not_applicable', 'active', 'due_for_renewal', 'expired', 'renewed'],
+    default: 'not_applicable'
+  },
+  renewalNotificationSent: {
+    type: Boolean,
+    default: false
+  },
+
   // Metadata
   createdBy: {
     type: mongoose.Schema.Types.ObjectId,
@@ -417,6 +556,9 @@ applicationSchema.index({ state: 1, district: 1, area: 1, unit: 1 });
 applicationSchema.index({ createdAt: -1 });
 applicationSchema.index({ isRecurring: 1, 'recurringConfig.status': 1 });
 applicationSchema.index({ 'recurringConfig.nextPaymentDate': 1 });
+applicationSchema.index({ renewalStatus: 1, expiryDate: 1 });
+applicationSchema.index({ parentApplication: 1 });
+applicationSchema.index({ isRenewal: 1 });
 
 // Pre-save middleware to generate application number
 applicationSchema.pre('save', async function(next) {

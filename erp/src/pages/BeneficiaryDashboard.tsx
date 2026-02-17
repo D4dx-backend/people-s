@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { LogOut, FileText, Calendar, IndianRupee, Bell, Search, Loader2, User } from "lucide-react";
+import { LogOut, FileText, Calendar, IndianRupee, Bell, Search, Loader2, User, RefreshCw } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
@@ -24,6 +24,11 @@ interface Application {
   status: string;
   submittedAt: string;
   formData: any;
+  // Renewal fields
+  isRenewal?: boolean;
+  renewalNumber?: number;
+  renewalStatus?: string;
+  expiryDate?: string;
 }
 
 interface Stats {
@@ -43,6 +48,7 @@ export default function BeneficiaryDashboard() {
   const [notificationOpen, setNotificationOpen] = useState(false);
   const [interviewOpen, setInterviewOpen] = useState(false);
   const [applications, setApplications] = useState<Application[]>([]);
+  const [renewalDueApps, setRenewalDueApps] = useState<any[]>([]);
   const [stats, setStats] = useState<Stats | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   
@@ -75,11 +81,21 @@ export default function BeneficiaryDashboard() {
         return;
       }
       
-      // Load applications and stats in parallel
+      // Load applications, stats, and renewal-due apps in parallel
       const [applicationsResponse, statsResponse] = await Promise.all([
         beneficiaryApi.getMyApplications({ limit: 10 }),
         beneficiaryApi.getApplicationStats()
       ]);
+
+      // Load renewal due separately (non-blocking)
+      try {
+        const renewalResponse = await beneficiaryApi.getRenewalDueApplications();
+        if (renewalResponse?.applications) {
+          setRenewalDueApps(renewalResponse.applications);
+        }
+      } catch (e) {
+        // Non-critical - renewal feature may not be active
+      }
 
       setApplications(Array.isArray(applicationsResponse.applications) ? applicationsResponse.applications : []);
       setStats(statsResponse.stats);
@@ -146,6 +162,7 @@ export default function BeneficiaryDashboard() {
       case "completed": return "bg-green-700";
       case "under_review": return "bg-yellow-600";
       case "submitted": return "bg-blue-600";
+      case "draft": return "bg-amber-500";
       case "rejected": return "bg-red-600";
       case "cancelled": return "bg-gray-600";
       case "on_hold": return "bg-orange-600";
@@ -161,7 +178,7 @@ export default function BeneficiaryDashboard() {
           <div className="flex items-center gap-2">
             <img src={logo} alt="Logo" className="h-10 w-10 rounded-full" />
             <div>
-              <h1 className="text-sm font-bold">Beneficiary Portal</h1>
+              <h1 className="text-lg font-bold">Beneficiary Portal</h1>
               <p className="text-xs text-muted-foreground hidden sm:block">+91 {phoneNumber}</p>
             </div>
           </div>
@@ -281,6 +298,40 @@ export default function BeneficiaryDashboard() {
           </Button>
         </div>
 
+        {/* Renewal Alerts */}
+        {renewalDueApps.length > 0 && (
+          <Card className="mb-4 shadow-sm border-amber-200 bg-amber-50">
+            <CardHeader className="pb-2 px-3 pt-3">
+              <CardTitle className="flex items-center gap-2 text-base text-amber-800">
+                <RefreshCw className="h-4 w-4" />
+                Renewal Required ({renewalDueApps.length})
+              </CardTitle>
+              <CardDescription className="text-amber-700 text-xs">
+                The following applications need to be renewed
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="px-3 pb-3 space-y-2">
+              {renewalDueApps.map((app: any) => (
+                <div key={app._id} className="flex items-center justify-between p-2 bg-white rounded-lg border border-amber-100">
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm font-medium truncate">{app.scheme?.name || 'Scheme'}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {app.expiryDate ? `Expires: ${new Date(app.expiryDate).toLocaleDateString()}` : 'Renewal due'}
+                    </p>
+                  </div>
+                  <Button 
+                    size="sm" 
+                    className="ml-2 text-xs h-7 bg-amber-600 hover:bg-amber-700"
+                    onClick={() => navigate(`/beneficiary/apply?renew=${app._id}`)}
+                  >
+                    Renew Now
+                  </Button>
+                </div>
+              ))}
+            </CardContent>
+          </Card>
+        )}
+
         {/* My Applications */}
         <div className="space-y-3">
           <h2 className="text-lg font-bold px-1">My Applications</h2>
@@ -303,23 +354,64 @@ export default function BeneficiaryDashboard() {
                         {app.status.replace('_', ' ').toUpperCase()}
                       </Badge>
                     </div>
+                    {app.isRenewal && (
+                      <Badge variant="outline" className="text-xs bg-blue-50 text-blue-700 border-blue-200 mt-1">
+                        <RefreshCw className="mr-1 h-3 w-3" />
+                        Renewal #{app.renewalNumber || 1}
+                      </Badge>
+                    )}
+                    {app.renewalStatus === 'due_for_renewal' && (
+                      <Badge variant="outline" className="text-xs bg-amber-50 text-amber-700 border-amber-200 mt-1">
+                        Renewal Due
+                      </Badge>
+                    )}
+                    {app.renewalStatus === 'expired' && (
+                      <Badge variant="outline" className="text-xs bg-red-50 text-red-700 border-red-200 mt-1">
+                        Expired
+                      </Badge>
+                    )}
                   </CardHeader>
                   <CardContent className="px-3 pb-3">
                     <div className="space-y-1 text-xs text-muted-foreground">
                       <p>Applied: {new Date(app.submittedAt).toLocaleDateString()}</p>
+                      {app.expiryDate && (
+                        <p>Expires: {new Date(app.expiryDate).toLocaleDateString()}</p>
+                      )}
                       <p className="font-semibold text-sm text-foreground">
                         {app.scheme.maxAmount ? `₹${app.scheme.maxAmount.toLocaleString()}` : 'Amount varies'}
                       </p>
                       <p className="text-xs">{app.scheme.category}</p>
                     </div>
-                    <Button 
-                      variant="outline" 
-                      size="sm" 
-                      className="w-full mt-3 text-xs h-8"
-                      onClick={() => navigate(`/beneficiary/track/${app.applicationId}`)}
-                    >
-                      View Details
-                    </Button>
+                    <div className="flex gap-2 mt-3">
+                      {app.status === 'draft' ? (
+                        <Button 
+                          size="sm" 
+                          className="flex-1 text-xs h-8 bg-amber-600 hover:bg-amber-700"
+                          onClick={() => navigate(`/beneficiary/apply/${app.scheme?._id || app.scheme}?draftId=${app._id}`)}
+                        >
+                          Continue Application
+                        </Button>
+                      ) : (
+                        <Button 
+                          variant="outline" 
+                          size="sm" 
+                          className="flex-1 text-xs h-8"
+                          onClick={() => navigate(`/beneficiary/track/${app.applicationId}`)}
+                        >
+                          View Details
+                        </Button>
+                      )}
+                      {app.renewalStatus === 'due_for_renewal' && (
+                        <Button 
+                          size="sm" 
+                          className="flex-1 text-xs h-8 bg-amber-600 hover:bg-amber-700"
+                          onClick={() => navigate(`/beneficiary/apply?renew=${app._id}`)}
+                        >
+                          <RefreshCw className="mr-1 h-3 w-3" />
+                          Renew
+                        </Button>
+                      )}
+                    </div>
                   </CardContent>
                 </Card>
               ))}

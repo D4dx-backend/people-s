@@ -1,6 +1,550 @@
 const { Project, Scheme, Application, Payment, RecurringPayment } = require('../models');
 const ResponseHelper = require('../utils/responseHelper');
 
+// =============================================
+// Standalone analytics helper functions
+// (extracted from class to avoid `this` binding issues with Express route handlers)
+// =============================================
+
+async function getOverallStats() {
+  const stats = await Project.aggregate([
+    {
+      $lookup: {
+        from: 'applications',
+        localField: '_id',
+        foreignField: 'project',
+        as: 'applications'
+      }
+    },
+    {
+      $lookup: {
+        from: 'payments',
+        localField: '_id',
+        foreignField: 'project',
+        as: 'payments'
+      }
+    },
+    {
+      $group: {
+        _id: null,
+        totalBudget: { $sum: '$budget.total' },
+        totalAllocated: {
+          $sum: {
+            $sum: {
+              $map: {
+                input: {
+                  $filter: {
+                    input: '$applications',
+                    cond: { $in: ['$$this.status', ['approved', 'disbursed', 'completed']] }
+                  }
+                },
+                as: 'app',
+                in: '$$app.approvedAmount'
+              }
+            }
+          }
+        },
+        totalDisbursed: {
+          $sum: {
+            $sum: {
+              $map: {
+                input: {
+                  $filter: {
+                    input: '$payments',
+                    cond: { $eq: ['$$this.status', 'completed'] }
+                  }
+                },
+                as: 'payment',
+                in: '$$payment.amount'
+              }
+            }
+          }
+        }
+      }
+    }
+  ]);
+
+  return stats[0] || { totalBudget: 0, totalAllocated: 0, totalDisbursed: 0 };
+}
+
+async function getCategoryPerformance() {
+  const categories = await Project.aggregate([
+    { $match: { status: { $ne: 'cancelled' } } },
+    {
+      $lookup: {
+        from: 'applications',
+        localField: '_id',
+        foreignField: 'project',
+        as: 'applications'
+      }
+    },
+    {
+      $lookup: {
+        from: 'payments',
+        localField: '_id',
+        foreignField: 'project',
+        as: 'payments'
+      }
+    },
+    {
+      $group: {
+        _id: '$category',
+        totalBudget: { $sum: '$budget.total' },
+        totalAllocated: { $sum: '$budget.allocated' },
+        totalSpent: { $sum: '$budget.spent' },
+        projectCount: { $sum: 1 },
+        applicationCount: {
+          $sum: { $size: '$applications' }
+        },
+        approvedApplications: {
+          $sum: {
+            $size: {
+              $filter: {
+                input: '$applications',
+                cond: { $in: ['$$this.status', ['approved', 'disbursed', 'completed']] }
+              }
+            }
+          }
+        },
+        completedPayments: {
+          $sum: {
+            $size: {
+              $filter: {
+                input: '$payments',
+                cond: { $eq: ['$$this.status', 'completed'] }
+              }
+            }
+          }
+        },
+        totalDisbursed: {
+          $sum: {
+            $sum: {
+              $map: {
+                input: {
+                  $filter: {
+                    input: '$payments',
+                    cond: { $eq: ['$$this.status', 'completed'] }
+                  }
+                },
+                as: 'payment',
+                in: '$$payment.amount'
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      $project: {
+        _id: 0,
+        category: '$_id',
+        totalBudget: 1,
+        totalAllocated: 1,
+        totalSpent: 1,
+        totalDisbursed: 1,
+        projectCount: 1,
+        applicationCount: 1,
+        approvedApplications: 1,
+        completedPayments: 1,
+        utilizationRate: {
+          $cond: [
+            { $gt: ['$totalBudget', 0] },
+            { $multiply: [{ $divide: ['$totalDisbursed', '$totalBudget'] }, 100] },
+            0
+          ]
+        }
+      }
+    },
+    { $sort: { totalBudget: -1 } }
+  ]);
+
+  return categories;
+}
+
+async function getMonthlyTrends(months) {
+  const startDate = new Date();
+  startDate.setMonth(startDate.getMonth() - months);
+  startDate.setDate(1);
+  startDate.setHours(0, 0, 0, 0);
+
+  const [paymentTrends, applicationTrends] = await Promise.all([
+    Payment.aggregate([
+      {
+        $match: {
+          status: 'completed',
+          'timeline.completedAt': { $gte: startDate }
+        }
+      },
+      {
+        $group: {
+          _id: {
+            year: { $year: '$timeline.completedAt' },
+            month: { $month: '$timeline.completedAt' }
+          },
+          totalDisbursed: { $sum: '$amount' },
+          paymentCount: { $sum: 1 }
+        }
+      },
+      { $sort: { '_id.year': 1, '_id.month': 1 } }
+    ]),
+    Application.aggregate([
+      {
+        $match: {
+          status: { $in: ['approved', 'disbursed', 'completed'] },
+          updatedAt: { $gte: startDate }
+        }
+      },
+      {
+        $group: {
+          _id: {
+            year: { $year: '$updatedAt' },
+            month: { $month: '$updatedAt' }
+          },
+          totalApproved: { $sum: '$approvedAmount' },
+          applicationCount: { $sum: 1 }
+        }
+      },
+      { $sort: { '_id.year': 1, '_id.month': 1 } }
+    ])
+  ]);
+
+  // Merge into unified monthly view
+  const trendMap = {};
+  const now = new Date();
+  for (let i = 0; i < months; i++) {
+    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+    const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+    trendMap[key] = {
+      month: key,
+      totalDisbursed: 0,
+      paymentCount: 0,
+      totalApproved: 0,
+      applicationCount: 0
+    };
+  }
+
+  paymentTrends.forEach(t => {
+    const key = `${t._id.year}-${String(t._id.month).padStart(2, '0')}`;
+    if (trendMap[key]) {
+      trendMap[key].totalDisbursed = t.totalDisbursed;
+      trendMap[key].paymentCount = t.paymentCount;
+    }
+  });
+
+  applicationTrends.forEach(t => {
+    const key = `${t._id.year}-${String(t._id.month).padStart(2, '0')}`;
+    if (trendMap[key]) {
+      trendMap[key].totalApproved = t.totalApproved;
+      trendMap[key].applicationCount = t.applicationCount;
+    }
+  });
+
+  return Object.values(trendMap).sort((a, b) => a.month.localeCompare(b.month));
+}
+
+async function getTopPerformingProjects(limit) {
+  const projects = await Project.aggregate([
+    { $match: { status: { $ne: 'cancelled' }, 'budget.total': { $gt: 0 } } },
+    {
+      $lookup: {
+        from: 'payments',
+        localField: '_id',
+        foreignField: 'project',
+        as: 'payments'
+      }
+    },
+    {
+      $lookup: {
+        from: 'applications',
+        localField: '_id',
+        foreignField: 'project',
+        as: 'applications'
+      }
+    },
+    {
+      $addFields: {
+        totalDisbursed: {
+          $sum: {
+            $map: {
+              input: {
+                $filter: {
+                  input: '$payments',
+                  cond: { $eq: ['$$this.status', 'completed'] }
+                }
+              },
+              as: 'p',
+              in: '$$p.amount'
+            }
+          }
+        },
+        beneficiaryCount: {
+          $size: {
+            $setUnion: {
+              $map: {
+                input: '$applications',
+                as: 'a',
+                in: '$$a.beneficiary'
+              }
+            }
+          }
+        },
+        approvedCount: {
+          $size: {
+            $filter: {
+              input: '$applications',
+              cond: { $in: ['$$this.status', ['approved', 'disbursed', 'completed']] }
+            }
+          }
+        }
+      }
+    },
+    {
+      $addFields: {
+        utilizationRate: {
+          $multiply: [{ $divide: ['$totalDisbursed', '$budget.total'] }, 100]
+        }
+      }
+    },
+    { $sort: { utilizationRate: -1 } },
+    { $limit: limit },
+    {
+      $project: {
+        _id: 1,
+        name: 1,
+        code: 1,
+        category: 1,
+        status: 1,
+        totalBudget: '$budget.total',
+        allocated: '$budget.allocated',
+        spent: '$budget.spent',
+        totalDisbursed: 1,
+        utilizationRate: 1,
+        beneficiaryCount: 1,
+        approvedCount: 1
+      }
+    }
+  ]);
+
+  return projects;
+}
+
+async function getBottleneckAnalysis() {
+  const thirtyDaysAgo = new Date();
+  thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+
+  const [underutilizedProjects, overduePayments, stalePendingApplications] = await Promise.all([
+    Project.aggregate([
+      {
+        $match: {
+          status: { $in: ['active', 'in_progress'] },
+          'budget.total': { $gt: 0 },
+          'budget.allocated': { $gt: 0 }
+        }
+      },
+      {
+        $lookup: {
+          from: 'payments',
+          localField: '_id',
+          foreignField: 'project',
+          as: 'payments'
+        }
+      },
+      {
+        $addFields: {
+          totalDisbursed: {
+            $sum: {
+              $map: {
+                input: {
+                  $filter: {
+                    input: '$payments',
+                    cond: { $eq: ['$$this.status', 'completed'] }
+                  }
+                },
+                as: 'p',
+                in: '$$p.amount'
+              }
+            }
+          },
+          allocationRate: {
+            $multiply: [{ $divide: ['$budget.allocated', '$budget.total'] }, 100]
+          }
+        }
+      },
+      {
+        $addFields: {
+          disbursementRate: {
+            $cond: [
+              { $gt: ['$budget.allocated', 0] },
+              { $multiply: [{ $divide: ['$totalDisbursed', '$budget.allocated'] }, 100] },
+              0
+            ]
+          }
+        }
+      },
+      {
+        $match: {
+          allocationRate: { $gte: 50 },
+          disbursementRate: { $lt: 20 }
+        }
+      },
+      {
+        $project: {
+          name: 1,
+          code: 1,
+          category: 1,
+          totalBudget: '$budget.total',
+          allocated: '$budget.allocated',
+          totalDisbursed: 1,
+          allocationRate: 1,
+          disbursementRate: 1
+        }
+      },
+      { $sort: { totalBudget: -1 } },
+      { $limit: 10 }
+    ]),
+
+    RecurringPayment.aggregate([
+      { $match: { status: 'overdue' } },
+      {
+        $group: {
+          _id: null,
+          count: { $sum: 1 },
+          totalOverdueAmount: { $sum: '$amount' },
+          oldestDueDate: { $min: '$scheduledDate' }
+        }
+      }
+    ]),
+
+    Application.aggregate([
+      {
+        $match: {
+          status: 'pending',
+          createdAt: { $lt: thirtyDaysAgo }
+        }
+      },
+      {
+        $group: {
+          _id: null,
+          count: { $sum: 1 },
+          totalRequestedAmount: { $sum: '$requestedAmount' },
+          oldestApplication: { $min: '$createdAt' }
+        }
+      }
+    ])
+  ]);
+
+  const overdueData = overduePayments[0] || { count: 0, totalOverdueAmount: 0, oldestDueDate: null };
+  const staleData = stalePendingApplications[0] || { count: 0, totalRequestedAmount: 0, oldestApplication: null };
+
+  return {
+    underutilizedProjects: {
+      count: underutilizedProjects.length,
+      projects: underutilizedProjects
+    },
+    overduePayments: {
+      count: overdueData.count,
+      totalAmount: overdueData.totalOverdueAmount,
+      oldestDueDate: overdueData.oldestDueDate
+    },
+    stalePendingApplications: {
+      count: staleData.count,
+      totalRequestedAmount: staleData.totalRequestedAmount,
+      oldestApplication: staleData.oldestApplication
+    }
+  };
+}
+
+function generateInsights(totalStats, categoryPerformance, monthlyTrends) {
+  const insights = [];
+
+  // Overall utilization insight
+  if (totalStats.totalBudget > 0) {
+    const utilizationRate = (totalStats.totalDisbursed / totalStats.totalBudget) * 100;
+
+    if (utilizationRate < 50) {
+      insights.push({
+        type: 'warning',
+        title: 'Low Budget Utilization',
+        message: `Only ${utilizationRate.toFixed(1)}% of total budget has been utilized. Consider reviewing project timelines and disbursement processes.`
+      });
+    } else if (utilizationRate > 90) {
+      insights.push({
+        type: 'success',
+        title: 'High Budget Utilization',
+        message: `Excellent budget utilization at ${utilizationRate.toFixed(1)}%. Projects are effectively using allocated funds.`
+      });
+    } else {
+      insights.push({
+        type: 'info',
+        title: 'Budget Utilization On Track',
+        message: `Budget utilization is at ${utilizationRate.toFixed(1)}%. Disbursements are progressing steadily.`
+      });
+    }
+  }
+
+  // Category performance insights
+  if (categoryPerformance && categoryPerformance.length > 0) {
+    const underperforming = categoryPerformance.filter(c => c.utilizationRate < 30 && c.totalBudget > 0);
+    if (underperforming.length > 0) {
+      const names = underperforming.map(c => c.category.replace(/_/g, ' ')).join(', ');
+      insights.push({
+        type: 'warning',
+        title: 'Underperforming Categories',
+        message: `The following categories have less than 30% utilization: ${names}. Review allocation and disbursement pipelines.`
+      });
+    }
+
+    const topCategory = categoryPerformance.reduce((max, c) => c.utilizationRate > max.utilizationRate ? c : max, categoryPerformance[0]);
+    if (topCategory && topCategory.utilizationRate > 0) {
+      insights.push({
+        type: 'info',
+        title: 'Top Performing Category',
+        message: `"${topCategory.category.replace(/_/g, ' ')}" leads with ${topCategory.utilizationRate.toFixed(1)}% utilization across ${topCategory.projectCount} project(s).`
+      });
+    }
+  }
+
+  // Monthly trend insights
+  if (monthlyTrends && monthlyTrends.length >= 2) {
+    const recent = monthlyTrends.slice(-3);
+    const earlier = monthlyTrends.slice(-6, -3);
+
+    if (recent.length > 0 && earlier.length > 0) {
+      const recentAvg = recent.reduce((s, m) => s + m.totalDisbursed, 0) / recent.length;
+      const earlierAvg = earlier.reduce((s, m) => s + m.totalDisbursed, 0) / earlier.length;
+
+      if (earlierAvg > 0) {
+        const changePercent = ((recentAvg - earlierAvg) / earlierAvg) * 100;
+        if (changePercent > 20) {
+          insights.push({
+            type: 'success',
+            title: 'Disbursement Growth',
+            message: `Monthly disbursements have increased by ${changePercent.toFixed(0)}% over the last 3 months compared to the prior quarter.`
+          });
+        } else if (changePercent < -20) {
+          insights.push({
+            type: 'warning',
+            title: 'Disbursement Decline',
+            message: `Monthly disbursements have decreased by ${Math.abs(changePercent).toFixed(0)}% over the last 3 months. Investigate possible delays.`
+          });
+        }
+      }
+    }
+
+    // Check for months with zero disbursements
+    const zeroMonths = recent.filter(m => m.totalDisbursed === 0);
+    if (zeroMonths.length > 0) {
+      insights.push({
+        type: 'warning',
+        title: 'Inactive Months Detected',
+        message: `${zeroMonths.length} of the last 3 months had zero disbursements. Ensure payment processing is on track.`
+      });
+    }
+  }
+
+  return insights;
+}
+
 class BudgetController {
   /**
    * Get budget overview and statistics
@@ -851,15 +1395,15 @@ class BudgetController {
         bottleneckAnalysis
       ] = await Promise.all([
         // Overall statistics
-        this.getOverallStats(),
+        getOverallStats(),
         // Category performance
-        this.getCategoryPerformance(),
+        getCategoryPerformance(),
         // Monthly trends (last 6 months)
-        this.getMonthlyTrends(6),
+        getMonthlyTrends(6),
         // Top performing projects
-        this.getTopPerformingProjects(5),
+        getTopPerformingProjects(5),
         // Bottleneck analysis
-        this.getBottleneckAnalysis()
+        getBottleneckAnalysis()
       ]);
 
       const analytics = {
@@ -868,7 +1412,7 @@ class BudgetController {
         monthlyTrends,
         topPerformingProjects,
         bottleneckAnalysis,
-        insights: this.generateInsights(totalStats, categoryPerformance, monthlyTrends)
+        insights: generateInsights(totalStats, categoryPerformance, monthlyTrends)
       };
 
       return ResponseHelper.success(res, { analytics });
@@ -876,113 +1420,6 @@ class BudgetController {
       console.error('❌ Get Budget Analytics Error:', error);
       return ResponseHelper.error(res, 'Failed to fetch budget analytics', 500);
     }
-  }
-
-  // Helper methods for analytics
-  async getOverallStats() {
-    const stats = await Project.aggregate([
-      {
-        $lookup: {
-          from: 'applications',
-          localField: '_id',
-          foreignField: 'project',
-          as: 'applications'
-        }
-      },
-      {
-        $lookup: {
-          from: 'payments',
-          localField: '_id',
-          foreignField: 'project',
-          as: 'payments'
-        }
-      },
-      {
-        $group: {
-          _id: null,
-          totalBudget: { $sum: '$budget.total' },
-          totalAllocated: {
-            $sum: {
-              $sum: {
-                $map: {
-                  input: {
-                    $filter: {
-                      input: '$applications',
-                      cond: { $in: ['$$this.status', ['approved', 'disbursed', 'completed']] }
-                    }
-                  },
-                  as: 'app',
-                  in: '$$app.approvedAmount'
-                }
-              }
-            }
-          },
-          totalDisbursed: {
-            $sum: {
-              $sum: {
-                $map: {
-                  input: {
-                    $filter: {
-                      input: '$payments',
-                      cond: { $eq: ['$$this.status', 'completed'] }
-                    }
-                  },
-                  as: 'payment',
-                  in: '$$payment.amount'
-                }
-              }
-            }
-          }
-        }
-      }
-    ]);
-
-    return stats[0] || { totalBudget: 0, totalAllocated: 0, totalDisbursed: 0 };
-  }
-
-  async getCategoryPerformance() {
-    // Implementation for category performance analysis
-    return [];
-  }
-
-  async getMonthlyTrends(months) {
-    // Implementation for monthly trends
-    return [];
-  }
-
-  async getTopPerformingProjects(limit) {
-    // Implementation for top performing projects
-    return [];
-  }
-
-  async getBottleneckAnalysis() {
-    // Implementation for bottleneck analysis
-    return {};
-  }
-
-  generateInsights(totalStats, categoryPerformance, monthlyTrends) {
-    const insights = [];
-    
-    // Generate insights based on data
-    if (totalStats.totalBudget > 0) {
-      const utilizationRate = (totalStats.totalDisbursed / totalStats.totalBudget) * 100;
-      
-      if (utilizationRate < 50) {
-        insights.push({
-          type: 'warning',
-          title: 'Low Budget Utilization',
-          message: `Only ${utilizationRate.toFixed(1)}% of total budget has been utilized. Consider reviewing project timelines and disbursement processes.`
-        });
-      } else if (utilizationRate > 90) {
-        insights.push({
-          type: 'success',
-          title: 'High Budget Utilization',
-          message: `Excellent budget utilization at ${utilizationRate.toFixed(1)}%. Projects are effectively using allocated funds.`
-        });
-      }
-    }
-
-    return insights;
   }
 
   /**

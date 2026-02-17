@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { X, FileText, Calendar, User, MapPin, IndianRupee, Download, Eye, CheckCircle, XCircle, Loader2, Plus, Trash2, AlertTriangle, CheckCircle2, Repeat } from 'lucide-react';
+import React, { useState, useEffect, useRef } from 'react';
+import { X, FileText, Calendar, User, MapPin, IndianRupee, Download, Eye, CheckCircle, XCircle, Loader2, Plus, Trash2, AlertTriangle, CheckCircle2, Repeat, MessageSquare, Upload, RotateCcw } from 'lucide-react';
 import { Button } from '../ui/button';
 import { Badge } from '../ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
@@ -7,10 +7,12 @@ import { Separator } from '../ui/separator';
 import { Textarea } from '../ui/textarea';
 import { Label } from '../ui/label';
 import { Input } from '../ui/input';
+import VoiceToTextButton from '../ui/VoiceToTextButton';
 import { Checkbox } from '../ui/checkbox';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 import { applications as applicationsApi, interviews } from '../../lib/api';
 import { useToast } from '@/hooks/use-toast';
+import { useAuth } from '@/hooks/useAuth';
 
 // Separate component for stage item to avoid hooks in map
 const StageItem: React.FC<{
@@ -18,16 +20,32 @@ const StageItem: React.FC<{
   applicationId: string;
   showAction: boolean;
   onUpdate: () => void;
-}> = ({ stage, applicationId, showAction, onUpdate }) => {
+  userRole?: string;
+}> = ({ stage, applicationId, showAction, onUpdate, userRole }) => {
   const { toast } = useToast();
   const [updating, setUpdating] = useState(false);
   const [showUpdateForm, setShowUpdateForm] = useState(false);
   const [stageNotes, setStageNotes] = useState('');
+  const [commentText, setCommentText] = useState('');
+  const [addingComment, setAddingComment] = useState(false);
+  const [uploadingDoc, setUploadingDoc] = useState<number | null>(null);
+  const fileInputRefs = useRef<Record<number, HTMLInputElement | null>>({});
   
   const isFieldVerification = stage.name?.toLowerCase().includes('field verification') || 
                              stage.name?.toLowerCase().includes('verification');
   const isPending = stage.status === 'pending' || stage.status === 'in_progress';
+  const isReverted = stage.status === 'reverted';
   const showWarning = isFieldVerification && isPending && stage.isRequired;
+
+  // Determine which comment field current user can edit
+  const roleToCommentField: Record<string, string> = {
+    'unit_admin': 'unitAdmin',
+    'area_admin': 'areaAdmin',
+    'district_admin': 'districtAdmin',
+    'super_admin': 'districtAdmin',
+    'state_admin': 'districtAdmin'
+  };
+  const myCommentField = userRole ? roleToCommentField[userRole] : null;
   
   const handleUpdateStage = async (newStatus: string) => {
     setUpdating(true);
@@ -53,19 +71,73 @@ const StageItem: React.FC<{
       setUpdating(false);
     }
   };
+
+  const handleAddComment = async () => {
+    if (!commentText.trim() || !myCommentField) return;
+    setAddingComment(true);
+    try {
+      await applicationsApi.addStageComment(applicationId, stage._id, {
+        comment: commentText.trim(),
+        role: userRole
+      });
+      toast({
+        title: "Success",
+        description: "Comment added successfully",
+      });
+      setCommentText('');
+      onUpdate();
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to add comment",
+        variant: "destructive",
+      });
+    } finally {
+      setAddingComment(false);
+    }
+  };
+
+  const handleDocUpload = async (docIdx: number, file: File) => {
+    setUploadingDoc(docIdx);
+    try {
+      await applicationsApi.uploadStageDocument(applicationId, stage._id, docIdx, file);
+      toast({
+        title: "Success",
+        description: "Document uploaded successfully",
+      });
+      onUpdate();
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to upload document",
+        variant: "destructive",
+      });
+    } finally {
+      setUploadingDoc(null);
+    }
+  };
   
+  // Comment config helpers
+  const commentConfig = stage.commentConfig || {};
+  const comments = stage.comments || {};
+  const hasAnyCommentConfig = commentConfig.unitAdmin?.enabled || commentConfig.areaAdmin?.enabled || commentConfig.districtAdmin?.enabled;
+  const requiredDocs = stage.requiredDocuments || [];
+
   return (
-    <div className={showWarning ? 'bg-orange-50/50' : ''}>
+    <div className={showWarning ? 'bg-orange-50/50' : isReverted ? 'bg-purple-50/50' : ''}>
       <div className="flex items-start gap-2">
         <div className={`w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0 ${
           stage.status === 'completed' ? 'bg-green-100 text-green-700' :
           stage.status === 'in_progress' ? 'bg-blue-100 text-blue-700' :
           stage.status === 'skipped' ? 'bg-gray-100 text-gray-500' :
+          stage.status === 'reverted' ? 'bg-purple-100 text-purple-700' :
           showWarning ? 'bg-orange-100 text-orange-700' :
           'bg-yellow-100 text-yellow-700'
         }`}>
           {stage.status === 'completed' ? (
             <CheckCircle2 className="h-4 w-4" />
+          ) : stage.status === 'reverted' ? (
+            <RotateCcw className="h-4 w-4" />
           ) : showWarning ? (
             <AlertTriangle className="h-4 w-4" />
           ) : (
@@ -86,6 +158,7 @@ const StageItem: React.FC<{
               stage.status === 'completed' ? 'bg-green-50 text-green-700 border-green-200' :
               stage.status === 'in_progress' ? 'bg-blue-50 text-blue-700 border-blue-200' :
               stage.status === 'skipped' ? 'bg-gray-50 text-gray-500 border-gray-200' :
+              stage.status === 'reverted' ? 'bg-purple-50 text-purple-700 border-purple-200' :
               showWarning ? 'bg-orange-50 text-orange-700 border-orange-200' :
               'bg-yellow-50 text-yellow-700 border-yellow-200'
             }`}>
@@ -113,6 +186,121 @@ const StageItem: React.FC<{
           
           {stage.notes && (
             <p className="text-xs bg-muted/50 p-1.5 rounded mt-1">{stage.notes}</p>
+          )}
+
+          {/* Comments Section */}
+          {hasAnyCommentConfig && (
+            <div className="mt-2 space-y-1.5">
+              {(['unitAdmin', 'areaAdmin', 'districtAdmin'] as const).map((roleKey) => {
+                if (!commentConfig[roleKey]?.enabled) return null;
+                const roleLabels: Record<string, string> = { unitAdmin: 'Unit Admin', areaAdmin: 'Area Admin', districtAdmin: 'District Admin' };
+                const existingComment = comments[roleKey];
+                const isMyField = myCommentField === roleKey;
+                const isRequiredComment = commentConfig[roleKey]?.required;
+                return (
+                  <div key={roleKey} className={`p-2 rounded border text-xs ${isRequiredComment && !existingComment?.comment ? 'border-orange-200 bg-orange-50/30' : 'bg-muted/20'}`}>
+                    <div className="flex items-center gap-1 mb-1">
+                      <MessageSquare className="h-3 w-3 text-muted-foreground" />
+                      <span className="font-medium">{roleLabels[roleKey]}</span>
+                      {isRequiredComment && (
+                        <span className="text-red-500 text-xs">*</span>
+                      )}
+                    </div>
+                    {existingComment?.comment ? (
+                      <div>
+                        <p className="text-muted-foreground">{existingComment.comment}</p>
+                        {existingComment.commentedBy && (
+                          <p className="text-muted-foreground mt-0.5 text-[10px]">
+                            — {existingComment.commentedBy.name || 'User'} {existingComment.commentedAt && `on ${new Date(existingComment.commentedAt).toLocaleDateString()}`}
+                          </p>
+                        )}
+                      </div>
+                    ) : isMyField && !showAction ? (
+                      <div className="flex gap-1.5 mt-1">
+                        <Textarea
+                          placeholder="Add your comment..."
+                          value={commentText}
+                          onChange={(e) => setCommentText(e.target.value)}
+                          rows={1}
+                          className="text-xs flex-1"
+                        />
+                        <VoiceToTextButton
+                          onTranscript={(text) => setCommentText(prev => prev ? prev + ' ' + text : text)}
+                          size="sm"
+                          className="h-7 w-7"
+                        />
+                        <Button
+                          size="sm"
+                          onClick={handleAddComment}
+                          disabled={addingComment || !commentText.trim()}
+                          className="text-xs h-7 px-2"
+                        >
+                          {addingComment ? <Loader2 className="h-3 w-3 animate-spin" /> : 'Add'}
+                        </Button>
+                      </div>
+                    ) : (
+                      <p className="text-muted-foreground italic">No comment yet</p>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          )}
+
+          {/* Required Documents Section */}
+          {requiredDocs.length > 0 && (
+            <div className="mt-2 space-y-1.5">
+              <div className="flex items-center gap-1 text-xs font-medium">
+                <Upload className="h-3 w-3 text-muted-foreground" />
+                Required Documents
+              </div>
+              {requiredDocs.map((doc: any, docIdx: number) => (
+                <div key={docIdx} className={`p-2 rounded border text-xs ${doc.isRequired && !doc.uploadedFile ? 'border-orange-200 bg-orange-50/30' : 'bg-muted/20'}`}>
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-1">
+                      <span className="font-medium">{doc.name}</span>
+                      {doc.isRequired && <span className="text-red-500">*</span>}
+                    </div>
+                    {doc.uploadedFile ? (
+                      <a href={doc.uploadedFile} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline flex items-center gap-0.5">
+                        <Eye className="h-3 w-3" /> View
+                      </a>
+                    ) : !showAction ? (
+                      <>
+                        <input
+                          type="file"
+                          ref={(el) => { fileInputRefs.current[docIdx] = el; }}
+                          className="hidden"
+                          onChange={(e) => {
+                            const file = e.target.files?.[0];
+                            if (file) handleDocUpload(docIdx, file);
+                          }}
+                        />
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => fileInputRefs.current[docIdx]?.click()}
+                          disabled={uploadingDoc === docIdx}
+                          className="text-xs h-6 px-2"
+                        >
+                          {uploadingDoc === docIdx ? <Loader2 className="h-3 w-3 animate-spin" /> : <Upload className="h-3 w-3 mr-1" />}
+                          Upload
+                        </Button>
+                      </>
+                    ) : (
+                      <span className="text-muted-foreground italic">Not uploaded</span>
+                    )}
+                  </div>
+                  {doc.description && <p className="text-muted-foreground mt-0.5">{doc.description}</p>}
+                  {doc.uploadedAt && (
+                    <p className="text-muted-foreground mt-0.5 text-[10px]">
+                      Uploaded {new Date(doc.uploadedAt).toLocaleDateString()}
+                      {doc.uploadedBy && ` by ${doc.uploadedBy.name || 'User'}`}
+                    </p>
+                  )}
+                </div>
+              ))}
+            </div>
           )}
           
           {/* Update Stage Form - Compact */}
@@ -184,13 +372,15 @@ export const ApplicationDetailModal: React.FC<ApplicationDetailModalProps> = ({
   onActionComplete
 }) => {
   const { toast } = useToast();
+  const { user } = useAuth();
   const [application, setApplication] = useState<any>(null);
   const [payments, setPayments] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [formConfig, setFormConfig] = useState<any>(null);
   const [processingAction, setProcessingAction] = useState(false);
-  const [showAction, setShowAction] = useState<"approve" | "reject" | null>(null);
+  const [showAction, setShowAction] = useState<"approve" | "reject" | "revert" | null>(null);
   const [remarks, setRemarks] = useState("");
+  const [revertTargetStageId, setRevertTargetStageId] = useState<string>("");
   const [forwardToCommittee, setForwardToCommittee] = useState(false);
   const [approvedAmount, setApprovedAmount] = useState(0);
   
@@ -493,6 +683,45 @@ export const ApplicationDetailModal: React.FC<ApplicationDetailModalProps> = ({
     }
   };
 
+  const handleRevertApplication = async () => {
+    if (!application || !remarks.trim() || !revertTargetStageId) {
+      toast({ 
+        title: "Error", 
+        description: "Please select a target stage and provide a reason", 
+        variant: "destructive" 
+      });
+      return;
+    }
+    
+    setProcessingAction(true);
+    try {
+      const response = await applicationsApi.revert(application._id, {
+        targetStageId: revertTargetStageId,
+        reason: remarks
+      });
+
+      if (response.success) {
+        toast({ 
+          title: "Success", 
+          description: response.message || "Application reverted successfully" 
+        });
+        setShowAction(null);
+        setRemarks("");
+        setRevertTargetStageId("");
+        fetchApplicationDetails();
+        if (onActionComplete) onActionComplete();
+      }
+    } catch (error: any) {
+      toast({ 
+        title: "Error", 
+        description: error.message || "Failed to revert application", 
+        variant: "destructive" 
+      });
+    } finally {
+      setProcessingAction(false);
+    }
+  };
+
   const getStatusColor = (status: string) => {
     const colors: Record<string, string> = {
       pending: 'bg-yellow-500',
@@ -681,7 +910,7 @@ export const ApplicationDetailModal: React.FC<ApplicationDetailModalProps> = ({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-      <div className="bg-background rounded-lg shadow-lg w-full max-w-4xl max-h-[90vh] overflow-hidden flex flex-col">
+      <div className="bg-background rounded-lg shadow-lg w-full min-w-[60vw] max-w-4xl max-h-[90vh] overflow-hidden flex flex-col">
         {/* Header */}
         <div className="flex items-center justify-between p-6 border-b">
           <div className="flex items-center gap-3">
@@ -1306,6 +1535,111 @@ export const ApplicationDetailModal: React.FC<ApplicationDetailModalProps> = ({
                 </Card>
               )}
 
+              {/* Eligibility Score Display */}
+              {application.eligibilityScore && application.eligibilityScore.maxPoints > 0 && (
+                <Card>
+                  <CardHeader className="pb-3">
+                    <CardTitle className="flex items-center gap-2">
+                      <div className="flex items-center gap-2">
+                        <span className="text-lg">🎯</span>
+                        Eligibility Score
+                      </div>
+                      {application.eligibilityScore.autoRejected && (
+                        <Badge variant="destructive" className="ml-auto text-xs">
+                          Auto-Rejected
+                        </Badge>
+                      )}
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-4">
+                      {/* Score Summary */}
+                      <div className="flex items-center gap-6 p-4 rounded-lg bg-muted/50">
+                        {/* Circular Progress */}
+                        <div className="relative w-20 h-20 flex-shrink-0">
+                          <svg className="w-20 h-20 -rotate-90" viewBox="0 0 80 80">
+                            <circle cx="40" cy="40" r="35" fill="none" stroke="#e5e7eb" strokeWidth="6" />
+                            <circle
+                              cx="40" cy="40" r="35" fill="none"
+                              stroke={application.eligibilityScore.percentage >= 70 ? '#22c55e' : application.eligibilityScore.percentage >= 40 ? '#eab308' : '#ef4444'}
+                              strokeWidth="6"
+                              strokeDasharray={`${(application.eligibilityScore.percentage / 100) * 220} 220`}
+                              strokeLinecap="round"
+                            />
+                          </svg>
+                          <div className="absolute inset-0 flex items-center justify-center">
+                            <span className={`text-lg font-bold ${application.eligibilityScore.percentage >= 70 ? 'text-green-600' : application.eligibilityScore.percentage >= 40 ? 'text-yellow-600' : 'text-red-600'}`}>
+                              {application.eligibilityScore.percentage}%
+                            </span>
+                          </div>
+                        </div>
+
+                        <div className="flex-1 space-y-2">
+                          <div className="flex justify-between text-sm">
+                            <span className="text-muted-foreground">Points Earned:</span>
+                            <span className="font-semibold">{application.eligibilityScore.totalPoints} / {application.eligibilityScore.maxPoints}</span>
+                          </div>
+                          {application.eligibilityScore.threshold > 0 && (
+                            <div className="flex justify-between text-sm">
+                              <span className="text-muted-foreground">Threshold:</span>
+                              <span className={`font-semibold ${application.eligibilityScore.meetsThreshold ? 'text-green-600' : 'text-red-600'}`}>
+                                {application.eligibilityScore.threshold}% — {application.eligibilityScore.meetsThreshold ? 'Met' : 'Not Met'}
+                              </span>
+                            </div>
+                          )}
+                          {application.eligibilityScore.calculatedAt && (
+                            <div className="flex justify-between text-sm">
+                              <span className="text-muted-foreground">Calculated:</span>
+                              <span className="text-xs">{new Date(application.eligibilityScore.calculatedAt).toLocaleString()}</span>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Field-level Score Breakdown */}
+                      {application.eligibilityScore.fieldScores && application.eligibilityScore.fieldScores.length > 0 && (
+                        <div className="space-y-2">
+                          <h4 className="text-sm font-semibold text-muted-foreground">Score Breakdown</h4>
+                          <div className="border rounded-lg overflow-hidden">
+                            <table className="w-full text-sm">
+                              <thead>
+                                <tr className="bg-muted text-left">
+                                  <th className="p-2 font-medium">Field</th>
+                                  <th className="p-2 font-medium">Answer</th>
+                                  <th className="p-2 font-medium text-right">Points</th>
+                                  <th className="p-2 font-medium">Rule Applied</th>
+                                </tr>
+                              </thead>
+                              <tbody>
+                                {application.eligibilityScore.fieldScores.map((fs: any, idx: number) => (
+                                  <tr key={idx} className="border-t">
+                                    <td className="p-2 font-medium">{fs.fieldLabel}</td>
+                                    <td className="p-2 text-muted-foreground max-w-[200px] truncate">
+                                      {fs.answerValue !== null && fs.answerValue !== undefined
+                                        ? (typeof fs.answerValue === 'object' 
+                                            ? (Array.isArray(fs.answerValue) ? fs.answerValue.join(', ') : JSON.stringify(fs.answerValue))
+                                            : String(fs.answerValue))
+                                        : 'N/A'}
+                                    </td>
+                                    <td className="p-2 text-right">
+                                      <span className={`font-semibold ${fs.earnedPoints > 0 ? 'text-green-600' : 'text-muted-foreground'}`}>
+                                        {fs.earnedPoints}
+                                      </span>
+                                      <span className="text-muted-foreground"> / {fs.maxPoints}</span>
+                                    </td>
+                                    <td className="p-2 text-xs text-muted-foreground">{fs.appliedRule}</td>
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+
               {/* Form Data - The Complete Submission */}
               <Card>
                 <CardHeader>
@@ -1346,6 +1680,7 @@ export const ApplicationDetailModal: React.FC<ApplicationDetailModalProps> = ({
                                 applicationId={application._id}
                                 showAction={!!showAction}
                                 onUpdate={fetchApplicationDetails}
+                                userRole={user?.role}
                               />
                               
                               {/* Update History - Compact */}
@@ -1618,10 +1953,88 @@ export const ApplicationDetailModal: React.FC<ApplicationDetailModalProps> = ({
                 <XCircle className="mr-2 h-4 w-4" />
                 Reject Application
               </Button>
+              <Button 
+                variant="outline"
+                onClick={() => setShowAction("revert")}
+              >
+                <RotateCcw className="mr-2 h-4 w-4" />
+                Revert
+              </Button>
             </div>
           )}
 
-          {showAction && (
+          {/* Revert Form */}
+          {showAction === "revert" && application && (
+            <div className="space-y-3 p-3 rounded-lg border bg-purple-50/30">
+              <div className="flex items-center gap-2">
+                <RotateCcw className="h-4 w-4 text-purple-600" />
+                <h4 className="font-medium text-sm text-purple-800">Revert to Previous Stage</h4>
+              </div>
+              <div>
+                <Label className="text-xs">Select Target Stage</Label>
+                <Select value={revertTargetStageId} onValueChange={setRevertTargetStageId}>
+                  <SelectTrigger className="mt-1">
+                    <SelectValue placeholder="Select a stage to revert to..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {application.applicationStages
+                      ?.sort((a: any, b: any) => a.order - b.order)
+                      .filter((s: any) => s.status === 'completed')
+                      .map((stage: any) => (
+                        <SelectItem key={stage._id} value={stage._id}>
+                          #{stage.order} - {stage.name}
+                        </SelectItem>
+                      ))
+                    }
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label className="text-xs">Reason for Revert <span className="text-red-500">*</span></Label>
+                <Textarea
+                  placeholder="Explain why this application needs to be reverted..."
+                  value={remarks}
+                  onChange={(e) => setRemarks(e.target.value)}
+                  rows={2}
+                  className="mt-1 text-sm"
+                />
+              </div>
+              <div className="flex gap-2">
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => {
+                    setShowAction(null);
+                    setRemarks("");
+                    setRevertTargetStageId("");
+                  }}
+                  disabled={processingAction}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  size="sm"
+                  className="bg-purple-600 hover:bg-purple-700"
+                  onClick={handleRevertApplication}
+                  disabled={processingAction || !remarks.trim() || !revertTargetStageId}
+                >
+                  {processingAction ? (
+                    <>
+                      <Loader2 className="mr-2 h-3 w-3 animate-spin" />
+                      Reverting...
+                    </>
+                  ) : (
+                    <>
+                      <RotateCcw className="mr-2 h-3 w-3" />
+                      Confirm Revert
+                    </>
+                  )}
+                </Button>
+              </div>
+            </div>
+          )}
+
+          {showAction && showAction !== "revert" && (
             <Button 
               className={showAction === "approve" ? "bg-green-600 hover:bg-green-700" : ""}
               variant={showAction === "reject" ? "destructive" : "default"}

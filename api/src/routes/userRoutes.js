@@ -2,6 +2,9 @@ const express = require('express');
 const userController = require('../controllers/userController');
 const { authenticate, authorize, checkAdminHierarchy, hasPermission } = require('../middleware/auth');
 const { validate, userSchemas, commonSchemas } = require('../middleware/validation');
+const { createExportHandler } = require('../middleware/exportHandler');
+const exportConfigs = require('../config/exportConfigs');
+const User = require('../models/User');
 
 const router = express.Router();
 
@@ -60,6 +63,13 @@ const router = express.Router();
  *       403:
  *         description: Insufficient permissions
  */
+// Export users as CSV or JSON
+router.get('/export',
+  authenticate,
+  hasPermission('users.read.regional'),
+  createExportHandler(User, exportConfigs.user)
+);
+
 router.get('/',
   authenticate,
   hasPermission('users.read.regional'),

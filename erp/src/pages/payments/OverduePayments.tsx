@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { IndianRupee, Calendar, Download, Eye, Wallet, Loader2, Edit, Grid, List, Clock, CheckCircle2, AlertCircle, X, Save, Filter, Repeat } from "lucide-react";
+import { IndianRupee, Calendar, Eye, Wallet, Loader2, Edit, Grid, List, Clock, CheckCircle2, AlertCircle, X, Save, Filter, Repeat } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -14,7 +14,9 @@ import { useRBAC } from "@/hooks/useRBAC";
 import { payments } from "@/lib/api";
 import { GenericFilters } from "@/components/filters/GenericFilters";
 import { usePaymentFilters } from "@/hooks/usePaymentFilters";
-import { usePaymentExport } from "@/hooks/usePaymentExport";
+import { useExport } from '@/hooks/useExport';
+import ExportButton from '@/components/common/ExportButton';
+import { paymentExportColumns } from '@/utils/exportColumns';
 
 const statusConfig = {
   pending: { color: "bg-warning/10 text-warning border-warning/20", label: "Pending", icon: Clock },
@@ -30,7 +32,13 @@ const statusConfig = {
 export default function OverduePayments() {
   const { hasAnyPermission } = useRBAC();
   const filterHook = usePaymentFilters();
-  const { exportPayments, exporting } = usePaymentExport();
+  const { exportCSV, exportPDF, printData, exporting } = useExport({
+    apiCall: (params) => payments.export(params),
+    filenamePrefix: 'overdue_payments',
+    pdfTitle: 'Overdue Payments Report',
+    pdfColumns: paymentExportColumns,
+    getFilterParams: () => filterHook.getExportParams(),
+  });
   
   const canViewPayments = hasAnyPermission(['finances.read.all', 'finances.read.regional', 'super_admin', 'state_admin']);
   const canManagePayments = hasAnyPermission(['finances.manage', 'finances.read.regional', 'finances.read.all', 'super_admin', 'state_admin']);
@@ -190,18 +198,16 @@ export default function OverduePayments() {
     <div className="space-y-6">
       <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-destructive">Overdue Payments</h1>
+          <h1 className="text-lg font-bold text-destructive">Overdue Payments</h1>
           <p className="text-muted-foreground mt-1">Payments that are past their due date</p>
         </div>
         <div className="flex items-center gap-2">
-          <Button 
-            variant="outline" 
-            onClick={() => exportPayments(filterHook.getExportParams(), 'overdue_payments')} 
-            disabled={exporting}
-          >
-            <Download className="mr-2 h-4 w-4" />
-            {exporting ? "Exporting..." : "Export"}
-          </Button>
+          <ExportButton
+            onExportCSV={() => exportCSV()}
+            onExportPDF={() => exportPDF()}
+            onPrint={() => printData()}
+            exporting={exporting}
+          />
           <div className="flex items-center border rounded-lg p-1">
             <Button variant={viewMode === 'cards' ? 'default' : 'ghost'} size="sm" onClick={() => setViewMode('cards')}>
               <Grid className="h-4 w-4" />
@@ -377,6 +383,7 @@ export default function OverduePayments() {
                 })}
               </div>
             ) : (
+              <div className="overflow-x-auto">
               <Table>
                 <TableHeader>
                   <TableRow>
@@ -440,6 +447,7 @@ export default function OverduePayments() {
                   })}
                 </TableBody>
               </Table>
+              </div>
             )}
           </CardContent>
         </Card>

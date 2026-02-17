@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { ShortlistModal } from "@/components/modals/ShortlistModal";
 import { ReportsModal } from "@/components/modals/ReportsModal";
-import { Filter, Download, Eye, CheckCircle, XCircle, Clock, CalendarIcon, X, History, UserCheck, FileText, Loader2, FileCheck, Search } from "lucide-react";
+import { Filter, Download, Eye, CheckCircle, XCircle, Clock, CalendarIcon, X, History, UserCheck, FileText, Loader2, FileCheck, Search, RefreshCw } from "lucide-react";
 import { useRBAC } from "@/hooks/useRBAC";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -100,6 +100,11 @@ interface Application {
     notes?: string;
     result?: 'pending' | 'passed' | 'failed';
   };
+  // Renewal fields
+  isRenewal?: boolean;
+  renewalNumber?: number;
+  renewalStatus?: 'not_applicable' | 'active' | 'due_for_renewal' | 'expired' | 'renewed';
+  expiryDate?: string;
 }
 
 interface DashboardStats {
@@ -585,7 +590,7 @@ export default function Applications() {
       />
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-xl font-bold">Applications</h1>
+          <h1 className="text-lg font-bold">Applications</h1>
           <p className="text-muted-foreground mt-1">Manage and track scheme applications</p>
           {user && (
             <p className="text-sm text-muted-foreground mt-1">
@@ -826,6 +831,22 @@ export default function Applications() {
                           <Badge variant="outline" className="text-xs">
                             {app.applicationNumber}
                           </Badge>
+                          {app.isRenewal && (
+                            <Badge variant="outline" className="text-xs bg-blue-50 text-blue-700 border-blue-200">
+                              <RefreshCw className="mr-1 h-3 w-3" />
+                              Renewal #{app.renewalNumber || 1}
+                            </Badge>
+                          )}
+                          {app.renewalStatus === 'due_for_renewal' && (
+                            <Badge variant="outline" className="text-xs bg-amber-50 text-amber-700 border-amber-200">
+                              Renewal Due
+                            </Badge>
+                          )}
+                          {app.renewalStatus === 'expired' && (
+                            <Badge variant="outline" className="text-xs bg-red-50 text-red-700 border-red-200">
+                              Expired
+                            </Badge>
+                          )}
                           <div className="text-sm text-muted-foreground">
                             <span className="font-medium">Amount:</span> ₹{app.requestedAmount.toLocaleString()}
                           </div>
@@ -847,6 +868,11 @@ export default function Applications() {
                           <div>
                             <span className="font-medium">Applied:</span> {new Date(app.createdAt).toLocaleDateString()}
                           </div>
+                          {app.expiryDate && (
+                            <div>
+                              <span className="font-medium">Expires:</span> {new Date(app.expiryDate).toLocaleDateString()}
+                            </div>
+                          )}
                           <div>
                             <span className="font-medium">Phone:</span> {app.beneficiary.phone}
                           </div>

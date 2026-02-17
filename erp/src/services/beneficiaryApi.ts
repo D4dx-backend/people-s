@@ -272,6 +272,60 @@ class BeneficiaryApiService {
     return this.handleResponse<{ application: Application }>(response);
   }
 
+  // Draft methods
+  async saveDraft(data: {
+    schemeId: string;
+    formData: any;
+    documents?: any[];
+    currentPage?: number;
+    autoSave?: boolean;
+  }): Promise<{ draft: { _id: string; applicationNumber: string; lastSavedAt: string } }> {
+    const response = await fetch(`${API_BASE_URL}/beneficiary/applications/draft`, {
+      method: 'POST',
+      headers: this.getAuthHeaders(),
+      body: JSON.stringify(data)
+    });
+    return this.handleResponse(response);
+  }
+
+  async updateDraft(draftId: string, data: {
+    formData: any;
+    documents?: any[];
+    currentPage?: number;
+    autoSave?: boolean;
+  }): Promise<{ draft: { _id: string; applicationNumber: string; lastSavedAt: string } }> {
+    const response = await fetch(`${API_BASE_URL}/beneficiary/applications/draft/${draftId}`, {
+      method: 'PUT',
+      headers: this.getAuthHeaders(),
+      body: JSON.stringify(data)
+    });
+    return this.handleResponse(response);
+  }
+
+  async getDraftForScheme(schemeId: string): Promise<{ draft: {
+    _id: string;
+    applicationNumber: string;
+    formData: any;
+    documents: any[];
+    draftMetadata: { lastSavedAt: string; currentPage: number; completedPages: number[]; autoSaved: boolean };
+    scheme: any;
+    createdAt: string;
+    updatedAt: string;
+  } | null }> {
+    const response = await fetch(`${API_BASE_URL}/beneficiary/applications/draft/scheme/${schemeId}`, {
+      headers: this.getAuthHeaders()
+    });
+    return this.handleResponse(response);
+  }
+
+  async deleteDraft(draftId: string): Promise<void> {
+    const response = await fetch(`${API_BASE_URL}/beneficiary/applications/draft/${draftId}`, {
+      method: 'DELETE',
+      headers: this.getAuthHeaders()
+    });
+    return this.handleResponse(response);
+  }
+
   async getMyApplications(params?: {
     status?: string;
     page?: number;
@@ -409,6 +463,43 @@ class BeneficiaryApiService {
   getCurrentUser(): any {
     const userStr = localStorage.getItem('beneficiary_user');
     return userStr ? JSON.parse(userStr) : null;
+  }
+
+  // Renewal methods
+  async getRenewalDueApplications(): Promise<{ applications: any[]; total: number }> {
+    const response = await fetch(`${API_BASE_URL}/beneficiary/applications/renewal-due`, {
+      headers: this.getAuthHeaders()
+    });
+    return this.handleResponse<{ applications: any[]; total: number }>(response);
+  }
+
+  async getRenewalForm(applicationId: string): Promise<{
+    formConfiguration: any;
+    prefillData: any;
+    parentApplication: any;
+    scheme: any;
+  }> {
+    const response = await fetch(`${API_BASE_URL}/beneficiary/applications/${applicationId}/renewal-form`, {
+      headers: this.getAuthHeaders()
+    });
+    return this.handleResponse<{
+      formConfiguration: any;
+      prefillData: any;
+      parentApplication: any;
+      scheme: any;
+    }>(response);
+  }
+
+  async submitRenewal(applicationId: string, data: {
+    formData: any;
+    documents?: any[];
+  }): Promise<{ application: any }> {
+    const response = await fetch(`${API_BASE_URL}/beneficiary/applications/${applicationId}/renew`, {
+      method: 'POST',
+      headers: this.getAuthHeaders(),
+      body: JSON.stringify(data)
+    });
+    return this.handleResponse<{ application: any }>(response);
   }
 }
 

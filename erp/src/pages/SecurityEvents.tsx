@@ -266,9 +266,9 @@ const SecurityEvents: React.FC = () => {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Security Events</h1>
+          <h1 className="text-lg font-bold text-gray-900">Security Events</h1>
           <p className="text-gray-600">Monitor security-related activities and threats</p>
         </div>
         
@@ -564,7 +564,7 @@ const SecurityEvents: React.FC = () => {
                               <Eye className="h-4 w-4" />
                             </Button>
                           </DialogTrigger>
-                          <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
+                          <DialogContent className="max-w-[95vw] sm:max-w-4xl max-h-[80vh] overflow-y-auto">
                             <DialogHeader>
                               <DialogTitle>Security Event Details</DialogTitle>
                             </DialogHeader>

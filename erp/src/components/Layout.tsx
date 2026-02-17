@@ -16,7 +16,7 @@ export function Layout({ children }: LayoutProps) {
         <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
         <main className="relative flex-1 md:ml-64">
           <div className="pointer-events-none absolute right-0 top-0 h-72 w-72 rounded-full bg-primary/10 blur-3xl" />
-          <div className="container relative mx-auto p-4 md:p-6 lg:p-8">
+          <div className="container relative mx-auto py-4 px-2 md:py-6 md:px-3 lg:py-8 lg:px-4">
             {children}
           </div>
         </main>

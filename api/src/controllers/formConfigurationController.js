@@ -109,7 +109,7 @@ class FormConfigurationController {
       }
 
       // Try to find existing form configuration
-      let formConfig = await FormConfiguration.findOne({ scheme: schemeId })
+      let formConfig = await FormConfiguration.findOne({ scheme: schemeId, isRenewalForm: { $ne: true } })
         .populate('createdBy', 'name email')
         .populate('updatedBy', 'name email');
 
@@ -162,8 +162,8 @@ class FormConfigurationController {
         return ResponseHelper.error(res, 'At least one page is required', 400);
       }
 
-      // Try to find existing form configuration
-      let formConfig = await FormConfiguration.findOne({ scheme: schemeId });
+      // Try to find existing form configuration (non-renewal)
+      let formConfig = await FormConfiguration.findOne({ scheme: schemeId, isRenewalForm: { $ne: true } });
 
       if (formConfig) {
         // Update existing configuration
@@ -233,8 +233,8 @@ class FormConfigurationController {
         return ResponseHelper.error(res, 'Access denied', 403);
       }
 
-      // Find and delete the form configuration
-      const formConfig = await FormConfiguration.findOneAndDelete({ scheme: schemeId });
+      // Find and delete the form configuration (non-renewal only)
+      const formConfig = await FormConfiguration.findOneAndDelete({ scheme: schemeId, isRenewalForm: { $ne: true } });
 
       if (!formConfig) {
         return ResponseHelper.error(res, 'Form configuration not found', 404);
@@ -276,8 +276,8 @@ class FormConfigurationController {
         return ResponseHelper.error(res, 'Access denied', 403);
       }
 
-      // Find the form configuration
-      const formConfig = await FormConfiguration.findOne({ scheme: schemeId });
+      // Find the form configuration (non-renewal)
+      const formConfig = await FormConfiguration.findOne({ scheme: schemeId, isRenewalForm: { $ne: true } });
 
       if (!formConfig) {
         return ResponseHelper.error(res, 'Form configuration not found', 404);
@@ -320,8 +320,8 @@ class FormConfigurationController {
         return ResponseHelper.error(res, 'Access denied', 403);
       }
 
-      // Find the form configuration
-      const formConfig = await FormConfiguration.findOne({ scheme: schemeId })
+      // Find the form configuration (non-renewal)
+      const formConfig = await FormConfiguration.findOne({ scheme: schemeId, isRenewalForm: { $ne: true } })
         .select('analytics totalFields requiredFields formUrl');
 
       if (!formConfig) {
@@ -427,15 +427,15 @@ class FormConfigurationController {
         return ResponseHelper.error(res, 'Access denied', 403);
       }
 
-      // Find source form configuration
-      const sourceFormConfig = await FormConfiguration.findOne({ scheme: schemeId });
+      // Find source form configuration (non-renewal)
+      const sourceFormConfig = await FormConfiguration.findOne({ scheme: schemeId, isRenewalForm: { $ne: true } });
 
       if (!sourceFormConfig) {
         return ResponseHelper.error(res, 'Source form configuration not found', 404);
       }
 
       // Check if target already has a form configuration
-      const existingTargetConfig = await FormConfiguration.findOne({ scheme: targetSchemeId });
+      const existingTargetConfig = await FormConfiguration.findOne({ scheme: targetSchemeId, isRenewalForm: { $ne: true } });
       if (existingTargetConfig) {
         return ResponseHelper.error(res, 'Target scheme already has a form configuration', 400);
       }
@@ -469,6 +469,164 @@ class FormConfigurationController {
     } catch (error) {
       console.error('❌ Duplicate Form Configuration Error:', error);
       return ResponseHelper.error(res, 'Failed to duplicate form configuration', 500);
+    }
+  }
+
+  /**
+   * Get renewal form configuration for a scheme
+   * GET /api/schemes/:schemeId/renewal-form-config
+   */
+  async getRenewalFormConfiguration(req, res) {
+    try {
+      const { schemeId } = req.params;
+
+      const scheme = await Scheme.findById(schemeId);
+      if (!scheme) {
+        return ResponseHelper.error(res, 'Scheme not found', 404);
+      }
+
+      if (!scheme.renewalSettings?.isRenewable) {
+        return ResponseHelper.error(res, 'This scheme does not support renewals', 400);
+      }
+
+      let formConfig = await FormConfiguration.findOne({ scheme: schemeId, isRenewalForm: true })
+        .populate('createdBy', 'name email')
+        .populate('updatedBy', 'name email');
+
+      if (!formConfig) {
+        return ResponseHelper.success(res, {
+          formConfiguration: null,
+          hasConfiguration: false,
+          message: 'No renewal form configuration found for this scheme.'
+        });
+      }
+
+      return ResponseHelper.success(res, {
+        formConfiguration: formConfig,
+        hasConfiguration: true
+      });
+    } catch (error) {
+      console.error('❌ Get Renewal Form Configuration Error:', error);
+      return ResponseHelper.error(res, 'Failed to fetch renewal form configuration', 500);
+    }
+  }
+
+  /**
+   * Create or update renewal form configuration for a scheme
+   * PUT /api/schemes/:schemeId/renewal-form-config
+   */
+  async updateRenewalFormConfiguration(req, res) {
+    try {
+      const { schemeId } = req.params;
+      const formData = req.body;
+
+      const scheme = await Scheme.findById(schemeId);
+      if (!scheme) {
+        return ResponseHelper.error(res, 'Scheme not found', 404);
+      }
+
+      if (!scheme.canUserAccess(req.user)) {
+        return ResponseHelper.error(res, 'Access denied', 403);
+      }
+
+      if (!scheme.renewalSettings?.isRenewable) {
+        return ResponseHelper.error(res, 'Enable renewal for this scheme first', 400);
+      }
+
+      if (!formData.title || !formData.description) {
+        return ResponseHelper.error(res, 'Form title and description are required', 400);
+      }
+
+      if (!formData.pages || !Array.isArray(formData.pages) || formData.pages.length === 0) {
+        return ResponseHelper.error(res, 'At least one page is required', 400);
+      }
+
+      // Find existing renewal form configuration
+      let formConfig = await FormConfiguration.findOne({ scheme: schemeId, isRenewalForm: true });
+
+      // Get the parent (original) form config reference
+      const parentConfig = await FormConfiguration.findOne({ scheme: schemeId, isRenewalForm: { $ne: true } });
+
+      if (formConfig) {
+        Object.assign(formConfig, {
+          ...formData,
+          scheme: schemeId,
+          isRenewalForm: true,
+          parentFormConfiguration: parentConfig?._id || null,
+          updatedBy: req.user._id,
+          lastModified: new Date(),
+          version: formConfig.version + 1
+        });
+      } else {
+        formConfig = new FormConfiguration({
+          ...formData,
+          scheme: schemeId,
+          isRenewalForm: true,
+          parentFormConfiguration: parentConfig?._id || null,
+          createdBy: req.user._id,
+          updatedBy: req.user._id,
+          version: 1
+        });
+      }
+
+      await formConfig.save();
+
+      await formConfig.populate('createdBy', 'name email');
+      await formConfig.populate('updatedBy', 'name email');
+
+      return ResponseHelper.success(res, {
+        message: 'Renewal form configuration saved successfully',
+        formConfiguration: formConfig
+      });
+    } catch (error) {
+      console.error('❌ Update Renewal Form Configuration Error:', error);
+
+      if (error.name === 'ValidationError') {
+        const validationErrors = Object.values(error.errors).map(err => err.message);
+        return ResponseHelper.error(res, `Validation failed: ${validationErrors.join(', ')}`, 400);
+      }
+
+      if (error.message && error.message.includes('Form validation failed')) {
+        return ResponseHelper.error(res, error.message, 400);
+      }
+
+      return ResponseHelper.error(res, 'Failed to save renewal form configuration', 500);
+    }
+  }
+
+  /**
+   * Delete renewal form configuration for a scheme
+   * DELETE /api/schemes/:schemeId/renewal-form-config
+   */
+  async deleteRenewalFormConfiguration(req, res) {
+    try {
+      const { schemeId } = req.params;
+
+      const scheme = await Scheme.findById(schemeId);
+      if (!scheme) {
+        return ResponseHelper.error(res, 'Scheme not found', 404);
+      }
+
+      if (!scheme.canUserAccess(req.user)) {
+        return ResponseHelper.error(res, 'Access denied', 403);
+      }
+
+      const formConfig = await FormConfiguration.findOneAndDelete({ scheme: schemeId, isRenewalForm: true });
+
+      if (!formConfig) {
+        return ResponseHelper.error(res, 'Renewal form configuration not found', 404);
+      }
+
+      await Scheme.findByIdAndUpdate(schemeId, {
+        'renewalSettings.renewalFormConfigured': false
+      });
+
+      return ResponseHelper.success(res, {
+        message: 'Renewal form configuration deleted successfully'
+      });
+    } catch (error) {
+      console.error('❌ Delete Renewal Form Configuration Error:', error);
+      return ResponseHelper.error(res, 'Failed to delete renewal form configuration', 500);
     }
   }
 }

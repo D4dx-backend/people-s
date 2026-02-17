@@ -1,5 +1,6 @@
 const { Donation, Donor, Project, Scheme } = require('../models');
 const ResponseHelper = require('../utils/responseHelper');
+const donorReminderService = require('../services/donorReminderService');
 const mongoose = require('mongoose');
 
 class DonationController {
@@ -221,7 +222,35 @@ class DonationController {
    */
   async createDonation(req, res) {
     try {
-      const { donor: donorId, amount, method, project, scheme, notes } = req.body;
+      // Accept both frontend field names and legacy field names
+      const {
+        donor: donorFromBody,
+        donorId: donorIdFromBody,
+        amount,
+        method,
+        project: projectFromBody,
+        scheme: schemeFromBody,
+        purpose,
+        purposeId,
+        mode,
+        date,
+        receiptNumber,
+        isAnonymous,
+        notes
+      } = req.body;
+
+      // Resolve donor ID (frontend sends "donorId", legacy sends "donor")
+      const donorId = donorFromBody || donorIdFromBody || null;
+
+      // Resolve project/scheme from purpose fields
+      // Frontend sends { purpose: 'project', purposeId: '...' } or { purpose: 'scheme', purposeId: '...' }
+      let project = projectFromBody || null;
+      let scheme = schemeFromBody || null;
+      if (purpose === 'project' && purposeId) {
+        project = purposeId;
+      } else if (purpose === 'scheme' && purposeId) {
+        scheme = purposeId;
+      }
 
       // Validate required fields
       if (!amount || !method) {
@@ -229,7 +258,7 @@ class DonationController {
       }
 
       // Validate donor ID only if provided (allow anonymous donations)
-      if (donorId) {
+      if (donorId && !isAnonymous) {
         if (!mongoose.Types.ObjectId.isValid(donorId)) {
           return ResponseHelper.error(res, 'Invalid donor ID', 400);
         }
@@ -242,7 +271,7 @@ class DonationController {
       }
 
       // Validate project if provided (optional)
-      if (project && project.trim() !== '') {
+      if (project && String(project).trim() !== '') {
         if (!mongoose.Types.ObjectId.isValid(project)) {
           return ResponseHelper.error(res, 'Invalid project ID', 400);
         }
@@ -253,7 +282,7 @@ class DonationController {
       }
 
       // Validate scheme if provided (optional)
-      if (scheme && scheme.trim() !== '') {
+      if (scheme && String(scheme).trim() !== '') {
         if (!mongoose.Types.ObjectId.isValid(scheme)) {
           return ResponseHelper.error(res, 'Invalid scheme ID', 400);
         }
@@ -263,16 +292,34 @@ class DonationController {
         }
       }
 
+      // Map mode to recurring preferences
+      const recurringModes = ['monthly', 'quarterly', 'half_yearly', 'yearly', 'custom'];
+      const isRecurring = mode && recurringModes.includes(mode);
+      const frequency = isRecurring ? mode : 'one_time';
+
+      // Resolve donation date
+      const donationDate = date ? new Date(date) : new Date();
+
+      // Resolve effective donor (null for anonymous)
+      const effectiveDonorId = isAnonymous ? null : (donorId || null);
+
       // Create donation data (donor can be null for anonymous donations)
       const donationData = {
-        donor: donorId || null,
+        donor: effectiveDonorId,
         amount: parseFloat(amount),
         method,
-        project: (project && project.trim() !== '') ? project : null,
-        scheme: (scheme && scheme.trim() !== '') ? scheme : null,
+        project: (project && String(project).trim() !== '') ? project : null,
+        scheme: (scheme && String(scheme).trim() !== '') ? scheme : null,
         notes: notes || '',
+        receiptNumber: receiptNumber || undefined,
+        isAnonymous: !!isAnonymous,
         status: method === 'cash' ? 'completed' : 'pending',
-        createdBy: req.user._id
+        createdBy: req.user._id,
+        donationDate,
+        preferences: {
+          isRecurring: !!isRecurring,
+          frequency: frequency
+        }
       };
 
       // Set payment details based on method
@@ -281,7 +328,7 @@ class DonationController {
           cash: {
             receivedBy: req.user._id,
             location: 'Office',
-            receivedDate: new Date()
+            receivedDate: donationDate
           }
         };
       }
@@ -290,8 +337,27 @@ class DonationController {
       await donation.save();
 
       // Update donor statistics if donation is completed and has a donor
-      if (donation.status === 'completed' && donorId) {
-        await this.updateDonorStats(donorId, parseFloat(amount));
+      if (donation.status === 'completed' && effectiveDonorId) {
+        await this.updateDonorStats(effectiveDonorId, parseFloat(amount));
+
+        // Send auto thank-you and create follow-up (async, don't block response)
+        setImmediate(async () => {
+          try {
+            await donorReminderService.sendThankYou(donation._id, req.user._id);
+          } catch (err) {
+            console.error('⚠️ Post-donation thank-you error:', err.message);
+          }
+          try {
+            await donorReminderService.matchDonationToFollowUp(effectiveDonorId, donation._id, req.user._id);
+          } catch (err) {
+            console.error('⚠️ Post-donation follow-up error:', err.message);
+          }
+          try {
+            await donorReminderService.calculateEngagementScore(effectiveDonorId);
+          } catch (err) {
+            console.error('⚠️ Post-donation engagement score error:', err.message);
+          }
+        });
       }
 
       // Populate the created donation
@@ -327,6 +393,13 @@ class DonationController {
         return ResponseHelper.error(res, 'Invalid donation ID', 400);
       }
 
+      // Check previous status before update
+      const existingDonation = await Donation.findById(id);
+      if (!existingDonation) {
+        return ResponseHelper.error(res, 'Donation not found', 404);
+      }
+      const previousStatus = existingDonation.status;
+
       const updateData = {
         ...req.body,
         lastModifiedBy: req.user._id
@@ -350,6 +423,30 @@ class DonationController {
 
       if (!donation) {
         return ResponseHelper.error(res, 'Donation not found', 404);
+      }
+
+      // If status changed to completed and has a donor, trigger follow-up hooks
+      if (previousStatus !== 'completed' && donation.status === 'completed' && donation.donor) {
+        const donorObjId = donation.donor._id || donation.donor;
+        await this.updateDonorStats(donorObjId, donation.amount);
+
+        setImmediate(async () => {
+          try {
+            await donorReminderService.sendThankYou(donation._id, req.user._id);
+          } catch (err) {
+            console.error('⚠️ Update donation thank-you error:', err.message);
+          }
+          try {
+            await donorReminderService.matchDonationToFollowUp(donorObjId, donation._id, req.user._id);
+          } catch (err) {
+            console.error('⚠️ Update donation follow-up error:', err.message);
+          }
+          try {
+            await donorReminderService.calculateEngagementScore(donorObjId);
+          } catch (err) {
+            console.error('⚠️ Update donation engagement error:', err.message);
+          }
+        });
       }
 
       return ResponseHelper.success(res, { donation }, 'Donation updated successfully');
@@ -399,7 +496,27 @@ class DonationController {
 
       // Update donor stats if donation is completed and has a donor
       if (status === 'completed' && donation.donor) {
-        await this.updateDonorStats(donation.donor._id, donation.amount);
+        const donorObjId = donation.donor._id || donation.donor;
+        await this.updateDonorStats(donorObjId, donation.amount);
+
+        // Send auto thank-you and match to follow-up (async, don't block response)
+        setImmediate(async () => {
+          try {
+            await donorReminderService.sendThankYou(donation._id, req.user._id);
+          } catch (err) {
+            console.error('⚠️ Post-status thank-you error:', err.message);
+          }
+          try {
+            await donorReminderService.matchDonationToFollowUp(donorObjId, donation._id, req.user._id);
+          } catch (err) {
+            console.error('⚠️ Post-status follow-up error:', err.message);
+          }
+          try {
+            await donorReminderService.calculateEngagementScore(donorObjId);
+          } catch (err) {
+            console.error('⚠️ Post-status engagement error:', err.message);
+          }
+        });
       }
 
       return ResponseHelper.success(res, { donation }, 'Donation status updated successfully');

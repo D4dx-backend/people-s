@@ -173,4 +173,20 @@ router.post('/schemes/:schemeId/form-config/duplicate',
   formConfigurationController.duplicateFormConfiguration
 );
 
+// Renewal form configuration routes
+router.get('/schemes/:schemeId/renewal-form-config',
+  authorize('super_admin', 'state_admin', 'district_admin', 'project_coordinator', 'scheme_coordinator'),
+  formConfigurationController.getRenewalFormConfiguration
+);
+
+router.put('/schemes/:schemeId/renewal-form-config',
+  authorize('super_admin', 'state_admin', 'district_admin', 'project_coordinator'),
+  formConfigurationController.updateRenewalFormConfiguration
+);
+
+router.delete('/schemes/:schemeId/renewal-form-config',
+  authorize('super_admin', 'state_admin', 'district_admin', 'project_coordinator'),
+  formConfigurationController.deleteRenewalFormConfiguration
+);
+
 module.exports = router;

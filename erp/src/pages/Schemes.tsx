@@ -28,6 +28,9 @@ import {
 } from "@/components/ui/collapsible";
 import { useNavigate } from "react-router-dom";
 import { useRBAC } from "@/hooks/useRBAC";
+import { useExport } from "@/hooks/useExport";
+import ExportButton from "@/components/common/ExportButton";
+import { schemeExportColumns } from "@/utils/exportColumns";
 
 // Status color mapping
 const statusColors: Record<string, string> = {
@@ -75,6 +78,13 @@ export default function Schemes() {
   const [timelineModalOpen, setTimelineModalOpen] = useState(false);
   const [stagesModalOpen, setStagesModalOpen] = useState(false);
   const [expandedSchemes, setExpandedSchemes] = useState<Set<string>>(new Set());
+
+  const { exportCSV, exportPDF, printData, exporting } = useExport({
+    apiCall: (params) => schemesApi.export(params),
+    filenamePrefix: 'schemes',
+    pdfTitle: 'Schemes Report',
+    pdfColumns: schemeExportColumns,
+  });
 
   // Check permissions
   const canViewSchemes = hasAnyPermission(['schemes.read.all', 'schemes.read.assigned']);
@@ -216,17 +226,25 @@ export default function Schemes() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-3xl font-bold">Schemes</h1>
+          <h1 className="text-lg font-bold">Schemes</h1>
           <p className="text-muted-foreground mt-1">Manage welfare schemes and programs</p>
         </div>
-        {canCreateSchemes && (
-          <Button onClick={handleCreateScheme} className="bg-gradient-primary shadow-glow">
-            <Plus className="mr-2 h-4 w-4" />
-            New Scheme
-          </Button>
-        )}
+        <div className="flex gap-2">
+          <ExportButton
+            onExportCSV={() => exportCSV()}
+            onExportPDF={() => exportPDF()}
+            onPrint={() => printData()}
+            exporting={exporting}
+          />
+          {canCreateSchemes && (
+            <Button onClick={handleCreateScheme} className="bg-gradient-primary shadow-glow">
+              <Plus className="mr-2 h-4 w-4" />
+              New Scheme
+            </Button>
+          )}
+        </div>
       </div>
 
 
@@ -290,7 +308,7 @@ export default function Schemes() {
                           </div>
                           
                           {/* Quick Stats - Always Visible */}
-                          <div className="grid gap-3 md:grid-cols-4 mt-3">
+                          <div className="grid gap-3 grid-cols-2 md:grid-cols-4 mt-3">
                             <div className="flex items-center gap-2">
                               <IndianRupee className="h-4 w-4 text-green-600" />
                               <div>

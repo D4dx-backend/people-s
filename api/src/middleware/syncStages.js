@@ -38,7 +38,37 @@ const syncApplicationStages = async (req, res, next) => {
       status: 'pending',
       completedAt: null,
       completedBy: null,
-      notes: null
+      notes: null,
+      // Copy comment configuration from scheme
+      commentConfig: {
+        unitAdmin: {
+          enabled: schemeStage.commentConfig?.unitAdmin?.enabled || false,
+          required: schemeStage.commentConfig?.unitAdmin?.required || false
+        },
+        areaAdmin: {
+          enabled: schemeStage.commentConfig?.areaAdmin?.enabled || false,
+          required: schemeStage.commentConfig?.areaAdmin?.required || false
+        },
+        districtAdmin: {
+          enabled: schemeStage.commentConfig?.districtAdmin?.enabled || false,
+          required: schemeStage.commentConfig?.districtAdmin?.required || false
+        }
+      },
+      // Initialize empty comments
+      comments: {
+        unitAdmin: { comment: null, commentedBy: null, commentedAt: null },
+        areaAdmin: { comment: null, commentedBy: null, commentedAt: null },
+        districtAdmin: { comment: null, commentedBy: null, commentedAt: null }
+      },
+      // Copy required documents from scheme (with empty upload fields)
+      requiredDocuments: (schemeStage.requiredDocuments || []).map(doc => ({
+        name: doc.name,
+        description: doc.description,
+        isRequired: doc.isRequired,
+        uploadedFile: null,
+        uploadedBy: null,
+        uploadedAt: null
+      }))
     }));
 
     // Add stages to request body

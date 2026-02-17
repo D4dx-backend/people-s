@@ -31,7 +31,7 @@ const permissionSchema = new mongoose.Schema({
       'projects', 'schemes', 'locations', 'reports', 'notifications', 
       'finances', 'settings', 'audit', 'dashboard', 'forms', 'documents',
       'donors', 'donations', 'communications', 'system', 'interviews', 'activity_logs',
-      'website', 'news', 'brochures'
+      'website', 'news', 'brochures', 'login_logs', 'error_logs'
     ]
   },
   category: {

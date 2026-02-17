@@ -76,7 +76,7 @@ export default function Donations() {
       
       {/* Quick Donation Dialog with Donor Search */}
       <Dialog open={showQuickDonationDialog} onOpenChange={setShowQuickDonationDialog}>
-        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="max-w-[95vw] sm:max-w-4xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Search className="h-5 w-5" />
@@ -146,9 +146,9 @@ export default function Donations() {
       />
 
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-3xl font-bold">Donations</h1>
+          <h1 className="text-lg font-bold">Donations</h1>
           <p className="text-muted-foreground mt-1">
             Record donations and view donation history
           </p>

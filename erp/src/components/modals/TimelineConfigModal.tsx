@@ -25,6 +25,7 @@ import {
 } from "@/components/ui/accordion";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import VoiceToTextButton from '@/components/ui/VoiceToTextButton';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
@@ -408,11 +409,20 @@ export function TimelineConfigModal({ open, onOpenChange, scheme, onSuccess }: T
                                   <FormItem>
                                     <FormLabel>Notes (Optional)</FormLabel>
                                     <FormControl>
-                                      <Textarea 
-                                        placeholder="Additional notes for this distribution step"
-                                        className="resize-none"
-                                        {...field}
-                                      />
+                                      <div className="relative">
+                                        <Textarea 
+                                          placeholder="Additional notes for this distribution step"
+                                          className="resize-none pr-12"
+                                          {...field}
+                                        />
+                                        <div className="absolute right-2 top-2">
+                                          <VoiceToTextButton
+                                            onTranscript={(text) => field.onChange(field.value ? field.value + ' ' + text : text)}
+                                            size="icon"
+                                            className="h-8 w-8"
+                                          />
+                                        </div>
+                                      </div>
                                     </FormControl>
                                     <FormMessage />
                                   </FormItem>

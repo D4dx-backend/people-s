@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { useNavigate, useParams, useLocation } from "react-router-dom";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -7,7 +7,8 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
-import { ArrowLeft, Upload, FileText, AlertCircle, CheckCircle, Loader2 } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { ArrowLeft, Upload, FileText, AlertCircle, CheckCircle, Loader2, RefreshCw, Save, Clock } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { beneficiaryApi } from "@/services/beneficiaryApi";
@@ -103,11 +104,35 @@ export default function BeneficiaryApplication() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [agreedToTerms, setAgreedToTerms] = useState(false);
+  
+  // Renewal mode
+  const searchParams = new URLSearchParams(location.search);
+  const renewApplicationId = searchParams.get('renew');
+  const [isRenewalMode, setIsRenewalMode] = useState(false);
+  const [parentApplicationId, setParentApplicationId] = useState<string | null>(null);
+
+  // Draft mode
+  const draftIdFromUrl = searchParams.get('draftId');
+  const [draftId, setDraftId] = useState<string | null>(draftIdFromUrl);
+  const [isSavingDraft, setIsSavingDraft] = useState(false);
+  const [lastSaved, setLastSaved] = useState<Date | null>(null);
+  const [isDraftLoaded, setIsDraftLoaded] = useState(false);
+  const autoSaveTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const formDataRef = useRef<Record<string, any>>({});
+  const lastSavedDataRef = useRef<string>('');
 
   const phoneNumber = localStorage.getItem("user_phone") || "";
 
+  // Keep ref in sync with state
   useEffect(() => {
-    if (schemeId) {
+    formDataRef.current = formData;
+  }, [formData]);
+
+  useEffect(() => {
+    if (renewApplicationId) {
+      // Renewal mode - load renewal form
+      loadRenewalForm();
+    } else if (schemeId) {
       loadSchemeDetails();
     } else {
       toast({
@@ -117,7 +142,25 @@ export default function BeneficiaryApplication() {
       });
       navigate("/beneficiary/schemes");
     }
-  }, [schemeId, navigate]);
+  }, [schemeId, renewApplicationId, navigate]);
+
+  // Auto-save every 30 seconds
+  useEffect(() => {
+    if (!scheme || isRenewalMode) return;
+
+    autoSaveTimerRef.current = setInterval(() => {
+      const currentData = JSON.stringify(formDataRef.current);
+      if (currentData !== '{}' && currentData !== lastSavedDataRef.current) {
+        handleSaveDraft(true);
+      }
+    }, 30000);
+
+    return () => {
+      if (autoSaveTimerRef.current) {
+        clearInterval(autoSaveTimerRef.current);
+      }
+    };
+  }, [scheme, isRenewalMode, draftId]);
 
   // Add error boundary effect
   useEffect(() => {
@@ -133,6 +176,65 @@ export default function BeneficiaryApplication() {
     window.addEventListener('error', handleError);
     return () => window.removeEventListener('error', handleError);
   }, []);
+
+  const loadRenewalForm = async () => {
+    if (!renewApplicationId) return;
+    
+    try {
+      setIsLoading(true);
+      const response = await beneficiaryApi.getRenewalForm(renewApplicationId);
+      
+      if (response.renewalForm) {
+        setIsRenewalMode(true);
+        setParentApplicationId(renewApplicationId);
+        
+        // Build scheme-like object from renewal form data
+        const renewalData = response.renewalForm;
+        setScheme({
+          _id: renewalData.scheme._id,
+          name: renewalData.scheme.name,
+          description: renewalData.scheme.description || '',
+          category: renewalData.scheme.category || '',
+          priority: renewalData.scheme.priority || 'medium',
+          project: renewalData.scheme.project || { _id: '', name: '' },
+          benefitType: renewalData.scheme.benefitType || '',
+          maxAmount: renewalData.scheme.maxAmount || 0,
+          benefitFrequency: renewalData.scheme.benefitFrequency || '',
+          benefitDescription: renewalData.scheme.benefitDescription || '',
+          applicationDeadline: '',
+          daysRemaining: 0,
+          requiresInterview: false,
+          allowMultipleApplications: true,
+          eligibilityCriteria: [],
+          beneficiariesCount: 0,
+          totalApplications: 0,
+          successRate: 0,
+          hasApplied: false,
+          formConfig: {
+            title: renewalData.formConfig.title || 'Renewal Application',
+            description: renewalData.formConfig.description || '',
+            pages: renewalData.formConfig.pages || [],
+            confirmationMessage: 'Your renewal application has been submitted successfully.',
+          },
+        });
+        
+        // Pre-fill form data from parent application
+        if (renewalData.prefillData) {
+          setFormData(renewalData.prefillData);
+        }
+      }
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Failed to load renewal form';
+      toast({
+        title: 'Renewal Form Error',
+        description: errorMessage,
+        variant: 'destructive',
+      });
+      navigate('/beneficiary/dashboard');
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   const loadSchemeDetails = async () => {
     if (!schemeId) return;
@@ -153,6 +255,31 @@ export default function BeneficiaryApplication() {
       }
       
       setScheme(response.scheme);
+
+      // Check for existing draft
+      try {
+        const draftResponse = await beneficiaryApi.getDraftForScheme(schemeId);
+        if (draftResponse.draft) {
+          setDraftId(draftResponse.draft._id);
+          if (draftResponse.draft.formData && Object.keys(draftResponse.draft.formData).length > 0) {
+            setFormData(draftResponse.draft.formData);
+            lastSavedDataRef.current = JSON.stringify(draftResponse.draft.formData);
+          }
+          if (draftResponse.draft.draftMetadata?.currentPage) {
+            setCurrentSection(draftResponse.draft.draftMetadata.currentPage);
+          }
+          if (draftResponse.draft.draftMetadata?.lastSavedAt) {
+            setLastSaved(new Date(draftResponse.draft.draftMetadata.lastSavedAt));
+          }
+          setIsDraftLoaded(true);
+          toast({
+            title: "Draft Loaded",
+            description: "Your previous draft has been restored. Continue filling the form.",
+          });
+        }
+      } catch {
+        // No draft exists, that's fine
+      }
     } catch (error) {
       
       const errorMessage = error instanceof Error ? error.message : "Please try again";
@@ -350,6 +477,57 @@ export default function BeneficiaryApplication() {
     }
   };
 
+  const handleSaveDraft = useCallback(async (autoSave = false) => {
+    if (!scheme || isRenewalMode || isSavingDraft) return;
+
+    setIsSavingDraft(true);
+    try {
+      const draftData = {
+        formData: formDataRef.current,
+        documents: Object.keys(uploadedFiles).map(docType => ({
+          type: docType,
+          filename: uploadedFiles[docType].name,
+          url: `placeholder-url-for-${uploadedFiles[docType].name}`
+        })),
+        currentPage: currentSection,
+        autoSave
+      };
+
+      let response;
+      if (draftId) {
+        response = await beneficiaryApi.updateDraft(draftId, draftData);
+      } else {
+        response = await beneficiaryApi.saveDraft({
+          schemeId: scheme._id,
+          ...draftData
+        });
+        setDraftId(response.draft._id);
+      }
+
+      const now = new Date();
+      setLastSaved(now);
+      lastSavedDataRef.current = JSON.stringify(formDataRef.current);
+
+      if (!autoSave) {
+        toast({
+          title: "Draft Saved",
+          description: `Saved at ${now.toLocaleTimeString()}`,
+        });
+      }
+    } catch (error) {
+      if (!autoSave) {
+        toast({
+          title: "Failed to Save Draft",
+          description: error instanceof Error ? error.message : "Please try again",
+          variant: "destructive",
+        });
+      }
+      console.error('Draft save error:', error);
+    } finally {
+      setIsSavingDraft(false);
+    }
+  }, [scheme, isRenewalMode, draftId, uploadedFiles, currentSection, isSavingDraft]);
+
   const handleSubmit = async () => {
     if (!scheme) return;
     
@@ -374,24 +552,44 @@ export default function BeneficiaryApplication() {
     setIsSubmitting(true);
 
     try {
-      const applicationData = {
-        schemeId: scheme._id,
-        formData,
-        documents: Object.keys(uploadedFiles).map(docType => ({
-          type: docType,
-          filename: uploadedFiles[docType].name,
-          // In a real app, you would upload the file to a storage service first
-          // and store the URL here
-          url: `placeholder-url-for-${uploadedFiles[docType].name}`
-        }))
-      };
+      if (isRenewalMode && parentApplicationId) {
+        // Submit as renewal
+        const response = await beneficiaryApi.submitRenewal(parentApplicationId, {
+          formData,
+          documents: Object.keys(uploadedFiles).map(docType => ({
+            type: docType,
+            filename: uploadedFiles[docType].name,
+            url: `placeholder-url-for-${uploadedFiles[docType].name}`
+          }))
+        });
+        
+        toast({
+          title: "Renewal Submitted Successfully!",
+          description: `Your renewal application ID is ${response.application?.applicationId || 'generated'}`,
+        });
+      } else {
+        const applicationData = {
+          schemeId: scheme._id,
+          formData,
+          documents: Object.keys(uploadedFiles).map(docType => ({
+            type: docType,
+            filename: uploadedFiles[docType].name,
+            url: `placeholder-url-for-${uploadedFiles[docType].name}`
+          }))
+        };
 
-      const response = await beneficiaryApi.submitApplication(applicationData);
-      
-      toast({
-        title: "Application Submitted Successfully!",
-        description: `Your application ID is ${response.application.applicationId}`,
-      });
+        const response = await beneficiaryApi.submitApplication(applicationData);
+        
+        toast({
+          title: "Application Submitted Successfully!",
+          description: `Your application ID is ${response.application.applicationId}`,
+        });
+      }
+
+      // Clear auto-save timer
+      if (autoSaveTimerRef.current) {
+        clearInterval(autoSaveTimerRef.current);
+      }
 
       // Navigate to dashboard
       navigate("/beneficiary/dashboard");
@@ -811,14 +1009,16 @@ export default function BeneficiaryApplication() {
             <Button
               variant="ghost"
               size="sm"
-              onClick={() => navigate("/beneficiary/schemes")}
+              onClick={() => navigate(isRenewalMode ? "/beneficiary/dashboard" : "/beneficiary/schemes")}
             >
               <ArrowLeft className="h-4 w-4 mr-1" />
               Back
             </Button>
             <img src={logo} alt="Logo" className="h-8 w-8 rounded-full" />
             <div>
-              <h1 className="text-sm font-bold">Apply for Scheme</h1>
+              <h1 className="text-lg font-bold">
+                {isRenewalMode ? 'Renew Application' : 'Apply for Scheme'}
+              </h1>
               <p className="text-xs text-muted-foreground hidden sm:block">+91 {phoneNumber}</p>
             </div>
           </div>
@@ -830,8 +1030,11 @@ export default function BeneficiaryApplication() {
         <Card className="mb-6">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              <FileText className="h-5 w-5" />
+              {isRenewalMode ? <RefreshCw className="h-5 w-5" /> : <FileText className="h-5 w-5" />}
               {scheme.name}
+              {isRenewalMode && (
+                <Badge className="bg-blue-100 text-blue-800 border-blue-200">Renewal</Badge>
+              )}
             </CardTitle>
             <CardDescription>{scheme.description}</CardDescription>
           </CardHeader>
@@ -896,8 +1099,17 @@ export default function BeneficiaryApplication() {
           </Card>
         )}
 
+        {/* Auto-save indicator */}
+        {lastSaved && !isRenewalMode && (
+          <div className="flex items-center justify-center gap-1.5 mt-3 text-xs text-muted-foreground">
+            <Clock className="h-3 w-3" />
+            <span>Last saved: {lastSaved.toLocaleTimeString()}</span>
+            {isSavingDraft && <Loader2 className="h-3 w-3 animate-spin ml-1" />}
+          </div>
+        )}
+
         {/* Navigation Buttons */}
-        <div className="flex justify-between mt-6">
+        <div className="flex justify-between items-center mt-4 gap-2">
           <Button
             variant="outline"
             onClick={handlePreviousSection}
@@ -906,19 +1118,37 @@ export default function BeneficiaryApplication() {
             Previous
           </Button>
 
-          {currentSection < scheme.formConfig.pages.length - 1 ? (
-            <Button onClick={handleNextSection}>
-              Next
-            </Button>
-          ) : (
-            <Button
-              onClick={handleSubmit}
-              disabled={isSubmitting}
-              className="bg-green-600 hover:bg-green-700"
-            >
-              {isSubmitting ? "Submitting..." : "Submit Application"}
-            </Button>
-          )}
+          <div className="flex items-center gap-2">
+            {!isRenewalMode && (
+              <Button
+                variant="outline"
+                onClick={() => handleSaveDraft(false)}
+                disabled={isSavingDraft || isSubmitting}
+                className="border-amber-300 text-amber-700 hover:bg-amber-50"
+              >
+                {isSavingDraft ? (
+                  <Loader2 className="h-4 w-4 mr-1 animate-spin" />
+                ) : (
+                  <Save className="h-4 w-4 mr-1" />
+                )}
+                {isSavingDraft ? "Saving..." : "Save Draft"}
+              </Button>
+            )}
+
+            {currentSection < scheme.formConfig.pages.length - 1 ? (
+              <Button onClick={handleNextSection}>
+                Next
+              </Button>
+            ) : (
+              <Button
+                onClick={handleSubmit}
+                disabled={isSubmitting}
+                className="bg-green-600 hover:bg-green-700"
+              >
+                {isSubmitting ? "Submitting..." : "Submit Application"}
+              </Button>
+            )}
+          </div>
         </div>
       </div>
     </div>

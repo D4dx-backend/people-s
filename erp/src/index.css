@@ -124,3 +124,66 @@ All colors MUST be HSL.
     @apply bg-background text-foreground;
   }
 }
+
+/* ==================== Print Styles ==================== */
+@media print {
+  /* Hide navigation, sidebar, header, and non-essential UI when printing */
+  nav,
+  aside,
+  header,
+  .sidebar,
+  .no-print,
+  [data-sidebar],
+  [role="navigation"],
+  button,
+  .pagination,
+  .filters {
+    display: none !important;
+  }
+
+  /* Reset backgrounds and shadows for print */
+  body {
+    background: white !important;
+    color: black !important;
+    font-size: 12px !important;
+  }
+
+  /* Let content flow naturally */
+  main,
+  .main-content,
+  [role="main"] {
+    margin: 0 !important;
+    padding: 0 !important;
+    width: 100% !important;
+    max-width: 100% !important;
+  }
+
+  /* Ensure tables print cleanly */
+  table {
+    width: 100% !important;
+    border-collapse: collapse !important;
+    font-size: 10px !important;
+  }
+
+  th, td {
+    border: 1px solid #ccc !important;
+    padding: 4px 6px !important;
+    text-align: left !important;
+  }
+
+  th {
+    background-color: #f0f0f0 !important;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  /* Page breaks */
+  .page-break {
+    page-break-before: always;
+  }
+
+  /* Prevent cards from breaking across pages */
+  .card, [class*="Card"] {
+    page-break-inside: avoid;
+  }
+}

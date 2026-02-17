@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { ShortlistModal } from "@/components/modals/ShortlistModal";
 import { ReportsModal } from "@/components/modals/ReportsModal";
-import { Download, Eye, CheckCircle, XCircle, Clock, CalendarIcon, FileText, Loader2, UserCheck, Grid, List, Filter } from "lucide-react";
+import { Eye, CheckCircle, XCircle, Clock, CalendarIcon, FileText, Loader2, UserCheck, Grid, List, Filter } from "lucide-react";
 import { useRBAC } from "@/hooks/useRBAC";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -11,7 +11,9 @@ import { ApplicationViewModal } from "@/components/modals/ApplicationViewModal";
 import { ApplicationDetailModal } from "@/components/modals/ApplicationDetailModal";
 import { GenericFilters } from "@/components/filters/GenericFilters";
 import { useApplicationFilters } from "@/hooks/useApplicationFilters";
-import { useApplicationExport } from "@/hooks/useApplicationExport";
+import { useExport } from '@/hooks/useExport';
+import ExportButton from '@/components/common/ExportButton';
+import { applicationExportColumns } from '@/utils/exportColumns';
 import { toast } from "@/hooks/use-toast";
 import { Pagination, PaginationContent, PaginationItem, PaginationLink, PaginationNext, PaginationPrevious } from "@/components/ui/pagination";
 import { applications } from "@/lib/api";
@@ -41,9 +43,17 @@ interface Application {
   createdAt: string;
   updatedAt: string;
   interview?: any;
+  eligibilityScore?: {
+    totalPoints: number;
+    maxPoints: number;
+    percentage: number;
+    meetsThreshold: boolean;
+    autoRejected: boolean;
+  };
 }
 
 const statusConfig = {
+  draft: { color: "bg-amber-500/10 text-amber-600 border-amber-500/20", icon: FileText },
   pending: { color: "bg-warning/10 text-warning border-warning/20", icon: Clock },
   under_review: { color: "bg-info/10 text-info border-info/20", icon: Eye },
   field_verification: { color: "bg-blue-500/10 text-blue-500 border-blue-500/20", icon: FileText },
@@ -63,7 +73,13 @@ export default function AllApplications() {
   
   // Use the reusable filter hook
   const filterHook = useApplicationFilters();
-  const { exportApplications, exporting } = useApplicationExport();
+  const { exportCSV, exportPDF, printData, exporting } = useExport({
+    apiCall: (params) => applications.export(params),
+    filenamePrefix: 'applications',
+    pdfTitle: 'Applications Report',
+    pdfColumns: applicationExportColumns,
+    getFilterParams: () => filterHook.getExportParams(),
+  });
   
   const [applicationList, setApplicationList] = useState<Application[]>([]);
   const [selectedApp, setSelectedApp] = useState<Application | null>(null);
@@ -186,11 +202,6 @@ export default function AllApplications() {
     setRefreshKey(prev => prev + 1);
   };
 
-  const handleExport = () => {
-    const exportParams = filterHook.getExportParams();
-    exportApplications(exportParams, 'all_applications');
-  };
-
   const getActionButton = (app: Application, isTableView: boolean = false) => {
     // Unit Admin and District Admin can only view - no action buttons
     if (!canReviewApplications) {
@@ -242,16 +253,18 @@ export default function AllApplications() {
     <div className="space-y-6">
       <ApplicationViewModal open={showViewModal} onOpenChange={setShowViewModal} application={selectedApp} mode={modalMode} onApprove={handleApprove} onReject={handleReject} />
       
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-xl font-bold">All Applications</h1>
+          <h1 className="text-lg font-bold">All Applications</h1>
           <p className="text-muted-foreground mt-1">View and manage all scheme applications</p>
         </div>
         <div className="flex items-center gap-2">
-          <Button variant="outline" onClick={handleExport} disabled={exporting}>
-            <Download className="mr-2 h-4 w-4" />
-            {exporting ? "Exporting..." : "Export Report"}
-          </Button>
+          <ExportButton
+            onExportCSV={() => exportCSV()}
+            onExportPDF={() => exportPDF()}
+            onPrint={() => printData()}
+            exporting={exporting}
+          />
           <div className="flex items-center border rounded-lg p-1">
             <Button variant={viewMode === 'cards' ? 'default' : 'ghost'} size="sm" onClick={() => setViewMode('cards')}>
               <Grid className="h-4 w-4" />
@@ -375,6 +388,7 @@ export default function AllApplications() {
               })}
             </div>
           ) : (
+            <div className="overflow-x-auto">
             <Table>
               <TableHeader>
                 <TableRow>
@@ -383,6 +397,7 @@ export default function AllApplications() {
                   <TableHead>Scheme</TableHead>
                   <TableHead>Project</TableHead>
                   <TableHead>Location</TableHead>
+                  <TableHead>Score</TableHead>
                   <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
               </TableHeader>
@@ -416,6 +431,19 @@ export default function AllApplications() {
                           <div className="text-muted-foreground">{app.area.name}</div>
                         </div>
                       </TableCell>
+                      <TableCell>
+                        {app.eligibilityScore && app.eligibilityScore.maxPoints > 0 ? (
+                          <Badge variant="outline" className={`${
+                            app.eligibilityScore.percentage >= 70 ? 'bg-green-50 text-green-700 border-green-200' :
+                            app.eligibilityScore.percentage >= 40 ? 'bg-yellow-50 text-yellow-700 border-yellow-200' :
+                            'bg-red-50 text-red-700 border-red-200'
+                          }`}>
+                            {app.eligibilityScore.percentage}%
+                          </Badge>
+                        ) : (
+                          <span className="text-xs text-muted-foreground">—</span>
+                        )}
+                      </TableCell>
                       <TableCell className="text-right">
                         <div className="flex justify-end gap-1">
                           <Button 
@@ -440,6 +468,7 @@ export default function AllApplications() {
                 })}
               </TableBody>
             </Table>
+            </div>
           )}
 
           {pagination.pages > 1 && (

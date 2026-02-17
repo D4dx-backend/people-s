@@ -9,6 +9,9 @@ import { useToast } from "@/hooks/use-toast";
 import { website } from "@/lib/api";
 import { Loader2, Plus, Edit, Trash2, Image as ImageIcon, ExternalLink } from "lucide-react";
 import { useRBAC } from "@/hooks/useRBAC";
+import { useExport } from "@/hooks/useExport";
+import ExportButton from "@/components/common/ExportButton";
+import { partnerExportColumns } from "@/utils/exportColumns";
 
 interface Partner {
   _id: string;
@@ -27,6 +30,13 @@ export default function Partners() {
   const canCreate = hasAnyPermission(['website.write', 'partners.write']);
   const canEdit = hasAnyPermission(['website.write', 'partners.write']);
   const canDelete = hasAnyPermission(['website.delete', 'partners.delete']);
+
+  const { exportCSV, exportPDF, printData, exporting } = useExport({
+    apiCall: (params) => website.exportPartners(params),
+    filenamePrefix: 'partners',
+    pdfTitle: 'Partners Report',
+    pdfColumns: partnerExportColumns,
+  });
 
   const [loading, setLoading] = useState(true);
   const [partners, setPartners] = useState<Partner[]>([]);
@@ -200,17 +210,25 @@ export default function Partners() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-2xl font-bold">Partners</h1>
+          <h1 className="text-lg font-bold">Partners</h1>
           <p className="text-muted-foreground">Manage partner organizations and their logos</p>
         </div>
-        {canCreate && (
-          <Button onClick={handleCreate}>
-            <Plus className="mr-2 h-4 w-4" />
-            Add Partner
-          </Button>
-        )}
+        <div className="flex gap-2">
+          <ExportButton
+            onExportCSV={() => exportCSV()}
+            onExportPDF={() => exportPDF()}
+            onPrint={() => printData()}
+            exporting={exporting}
+          />
+          {canCreate && (
+            <Button onClick={handleCreate}>
+              <Plus className="mr-2 h-4 w-4" />
+              Add Partner
+            </Button>
+          )}
+        </div>
       </div>
 
       {loading ? (

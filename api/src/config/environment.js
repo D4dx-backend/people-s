@@ -51,6 +51,9 @@ module.exports = {
   // Frontend URL (REQUIRED)
   FRONTEND_URL: getEnvVar('FRONTEND_URL', 'Frontend application URL'),
   
+  // Google Cloud Speech-to-Text (OPTIONAL)
+  GOOGLE_SPEECH_API_KEY: getOptionalEnvVar('GOOGLE_SPEECH_API_KEY'),
+  
   // Logging (REQUIRED)
   LOG_LEVEL: getEnvVar('LOG_LEVEL', 'Logging level'),
   LOG_FILE: getEnvVar('LOG_FILE', 'Log file path')

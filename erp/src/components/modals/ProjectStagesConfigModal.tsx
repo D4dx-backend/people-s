@@ -19,6 +19,7 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import VoiceToTextButton from '@/components/ui/VoiceToTextButton';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
@@ -308,11 +309,20 @@ export function ProjectStagesConfigModal({ open, onOpenChange, project, onSucces
                         <FormItem className="mt-4">
                           <FormLabel>Description (Optional)</FormLabel>
                           <FormControl>
-                            <Textarea 
-                              placeholder="Describe what happens in this stage"
-                              className="resize-none"
-                              {...field}
-                            />
+                            <div className="relative">
+                              <Textarea 
+                                placeholder="Describe what happens in this stage"
+                                className="resize-none pr-12"
+                                {...field}
+                              />
+                              <div className="absolute right-2 top-2">
+                                <VoiceToTextButton
+                                  onTranscript={(text) => field.onChange(field.value ? field.value + ' ' + text : text)}
+                                  size="icon"
+                                  className="h-8 w-8"
+                                />
+                              </div>
+                            </div>
                           </FormControl>
                           <FormMessage />
                         </FormItem>

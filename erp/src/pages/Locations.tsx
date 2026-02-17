@@ -329,9 +329,9 @@ export default function Locations() {
         description={`This will permanently delete this ${deleteType} and all associated data. This action cannot be undone.`}
         itemName={selectedLocation?.name}
       />
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-xl font-bold">Location Management</h1>
+          <h1 className="text-lg font-bold">Location Management</h1>
           <p className="text-muted-foreground mt-1">Manage districts, areas, and units across Kerala</p>
         </div>
         <DropdownMenu>
@@ -420,9 +420,9 @@ export default function Locations() {
         <TabsContent value="districts">
           <Card>
             <CardHeader>
-              <div className="flex items-center justify-between">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <CardTitle>District Master Data</CardTitle>
-                <div className="relative w-64">
+                <div className="relative w-full sm:w-64">
                   <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
                   <Input
                     placeholder="Search districts..."
@@ -438,7 +438,7 @@ export default function Locations() {
                 {districtList.map((district) => (
                   <div
                     key={district.id}
-                    className="flex items-center justify-between border rounded-lg p-4 hover:shadow-elegant transition-shadow"
+                    className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between border rounded-lg p-4 hover:shadow-elegant transition-shadow"
                   >
                     <div className="flex items-center gap-4">
                       <div className="h-12 w-12 rounded-full bg-gradient-primary flex items-center justify-center text-primary-foreground font-bold">
@@ -507,9 +507,9 @@ export default function Locations() {
         <TabsContent value="areas">
           <Card>
             <CardHeader>
-              <div className="flex items-center justify-between">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <CardTitle>Area Master Data</CardTitle>
-                <div className="relative w-64">
+                <div className="relative w-full sm:w-64">
                   <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
                   <Input
                     placeholder="Search areas..."
@@ -525,7 +525,7 @@ export default function Locations() {
                 {areaList.map((area) => (
                   <div
                     key={area.id}
-                    className="flex items-center justify-between border rounded-lg p-4 hover:shadow-elegant transition-shadow"
+                    className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between border rounded-lg p-4 hover:shadow-elegant transition-shadow"
                   >
                     <div className="flex items-center gap-4">
                       <div className="h-12 w-12 rounded-full bg-gradient-secondary flex items-center justify-center">
@@ -594,9 +594,9 @@ export default function Locations() {
         <TabsContent value="units">
           <Card>
             <CardHeader>
-              <div className="flex items-center justify-between">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <CardTitle>Unit Master Data</CardTitle>
-                <div className="relative w-64">
+                <div className="relative w-full sm:w-64">
                   <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
                   <Input
                     placeholder="Search units..."
@@ -612,7 +612,7 @@ export default function Locations() {
                 {unitList.map((unit) => (
                   <div
                     key={unit.id}
-                    className="flex items-center justify-between border rounded-lg p-4 hover:shadow-elegant transition-shadow"
+                    className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between border rounded-lg p-4 hover:shadow-elegant transition-shadow"
                   >
                     <div className="flex items-center gap-4">
                       <div className="h-12 w-12 rounded-full bg-gradient-primary flex items-center justify-center">

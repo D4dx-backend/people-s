@@ -258,9 +258,9 @@ export default function MasterDataManagement() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-xl font-bold">Master Data Management</h1>
+          <h1 className="text-lg font-bold">Master Data Management</h1>
           <p className="text-muted-foreground mt-1">Configure stages, templates, and system settings</p>
         </div>
         {canCreateMasterData && (
@@ -299,12 +299,12 @@ export default function MasterDataManagement() {
                 placeholder="Search configurations..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-64"
+                className="w-full sm:w-64"
               />
             </div>
             
             <Select value={typeFilter} onValueChange={setTypeFilter}>
-              <SelectTrigger className="w-48">
+              <SelectTrigger className="w-full sm:w-48">
                 <SelectValue placeholder="Filter by type" />
               </SelectTrigger>
               <SelectContent>
@@ -318,7 +318,7 @@ export default function MasterDataManagement() {
             </Select>
 
             <Select value={statusFilter} onValueChange={setStatusFilter}>
-              <SelectTrigger className="w-40">
+              <SelectTrigger className="w-full sm:w-40">
                 <SelectValue placeholder="Status" />
               </SelectTrigger>
               <SelectContent>
@@ -331,7 +331,7 @@ export default function MasterDataManagement() {
             </Select>
 
             <Select value={scopeFilter} onValueChange={setScopeFilter}>
-              <SelectTrigger className="w-40">
+              <SelectTrigger className="w-full sm:w-40">
                 <SelectValue placeholder="Scope" />
               </SelectTrigger>
               <SelectContent>
@@ -350,7 +350,7 @@ export default function MasterDataManagement() {
 
         <CardContent>
           <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
-            <TabsList className="grid w-full grid-cols-6">
+            <TabsList className="grid w-full grid-cols-3 sm:grid-cols-6">
               <TabsTrigger value="all">
                 All ({masterDataList.length})
               </TabsTrigger>

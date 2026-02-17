@@ -3,11 +3,20 @@ const rbacController = require('../controllers/rbacController');
 const { authenticate, authorize, checkPermission } = require('../middleware/auth');
 const { validate, validateRequest } = require('../middleware/validation');
 const { body, param, query } = require('express-validator');
+const { createExportHandler } = require('../middleware/exportHandler');
+const exportConfigs = require('../config/exportConfigs');
+const Role = require('../models/Role');
 
 const router = express.Router();
 
 // Apply authentication to all RBAC routes
 router.use(authenticate);
+
+// Export roles as CSV or JSON
+router.get('/roles/export',
+  checkPermission('roles', 'read'),
+  createExportHandler(Role, exportConfigs.role)
+);
 
 /**
  * Role Management Routes

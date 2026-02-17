@@ -3,8 +3,10 @@ const Beneficiary = require('../models/Beneficiary');
 const Scheme = require('../models/Scheme');
 const Project = require('../models/Project');
 const MasterData = require('../models/MasterData');
+const FormConfiguration = require('../models/FormConfiguration');
 const notificationService = require('../services/notificationService');
 const recurringPaymentService = require('../services/recurringPaymentService');
+const { calculateApplicationScore } = require('../utils/scoringEngine');
 const { validationResult } = require('express-validator');
 const RBACMiddleware = require('../middleware/rbacMiddleware');
 
@@ -300,6 +302,24 @@ const createApplication = async (req, res) => {
       } : undefined
     });
 
+    // Calculate eligibility score if form has scoring enabled
+    if (req.body.formData) {
+      try {
+        const formConfig = await FormConfiguration.findOne({ 
+          scheme: scheme, 
+          enabled: true,
+          'scoringConfig.enabled': true 
+        });
+        if (formConfig) {
+          const scoreResult = calculateApplicationScore(req.body.formData, formConfig);
+          application.eligibilityScore = scoreResult;
+          application.formData = req.body.formData;
+        }
+      } catch (scoringError) {
+        console.error('Scoring calculation failed:', scoringError.message);
+      }
+    }
+
     await application.save();
 
     // If recurring, generate payment schedule after application is created
@@ -485,6 +505,23 @@ const approveApplication = async (req, res) => {
 
     // Update distribution timeline with actual approved amount and dates
     await updateDistributionTimelineOnApproval(application, approvedAmount);
+
+    // Set renewal expiry if scheme supports renewals
+    const scheme = await Scheme.findById(application.scheme);
+    if (scheme?.renewalSettings?.isRenewable) {
+      const approvedDate = application.approvedAt;
+      const expiryDate = new Date(approvedDate);
+      expiryDate.setDate(expiryDate.getDate() + (scheme.renewalSettings.renewalPeriodDays || 365));
+      application.expiryDate = expiryDate;
+      
+      const renewalDueDate = new Date(expiryDate);
+      renewalDueDate.setDate(renewalDueDate.getDate() - (scheme.renewalSettings.autoNotifyBeforeDays || 30));
+      application.renewalDueDate = renewalDueDate;
+      
+      application.renewalStatus = 'active';
+      application.renewalNotificationSent = false;
+      console.log(`📅 Renewal set: expires ${expiryDate.toISOString()}, due notification ${renewalDueDate.toISOString()}`);
+    }
 
     await application.save();
 
@@ -714,6 +751,7 @@ const hasAccessToBeneficiary = (user, beneficiary) => {
 
 const isValidStatusTransition = (currentStatus, newStatus) => {
   const validTransitions = {
+    'draft': ['pending', 'cancelled'],
     'pending': ['under_review', 'rejected'],
     'under_review': ['approved', 'rejected'],
     'approved': ['completed'],
@@ -729,9 +767,42 @@ const getApplicationStagesFromScheme = (scheme) => {
   try {
     let stages = [];
 
+    const defaultCommentConfig = {
+      unitAdmin: { enabled: false, required: false },
+      areaAdmin: { enabled: false, required: false },
+      districtAdmin: { enabled: false, required: false }
+    };
+
     // Use scheme's custom stages if available
     if (scheme.statusStages && scheme.statusStages.length > 0) {
-      stages = [...scheme.statusStages];
+      stages = scheme.statusStages.map(stage => ({
+        name: stage.name,
+        description: stage.description,
+        order: stage.order,
+        isRequired: stage.isRequired,
+        allowedRoles: stage.allowedRoles,
+        autoTransition: stage.autoTransition,
+        transitionConditions: stage.transitionConditions,
+        commentConfig: {
+          unitAdmin: {
+            enabled: stage.commentConfig?.unitAdmin?.enabled || false,
+            required: stage.commentConfig?.unitAdmin?.required || false
+          },
+          areaAdmin: {
+            enabled: stage.commentConfig?.areaAdmin?.enabled || false,
+            required: stage.commentConfig?.areaAdmin?.required || false
+          },
+          districtAdmin: {
+            enabled: stage.commentConfig?.districtAdmin?.enabled || false,
+            required: stage.commentConfig?.districtAdmin?.required || false
+          }
+        },
+        requiredDocuments: (stage.requiredDocuments || []).map(doc => ({
+          name: doc.name,
+          description: doc.description,
+          isRequired: doc.isRequired !== false
+        }))
+      }));
     } else {
       // Use default application stages
       stages = [
@@ -742,7 +813,9 @@ const getApplicationStagesFromScheme = (scheme) => {
           isRequired: true,
           allowedRoles: ['super_admin', 'state_admin', 'district_admin', 'area_admin', 'unit_admin'],
           autoTransition: true,
-          transitionConditions: "Automatically set when application is submitted"
+          transitionConditions: "Automatically set when application is submitted",
+          commentConfig: defaultCommentConfig,
+          requiredDocuments: []
         },
         {
           name: "Document Verification",
@@ -751,7 +824,9 @@ const getApplicationStagesFromScheme = (scheme) => {
           isRequired: true,
           allowedRoles: ['super_admin', 'state_admin', 'district_admin', 'area_admin', 'unit_admin'],
           autoTransition: false,
-          transitionConditions: ""
+          transitionConditions: "",
+          commentConfig: { ...defaultCommentConfig, unitAdmin: { enabled: true, required: false } },
+          requiredDocuments: []
         },
         {
           name: "Field Verification",
@@ -760,7 +835,9 @@ const getApplicationStagesFromScheme = (scheme) => {
           isRequired: false,
           allowedRoles: ['super_admin', 'state_admin', 'district_admin', 'area_admin', 'unit_admin'],
           autoTransition: false,
-          transitionConditions: ""
+          transitionConditions: "",
+          commentConfig: { ...defaultCommentConfig, areaAdmin: { enabled: true, required: false } },
+          requiredDocuments: []
         },
         {
           name: "Interview Process",
@@ -769,7 +846,9 @@ const getApplicationStagesFromScheme = (scheme) => {
           isRequired: scheme.applicationSettings?.requiresInterview || false,
           allowedRoles: ['super_admin', 'state_admin', 'district_admin', 'area_admin', 'unit_admin', 'scheme_coordinator'],
           autoTransition: false,
-          transitionConditions: ""
+          transitionConditions: "",
+          commentConfig: defaultCommentConfig,
+          requiredDocuments: []
         },
         {
           name: "Final Review",
@@ -778,7 +857,9 @@ const getApplicationStagesFromScheme = (scheme) => {
           isRequired: true,
           allowedRoles: ['super_admin', 'state_admin', 'district_admin', 'area_admin'],
           autoTransition: false,
-          transitionConditions: ""
+          transitionConditions: "",
+          commentConfig: { ...defaultCommentConfig, districtAdmin: { enabled: true, required: false } },
+          requiredDocuments: []
         },
         {
           name: "Approved",
@@ -787,7 +868,9 @@ const getApplicationStagesFromScheme = (scheme) => {
           isRequired: true,
           allowedRoles: ['super_admin', 'state_admin', 'district_admin', 'area_admin'],
           autoTransition: false,
-          transitionConditions: ""
+          transitionConditions: "",
+          commentConfig: defaultCommentConfig,
+          requiredDocuments: []
         },
         {
           name: "Disbursement",
@@ -796,7 +879,9 @@ const getApplicationStagesFromScheme = (scheme) => {
           isRequired: true,
           allowedRoles: ['super_admin', 'state_admin', 'district_admin', 'area_admin'],
           autoTransition: false,
-          transitionConditions: ""
+          transitionConditions: "",
+          commentConfig: defaultCommentConfig,
+          requiredDocuments: []
         },
         {
           name: "Completed",
@@ -805,7 +890,9 @@ const getApplicationStagesFromScheme = (scheme) => {
           isRequired: true,
           allowedRoles: ['super_admin', 'state_admin', 'district_admin', 'area_admin'],
           autoTransition: true,
-          transitionConditions: "Automatically set when all disbursements are complete"
+          transitionConditions: "Automatically set when all disbursements are complete",
+          commentConfig: defaultCommentConfig,
+          requiredDocuments: []
         }
       ];
     }
@@ -1043,6 +1130,568 @@ const updateApplicationsDistributionTimeline = async (schemeId, newDistributionT
   }
 };
 
+// ========================
+// REVERT APPLICATION STAGE
+// ========================
+const revertApplicationStage = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { targetStageId, reason } = req.body;
+
+    if (!targetStageId || !reason) {
+      return res.status(400).json({
+        success: false,
+        message: 'Target stage ID and reason are required'
+      });
+    }
+
+    const application = await Application.findById(id);
+    if (!application) {
+      return res.status(404).json({
+        success: false,
+        message: 'Application not found'
+      });
+    }
+
+    // Find current stage (first non-completed/non-skipped stage, or last stage)
+    const sortedStages = [...application.applicationStages].sort((a, b) => a.order - b.order);
+    const currentStageIndex = sortedStages.findIndex(s => s.status === 'pending' || s.status === 'in_progress');
+    // If all completed, consider the last stage as current
+    const effectiveCurrentIndex = currentStageIndex === -1 ? sortedStages.length - 1 : currentStageIndex;
+
+    // Find target stage
+    const targetStageIndex = sortedStages.findIndex(s => s._id.toString() === targetStageId);
+    if (targetStageIndex === -1) {
+      return res.status(404).json({
+        success: false,
+        message: 'Target stage not found'
+      });
+    }
+
+    if (targetStageIndex >= effectiveCurrentIndex) {
+      return res.status(400).json({
+        success: false,
+        message: 'Can only revert to a previous stage'
+      });
+    }
+
+    const targetStage = sortedStages[targetStageIndex];
+
+    // Mark all stages from target to current as reverted, then set target to pending
+    for (let i = targetStageIndex; i <= effectiveCurrentIndex; i++) {
+      const stageId = sortedStages[i]._id;
+      const stageIdx = application.applicationStages.findIndex(s => s._id.toString() === stageId.toString());
+      if (stageIdx !== -1) {
+        if (i === targetStageIndex) {
+          application.applicationStages[stageIdx].status = 'pending';
+          application.applicationStages[stageIdx].completedAt = null;
+          application.applicationStages[stageIdx].completedBy = null;
+        } else {
+          application.applicationStages[stageIdx].status = 'reverted';
+        }
+        // Clear comments on reverted stages so they can be re-added
+        application.applicationStages[stageIdx].comments = {
+          unitAdmin: { comment: null, commentedBy: null, commentedAt: null },
+          areaAdmin: { comment: null, commentedBy: null, commentedAt: null },
+          districtAdmin: { comment: null, commentedBy: null, commentedAt: null }
+        };
+      }
+    }
+
+    // Also reset any stages after the effective current that were pending (shouldn't normally happen)
+    // but ensure stages after target that are between target+1 and currentIndex are reverted
+    for (let i = targetStageIndex + 1; i <= effectiveCurrentIndex; i++) {
+      const stageId = sortedStages[i]._id;
+      const stageIdx = application.applicationStages.findIndex(s => s._id.toString() === stageId.toString());
+      if (stageIdx !== -1) {
+        application.applicationStages[stageIdx].status = 'pending';
+        application.applicationStages[stageIdx].completedAt = null;
+        application.applicationStages[stageIdx].completedBy = null;
+      }
+    }
+
+    // Update current stage
+    application.currentStage = targetStage.name;
+
+    // Add to stage history
+    if (!application.stageHistory) {
+      application.stageHistory = [];
+    }
+    application.stageHistory.push({
+      stageName: sortedStages[effectiveCurrentIndex]?.name || application.currentStage,
+      status: 'reverted',
+      timestamp: new Date(),
+      updatedBy: req.user._id,
+      notes: reason,
+      revertedTo: targetStage.name
+    });
+
+    await application.save();
+
+    await application.populate('applicationStages.completedBy', 'name role');
+    await application.populate('stageHistory.updatedBy', 'name role');
+
+    // Populate beneficiary and scheme for notification
+    await application.populate('beneficiary', 'name phone userId');
+    await application.populate('scheme', 'name');
+
+    // Send revert notifications (WhatsApp + Push + In-App) to beneficiary + all admin layers
+    notificationService
+      .notifyStageReverted(application, targetStage.name, {
+        revertedBy: req.user._id,
+        reason
+      })
+      .catch(err => console.error('❌ Stage revert notification failed:', err));
+
+    res.json({
+      success: true,
+      message: `Application reverted to stage: ${targetStage.name}`,
+      data: { application }
+    });
+  } catch (error) {
+    console.error('Error reverting application stage:', error);
+    res.status(500).json({
+      success: false,
+      message: error.message || 'Failed to revert application stage'
+    });
+  }
+};
+
+// ==============================
+// UPDATE APPLICATION STAGE STATUS
+// ==============================
+const updateApplicationStage = async (req, res) => {
+  try {
+    const { id, stageId } = req.params;
+    const { status, notes } = req.body;
+
+    const application = await Application.findById(id);
+    if (!application) {
+      return res.status(404).json({
+        success: false,
+        message: 'Application not found'
+      });
+    }
+
+    // Find the stage to update
+    const stageIndex = application.applicationStages.findIndex(
+      stage => stage._id.toString() === stageId
+    );
+
+    if (stageIndex === -1) {
+      return res.status(404).json({
+        success: false,
+        message: 'Stage not found'
+      });
+    }
+
+    const stage = application.applicationStages[stageIndex];
+
+    // Validate status
+    const validStatuses = ['pending', 'in_progress', 'completed', 'skipped'];
+    if (status && !validStatuses.includes(status)) {
+      return res.status(400).json({
+        success: false,
+        message: `Invalid status. Must be one of: ${validStatuses.join(', ')}`
+      });
+    }
+
+    // If completing a stage, validate required comments and documents
+    if (status === 'completed') {
+      const userRole = req.user.role;
+      const commentConfig = stage.commentConfig || {};
+      const comments = stage.comments || {};
+
+      // Check required comments
+      const roleCommentMap = {
+        'unit_admin': 'unitAdmin',
+        'area_admin': 'areaAdmin',
+        'district_admin': 'districtAdmin'
+      };
+
+      // Validate ALL required comments are present (not just the current user's role)
+      for (const [role, configKey] of Object.entries(roleCommentMap)) {
+        if (commentConfig[configKey]?.enabled && commentConfig[configKey]?.required) {
+          if (!comments[configKey]?.comment) {
+            return res.status(400).json({
+              success: false,
+              message: `${role.replace('_', ' ')} comment is required before completing this stage`
+            });
+          }
+        }
+      }
+
+      // Validate required documents are uploaded
+      const requiredDocs = (stage.requiredDocuments || []).filter(doc => doc.isRequired);
+      const missingDocs = requiredDocs.filter(doc => !doc.uploadedFile);
+      if (missingDocs.length > 0) {
+        return res.status(400).json({
+          success: false,
+          message: `Required documents missing: ${missingDocs.map(d => d.name).join(', ')}`
+        });
+      }
+    }
+
+    // Update the stage
+    application.applicationStages[stageIndex].status = status;
+    if (notes !== undefined) {
+      application.applicationStages[stageIndex].notes = notes;
+    }
+
+    if (status === 'completed') {
+      application.applicationStages[stageIndex].completedAt = new Date();
+      application.applicationStages[stageIndex].completedBy = req.user._id;
+    }
+
+    // Add to stage history
+    if (!application.stageHistory) {
+      application.stageHistory = [];
+    }
+
+    application.stageHistory.push({
+      stageName: application.applicationStages[stageIndex].name,
+      status: status,
+      timestamp: new Date(),
+      updatedBy: req.user._id,
+      notes: notes
+    });
+
+    // Update current stage (next pending stage)
+    const nextPendingStage = application.applicationStages
+      .filter(s => s.status === 'pending')
+      .sort((a, b) => a.order - b.order)[0];
+    if (nextPendingStage) {
+      application.currentStage = nextPendingStage.name;
+    }
+
+    await application.save();
+
+    await application.populate('applicationStages.completedBy', 'name role');
+    await application.populate('stageHistory.updatedBy', 'name role');
+
+    res.json({
+      success: true,
+      message: 'Stage updated successfully',
+      data: { application }
+    });
+  } catch (error) {
+    console.error('Error updating stage:', error);
+    res.status(500).json({
+      success: false,
+      message: error.message || 'Failed to update stage'
+    });
+  }
+};
+
+// =============================
+// ADD COMMENT TO APPLICATION STAGE
+// =============================
+const addStageComment = async (req, res) => {
+  try {
+    const { id, stageId } = req.params;
+    const { comment } = req.body;
+    const userRole = req.user.role;
+
+    if (!comment) {
+      return res.status(400).json({
+        success: false,
+        message: 'Comment text is required'
+      });
+    }
+
+    // Map user role to comment field
+    const roleToFieldMap = {
+      'unit_admin': 'unitAdmin',
+      'area_admin': 'areaAdmin',
+      'district_admin': 'districtAdmin',
+      'super_admin': null, // super_admin can comment as any role, handled below
+      'state_admin': null
+    };
+
+    const application = await Application.findById(id);
+    if (!application) {
+      return res.status(404).json({
+        success: false,
+        message: 'Application not found'
+      });
+    }
+
+    const stageIndex = application.applicationStages.findIndex(
+      stage => stage._id.toString() === stageId
+    );
+    if (stageIndex === -1) {
+      return res.status(404).json({
+        success: false,
+        message: 'Stage not found'
+      });
+    }
+
+    const stage = application.applicationStages[stageIndex];
+
+    // Determine which comment field to use
+    let commentField = roleToFieldMap[userRole];
+
+    // For super_admin/state_admin, allow specifying which role's comment to add via req.body.role
+    if (!commentField && req.body.role) {
+      const targetField = roleToFieldMap[req.body.role];
+      if (targetField) {
+        commentField = targetField;
+      }
+    }
+
+    // If still no field (super/state admin without specifying role), use districtAdmin as default
+    if (!commentField) {
+      commentField = 'districtAdmin';
+    }
+
+    // Verify comment is enabled for this role in this stage
+    const commentConfig = stage.commentConfig || {};
+    if (!commentConfig[commentField]?.enabled) {
+      // For super/state admin, allow anyway
+      if (!['super_admin', 'state_admin'].includes(userRole)) {
+        return res.status(400).json({
+          success: false,
+          message: `Comments are not enabled for ${commentField} in this stage`
+        });
+      }
+    }
+
+    // Set the comment
+    if (!application.applicationStages[stageIndex].comments) {
+      application.applicationStages[stageIndex].comments = {};
+    }
+    application.applicationStages[stageIndex].comments[commentField] = {
+      comment: comment,
+      commentedBy: req.user._id,
+      commentedAt: new Date()
+    };
+
+    await application.save();
+
+    await application.populate(`applicationStages.comments.${commentField}.commentedBy`, 'name role');
+
+    res.json({
+      success: true,
+      message: 'Comment added successfully',
+      data: {
+        stage: application.applicationStages[stageIndex]
+      }
+    });
+  } catch (error) {
+    console.error('Error adding stage comment:', error);
+    res.status(500).json({
+      success: false,
+      message: error.message || 'Failed to add comment'
+    });
+  }
+};
+
+// =============================
+// UPLOAD DOCUMENT FOR A STAGE
+// =============================
+const uploadStageDocument = async (req, res) => {
+  try {
+    const { id, stageId, docIndex } = req.params;
+
+    const application = await Application.findById(id);
+    if (!application) {
+      return res.status(404).json({
+        success: false,
+        message: 'Application not found'
+      });
+    }
+
+    const stageIndex = application.applicationStages.findIndex(
+      stage => stage._id.toString() === stageId
+    );
+    if (stageIndex === -1) {
+      return res.status(404).json({
+        success: false,
+        message: 'Stage not found'
+      });
+    }
+
+    const stage = application.applicationStages[stageIndex];
+    const docIdx = parseInt(docIndex);
+
+    if (isNaN(docIdx) || docIdx < 0 || docIdx >= (stage.requiredDocuments || []).length) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid document index'
+      });
+    }
+
+    // Get the uploaded file URL from the request (set by upload middleware)
+    const fileUrl = req.fileUrl || (req.file ? req.file.location || req.file.path : null);
+    if (!fileUrl) {
+      return res.status(400).json({
+        success: false,
+        message: 'No file uploaded'
+      });
+    }
+
+    // Update the document record
+    application.applicationStages[stageIndex].requiredDocuments[docIdx].uploadedFile = fileUrl;
+    application.applicationStages[stageIndex].requiredDocuments[docIdx].uploadedBy = req.user._id;
+    application.applicationStages[stageIndex].requiredDocuments[docIdx].uploadedAt = new Date();
+
+    await application.save();
+
+    res.json({
+      success: true,
+      message: 'Document uploaded successfully',
+      data: {
+        document: application.applicationStages[stageIndex].requiredDocuments[docIdx]
+      }
+    });
+  } catch (error) {
+    console.error('Error uploading stage document:', error);
+    res.status(500).json({
+      success: false,
+      message: error.message || 'Failed to upload document'
+    });
+  }
+};
+
+// Get applications due for renewal (admin)
+const getRenewalDueApplications = async (req, res) => {
+  try {
+    const {
+      page = 1,
+      limit = 10,
+      renewalStatus = '',
+      scheme = '',
+      search = ''
+    } = req.query;
+
+    const filter = {};
+
+    // Filter by renewal status
+    if (renewalStatus) {
+      filter.renewalStatus = renewalStatus;
+    } else {
+      filter.renewalStatus = { $in: ['active', 'due_for_renewal', 'expired'] };
+    }
+
+    // Filter by scheme
+    if (scheme) filter.scheme = scheme;
+
+    // Search
+    if (search) {
+      const beneficiaries = await Beneficiary.find({
+        $or: [
+          { name: { $regex: search, $options: 'i' } },
+          { phone: { $regex: search, $options: 'i' } }
+        ]
+      }).select('_id');
+
+      filter.$or = [
+        { applicationNumber: { $regex: search, $options: 'i' } },
+        { beneficiary: { $in: beneficiaries.map(b => b._id) } }
+      ];
+    }
+
+    // Apply regional access restrictions
+    const userRegionalFilter = getUserRegionalFilter(req.user);
+    Object.assign(filter, userRegionalFilter);
+
+    const skip = (parseInt(page) - 1) * parseInt(limit);
+
+    const applications = await Application.find(filter)
+      .populate('beneficiary', 'name phone')
+      .populate('scheme', 'name code renewalSettings')
+      .populate('project', 'name code')
+      .populate('state', 'name code')
+      .populate('district', 'name code')
+      .populate('area', 'name code')
+      .populate('unit', 'name code')
+      .sort({ expiryDate: 1 })
+      .skip(skip)
+      .limit(parseInt(limit));
+
+    const total = await Application.countDocuments(filter);
+
+    res.json({
+      success: true,
+      data: {
+        applications,
+        pagination: {
+          page: parseInt(page),
+          limit: parseInt(limit),
+          total,
+          pages: Math.ceil(total / parseInt(limit))
+        }
+      }
+    });
+  } catch (error) {
+    console.error('Error fetching renewal-due applications:', error);
+    res.status(500).json({ success: false, message: 'Server error' });
+  }
+};
+
+// Get renewal history for an application
+const getRenewalHistory = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const application = await Application.findById(id);
+    if (!application) {
+      return res.status(404).json({ success: false, message: 'Application not found' });
+    }
+
+    if (!hasAccessToApplication(req.user, application)) {
+      return res.status(403).json({ success: false, message: 'Access denied' });
+    }
+
+    // Find the root application (original)
+    let rootApplicationId = application._id;
+    if (application.isRenewal && application.parentApplication) {
+      // Walk up the chain to find the original
+      let current = application;
+      while (current.isRenewal && current.parentApplication) {
+        current = await Application.findById(current.parentApplication);
+        if (!current) break;
+        rootApplicationId = current._id;
+      }
+    }
+
+    // Find all renewals in the chain
+    const renewals = await Application.find({
+      $or: [
+        { _id: rootApplicationId },
+        { parentApplication: rootApplicationId }
+      ]
+    })
+      .populate('beneficiary', 'name phone')
+      .populate('scheme', 'name code')
+      .sort({ renewalNumber: 1 });
+
+    // Also find renewals of renewals (nested)
+    const allRenewalIds = renewals.map(r => r._id);
+    const nestedRenewals = await Application.find({
+      parentApplication: { $in: allRenewalIds },
+      _id: { $nin: allRenewalIds }
+    })
+      .populate('beneficiary', 'name phone')
+      .populate('scheme', 'name code')
+      .sort({ renewalNumber: 1 });
+
+    const allApplications = [...renewals, ...nestedRenewals].sort((a, b) => a.renewalNumber - b.renewalNumber);
+
+    res.json({
+      success: true,
+      data: {
+        originalApplication: allApplications.find(a => !a.isRenewal) || allApplications[0],
+        renewals: allApplications.filter(a => a.isRenewal),
+        totalRenewals: allApplications.filter(a => a.isRenewal).length
+      }
+    });
+  } catch (error) {
+    console.error('Error fetching renewal history:', error);
+    res.status(500).json({ success: false, message: 'Server error' });
+  }
+};
+
 module.exports = {
   getApplications,
   getApplication,
@@ -1051,7 +1700,14 @@ module.exports = {
   reviewApplication,
   approveApplication,
   deleteApplication,
+  getApplicationStagesFromScheme,
   generateDistributionTimeline,
   updateDistributionTimelineOnApproval,
-  updateApplicationsDistributionTimeline
+  updateApplicationsDistributionTimeline,
+  revertApplicationStage,
+  updateApplicationStage,
+  addStageComment,
+  uploadStageDocument,
+  getRenewalDueApplications,
+  getRenewalHistory
 };

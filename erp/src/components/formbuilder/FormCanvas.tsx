@@ -24,6 +24,11 @@ interface Field {
     operator: string;
     value: string;
   };
+  scoring?: {
+    enabled: boolean;
+    maxPoints: number;
+    scoringRules: { condition: string; value: string; value2?: string; points: number }[];
+  };
   pageId?: number;
 }
 

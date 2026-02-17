@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { ReportsModal } from "@/components/modals/ReportsModal";
-import { Download, Eye, CheckCircle, XCircle, FileText, Loader2, Grid, List, Filter } from "lucide-react";
+import { Eye, CheckCircle, XCircle, FileText, Loader2, Grid, List, Filter } from "lucide-react";
 import { useRBAC } from "@/hooks/useRBAC";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -9,7 +9,9 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { ApplicationDetailModal } from "@/components/modals/ApplicationDetailModal";
 import { GenericFilters } from "@/components/filters/GenericFilters";
 import { useApplicationFilters } from "@/hooks/useApplicationFilters";
-import { useApplicationExport } from "@/hooks/useApplicationExport";
+import { useExport } from '@/hooks/useExport';
+import ExportButton from '@/components/common/ExportButton';
+import { applicationExportColumns } from '@/utils/exportColumns';
 import { toast } from "@/hooks/use-toast";
 import { Pagination, PaginationContent, PaginationItem, PaginationLink, PaginationNext, PaginationPrevious } from "@/components/ui/pagination";
 import { applications } from "@/lib/api";
@@ -34,7 +36,13 @@ export default function FieldVerificationApplications() {
   const { hasAnyPermission, hasPermission } = useRBAC();
   
   const filterHook = useApplicationFilters('field_verification');
-  const { exportApplications, exporting } = useApplicationExport();
+  const { exportCSV, exportPDF, printData, exporting } = useExport({
+    apiCall: (params) => applications.export(params),
+    filenamePrefix: 'applications',
+    pdfTitle: 'Field Verification Applications Report',
+    pdfColumns: applicationExportColumns,
+    getFilterParams: () => filterHook.getExportParams(),
+  });
   
   const [applicationList, setApplicationList] = useState<Application[]>([]);
   const [selectedApp, setSelectedApp] = useState<Application | null>(null);
@@ -131,10 +139,6 @@ export default function FieldVerificationApplications() {
     }
   };
 
-  const handleExport = () => {
-    exportApplications(filterHook.getExportParams(), 'field_verification_applications');
-  };
-
   return (
     <div className="space-y-6">
       <ApplicationDetailModal 
@@ -146,15 +150,18 @@ export default function FieldVerificationApplications() {
         }}
       />
       
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-xl font-bold">Field Verification Applications</h1>
+          <h1 className="text-lg font-bold">Field Verification Applications</h1>
           <p className="text-muted-foreground mt-1">Applications pending field verification</p>
         </div>
         <div className="flex items-center gap-2">
-          <Button variant="outline" onClick={handleExport} disabled={exporting}>
-            <Download className="mr-2 h-4 w-4" />{exporting ? "Exporting..." : "Export Report"}
-          </Button>
+          <ExportButton
+            onExportCSV={() => exportCSV()}
+            onExportPDF={() => exportPDF()}
+            onPrint={() => printData()}
+            exporting={exporting}
+          />
           <div className="flex items-center border rounded-lg p-1">
             <Button variant={viewMode === 'cards' ? 'default' : 'ghost'} size="sm" onClick={() => setViewMode('cards')}>
               <Grid className="h-4 w-4" />
@@ -258,6 +265,7 @@ export default function FieldVerificationApplications() {
               ))}
             </div>
           ) : (
+            <div className="overflow-x-auto">
             <Table>
               <TableHeader>
                 <TableRow>
@@ -312,6 +320,7 @@ export default function FieldVerificationApplications() {
                 ))}
               </TableBody>
             </Table>
+            </div>
           )}
 
           {pagination.pages > 1 && (

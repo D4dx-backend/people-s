@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
+import VoiceToTextButton from '@/components/ui/VoiceToTextButton';
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -318,10 +319,10 @@ export default function CommitteeApproval() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <div className="flex items-center gap-2">
-            <h1 className="text-xl font-bold flex items-center gap-2">
+            <h1 className="text-lg font-bold flex items-center gap-2">
               <Scale className="h-8 w-8" />
               Final Approval
             </h1>
@@ -413,6 +414,7 @@ export default function CommitteeApproval() {
               <CardTitle>Applications Pending Committee Review</CardTitle>
             </CardHeader>
             <CardContent>
+              <div className="overflow-x-auto">
               <Table>
                 <TableHeader>
                   <TableRow>
@@ -488,6 +490,7 @@ export default function CommitteeApproval() {
                   ))}
                 </TableBody>
               </Table>
+              </div>
             </CardContent>
           </Card>
 
@@ -1045,13 +1048,22 @@ export default function CommitteeApproval() {
                 <Label className="text-base font-semibold">
                   Committee Comments <span className="text-destructive">*</span>
                 </Label>
-                <Textarea
-                  placeholder={`Enter committee ${decision} comments...`}
-                  value={comments}
-                  onChange={(e) => setComments(e.target.value)}
-                  rows={4}
-                  className="resize-none"
-                />
+                <div className="relative">
+                  <Textarea
+                    placeholder={`Enter committee ${decision} comments...`}
+                    value={comments}
+                    onChange={(e) => setComments(e.target.value)}
+                    rows={4}
+                    className="resize-none pr-12"
+                  />
+                  <div className="absolute right-2 top-2">
+                    <VoiceToTextButton
+                      onTranscript={(text) => setComments(prev => prev ? prev + ' ' + text : text)}
+                      size="icon"
+                      className="h-8 w-8"
+                    />
+                  </div>
+                </div>
               </div>
             </div>
           )}

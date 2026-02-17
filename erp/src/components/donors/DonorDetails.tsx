@@ -164,7 +164,7 @@ export const DonorDetails: React.FC<DonorDetailsProps> = ({ donorId, onEdit }) =
             </AvatarFallback>
           </Avatar>
           <div>
-            <h1 className="text-2xl font-bold">{donor.name}</h1>
+            <h1 className="text-lg font-bold">{donor.name}</h1>
             <div className="flex items-center gap-2 mt-1">
               <Badge className={getCategoryColor(donor.category)}>
                 {donor.category}

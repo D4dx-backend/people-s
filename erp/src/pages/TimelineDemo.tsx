@@ -14,7 +14,7 @@ export default function TimelineDemo() {
       {/* Header */}
       <div className="space-y-4">
         <div>
-          <h1 className="text-xl font-bold">Distribution Timeline Accordion</h1>
+          <h1 className="text-lg font-bold">Distribution Timeline Accordion</h1>
           <p className="text-muted-foreground mt-2">
             Interactive accordion component for managing and displaying money distribution timelines
           </p>

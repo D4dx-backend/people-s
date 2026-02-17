@@ -3,6 +3,7 @@ const { User, Location } = require('../models');
 const ResponseHelper = require('../utils/responseHelper');
 const staticOTPConfig = require('../config/staticOTP');
 const whatsappOTPService = require('../utils/whatsappOtpService');
+const LoginLogService = require('../services/loginLogService');
 
 class BeneficiaryAuthController {
   /**
@@ -128,10 +129,38 @@ class BeneficiaryAuthController {
         response.note = 'Development mode - OTP included in response';
       }
 
+      // Log successful OTP request to login logs
+      await LoginLogService.logLoginEvent({
+        userId: user._id,
+        userType: 'beneficiary',
+        action: 'otp_requested',
+        status: 'success',
+        phone,
+        req,
+        otpDetails: {
+          requestedAt: new Date(),
+          purpose: 'beneficiary-login',
+          channel: isTestAccount ? 'test' : (staticOTPConfig.USE_STATIC_OTP && staticOTPConfig.isStaticOTPAllowed()) ? 'static' : staticOTPConfig.USE_WHATSAPP_OTP ? 'whatsapp' : 'development'
+        }
+      });
+
       return ResponseHelper.success(res, response, 'OTP sent successfully');
 
     } catch (error) {
       console.error('❌ Beneficiary Send OTP Error:', error);
+
+      // Log failed OTP request
+      await LoginLogService.logLoginEvent({
+        userId: null,
+        userType: 'beneficiary',
+        action: 'otp_requested',
+        status: 'failed',
+        phone: req.body.phone || 'unknown',
+        req,
+        failureReason: 'server_error',
+        metadata: { error: error.message }
+      });
+
       return ResponseHelper.error(res, error.message, 500);
     }
   }
@@ -155,6 +184,16 @@ class BeneficiaryAuthController {
       // Find user
       const user = await User.findOne({ phone, isActive: true });
       if (!user) {
+        // Log failed login - user not found
+        await LoginLogService.logLoginEvent({
+          userId: null,
+          userType: 'beneficiary',
+          action: 'login_failed',
+          status: 'failed',
+          phone,
+          req,
+          failureReason: 'user_not_found'
+        });
         return ResponseHelper.error(res, 'User not found', 404);
       }
 
@@ -169,12 +208,33 @@ class BeneficiaryAuthController {
             user.otp.verified = true;
           }
         } else {
+          // Log failed test account login
+          await LoginLogService.logLoginEvent({
+            userId: user._id,
+            userType: 'beneficiary',
+            action: 'login_failed',
+            status: 'failed',
+            phone,
+            req,
+            failureReason: 'invalid_otp'
+          });
           return ResponseHelper.error(res, 'Invalid OTP. Test account OTP is always 123456', 400);
         }
       } else {
         // Regular account: use standard OTP verification
         otpVerification = user.verifyOTP(otp, 'beneficiary-login');
         if (!otpVerification.success) {
+          // Log failed OTP verification
+          await LoginLogService.logLoginEvent({
+            userId: user._id,
+            userType: 'beneficiary',
+            action: 'login_failed',
+            status: 'failed',
+            phone,
+            req,
+            failureReason: otpVerification.message.includes('expired') ? 'expired_otp' : 'invalid_otp',
+            metadata: { message: otpVerification.message }
+          });
           return ResponseHelper.error(res, otpVerification.message, 400);
         }
       }
@@ -206,6 +266,17 @@ class BeneficiaryAuthController {
       console.log('✅ Beneficiary login successful');
       console.log('- Returning user data:', userData);
 
+      // Log successful login to login logs
+      await LoginLogService.logLoginEvent({
+        userId: user._id,
+        userType: 'beneficiary',
+        action: 'login_success',
+        status: 'success',
+        phone,
+        req,
+        otpDetails: { verifiedAt: new Date(), purpose: 'beneficiary-login' }
+      });
+
       return ResponseHelper.success(res, {
         user: userData,
         token,
@@ -214,6 +285,26 @@ class BeneficiaryAuthController {
 
     } catch (error) {
       console.error('❌ Beneficiary Verify OTP Error:', error);
+
+      // Determine failure reason
+      let failureReason = 'server_error';
+      if (error.message.includes('Invalid OTP') || error.message.includes('invalid')) failureReason = 'invalid_otp';
+      else if (error.message.includes('expired')) failureReason = 'expired_otp';
+      else if (error.message.includes('not found')) failureReason = 'user_not_found';
+      else if (error.message.includes('inactive')) failureReason = 'user_inactive';
+
+      // Log failed login to login logs
+      await LoginLogService.logLoginEvent({
+        userId: null,
+        userType: 'beneficiary',
+        action: 'login_failed',
+        status: 'failed',
+        phone: req.body.phone || 'unknown',
+        req,
+        failureReason,
+        metadata: { error: error.message }
+      });
+
       return ResponseHelper.error(res, error.message, 500);
     }
   }
@@ -378,10 +469,38 @@ class BeneficiaryAuthController {
         response.note = 'Static OTP enabled for testing (development mode only)';
       }
 
+      // Log OTP resend to login logs
+      await LoginLogService.logLoginEvent({
+        userId: user._id,
+        userType: 'beneficiary',
+        action: 'otp_resent',
+        status: 'success',
+        phone,
+        req,
+        otpDetails: {
+          requestedAt: new Date(),
+          purpose: 'beneficiary-login',
+          channel: isTestAccount ? 'test' : 'static'
+        }
+      });
+
       return ResponseHelper.success(res, response, 'OTP resent successfully');
 
     } catch (error) {
       console.error('❌ Resend OTP Error:', error);
+
+      // Log failed OTP resend
+      await LoginLogService.logLoginEvent({
+        userId: null,
+        userType: 'beneficiary',
+        action: 'otp_resent',
+        status: 'failed',
+        phone: req.body.phone || 'unknown',
+        req,
+        failureReason: 'server_error',
+        metadata: { error: error.message }
+      });
+
       return ResponseHelper.error(res, error.message, 500);
     }
   }

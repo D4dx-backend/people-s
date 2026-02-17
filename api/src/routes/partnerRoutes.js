@@ -4,6 +4,9 @@ const partnerController = require('../controllers/partnerController');
 const { authenticate } = require('../middleware/auth');
 const { hasAnyPermission } = require('../middleware/rbacMiddleware');
 const { uploadSingleMemory } = require('../middleware/upload');
+const { createExportHandler } = require('../middleware/exportHandler');
+const exportConfigs = require('../config/exportConfigs');
+const Partner = require('../models/Partner');
 
 // Public routes
 router.get('/public', partnerController.getPublicPartners);
@@ -11,6 +14,12 @@ router.get('/public/:id', partnerController.getPartnerById);
 
 // Protected routes
 router.use(authenticate);
+
+// Export partners as CSV or JSON
+router.get('/export',
+  hasAnyPermission(['website.read', 'partners.read']),
+  createExportHandler(Partner, exportConfigs.partner)
+);
 
 router.get(
   '/',

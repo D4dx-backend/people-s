@@ -2,6 +2,9 @@ const express = require('express');
 const donationController = require('../controllers/donationController');
 const { authenticate } = require('../middleware/auth');
 const RBACMiddleware = require('../middleware/rbacMiddleware');
+const { createExportHandler } = require('../middleware/exportHandler');
+const exportConfigs = require('../config/exportConfigs');
+const Donation = require('../models/Donation');
 
 const router = express.Router();
 
@@ -77,6 +80,12 @@ router.use(authenticate);
  *       401:
  *         description: Authentication required
  */
+// Export donations as CSV or JSON
+router.get('/export',
+  RBACMiddleware.hasPermission('donors.read.regional'),
+  createExportHandler(Donation, exportConfigs.donation)
+);
+
 router.get('/', 
   RBACMiddleware.hasPermission('donors.read.regional'),
   donationController.getDonations

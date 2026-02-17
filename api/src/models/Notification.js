@@ -158,6 +158,18 @@ const notificationSchema = new mongoose.Schema({
     enquiryReport: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'EnquiryReport'
+    },
+    donation: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Donation'
+    },
+    donor: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Donor'
+    },
+    donorFollowUp: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'DonorFollowUp'
     }
   },
   

@@ -152,6 +152,37 @@ const schemeSchema = new mongoose.Schema({
     }
   },
 
+  // Renewal Settings
+  renewalSettings: {
+    isRenewable: {
+      type: Boolean,
+      default: false
+    },
+    renewalPeriodDays: {
+      type: Number,
+      min: 1,
+      default: 365
+    },
+    maxRenewals: {
+      type: Number,
+      min: 0,
+      default: 0 // 0 = unlimited
+    },
+    autoNotifyBeforeDays: {
+      type: Number,
+      min: 1,
+      default: 30
+    },
+    requiresReapproval: {
+      type: Boolean,
+      default: true
+    },
+    renewalFormConfigured: {
+      type: Boolean,
+      default: false
+    }
+  },
+
   // Money Distribution Timeline Template
   distributionTimeline: [{
     description: {
@@ -211,7 +242,38 @@ const schemeSchema = new mongoose.Schema({
     transitionConditions: {
       type: String,
       maxlength: 500
-    }
+    },
+    // Per-role comment configuration
+    commentConfig: {
+      unitAdmin: {
+        enabled: { type: Boolean, default: false },
+        required: { type: Boolean, default: false }
+      },
+      areaAdmin: {
+        enabled: { type: Boolean, default: false },
+        required: { type: Boolean, default: false }
+      },
+      districtAdmin: {
+        enabled: { type: Boolean, default: false },
+        required: { type: Boolean, default: false }
+      }
+    },
+    // Required documents for this stage
+    requiredDocuments: [{
+      name: {
+        type: String,
+        required: true,
+        maxlength: 200
+      },
+      description: {
+        type: String,
+        maxlength: 500
+      },
+      isRequired: {
+        type: Boolean,
+        default: true
+      }
+    }]
   }],
   
   // Status and Workflow

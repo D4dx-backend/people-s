@@ -968,6 +968,111 @@ class RBACService {
         scope: 'regional',
         securityLevel: 'internal',
         auditRequired: true
+      },
+
+      // Activity Log Permissions
+      {
+        name: 'activity_logs.read',
+        displayName: 'View Activity Logs',
+        description: 'View activity / audit logs',
+        module: 'activity_logs',
+        category: 'read',
+        resource: 'activity_log',
+        action: 'read',
+        scope: 'global',
+        securityLevel: 'internal'
+      },
+      {
+        name: 'activity_logs.export',
+        displayName: 'Export Activity Logs',
+        description: 'Export activity logs as CSV / JSON',
+        module: 'activity_logs',
+        category: 'export',
+        resource: 'activity_log',
+        action: 'export',
+        scope: 'global',
+        securityLevel: 'internal'
+      },
+
+      // Login Log Permissions
+      {
+        name: 'login_logs.read',
+        displayName: 'View Login Logs',
+        description: 'View login / authentication event logs',
+        module: 'login_logs',
+        category: 'read',
+        resource: 'login_log',
+        action: 'read',
+        scope: 'global',
+        securityLevel: 'confidential'
+      },
+      {
+        name: 'login_logs.export',
+        displayName: 'Export Login Logs',
+        description: 'Export login logs as CSV / JSON',
+        module: 'login_logs',
+        category: 'export',
+        resource: 'login_log',
+        action: 'export',
+        scope: 'global',
+        securityLevel: 'confidential'
+      },
+      {
+        name: 'login_logs.delete',
+        displayName: 'Delete Login Logs',
+        description: 'Clean up old login logs',
+        module: 'login_logs',
+        category: 'delete',
+        resource: 'login_log',
+        action: 'delete',
+        scope: 'global',
+        securityLevel: 'confidential'
+      },
+
+      // Error Log Permissions
+      {
+        name: 'error_logs.read',
+        displayName: 'View Error Logs',
+        description: 'View application error logs',
+        module: 'error_logs',
+        category: 'read',
+        resource: 'error_log',
+        action: 'read',
+        scope: 'global',
+        securityLevel: 'internal'
+      },
+      {
+        name: 'error_logs.manage',
+        displayName: 'Manage Error Logs',
+        description: 'Mark errors as resolved',
+        module: 'error_logs',
+        category: 'update',
+        resource: 'error_log',
+        action: 'update',
+        scope: 'global',
+        securityLevel: 'internal'
+      },
+      {
+        name: 'error_logs.export',
+        displayName: 'Export Error Logs',
+        description: 'Export error logs as CSV / JSON',
+        module: 'error_logs',
+        category: 'export',
+        resource: 'error_log',
+        action: 'export',
+        scope: 'global',
+        securityLevel: 'internal'
+      },
+      {
+        name: 'error_logs.delete',
+        displayName: 'Delete Error Logs',
+        description: 'Clean up old error logs',
+        module: 'error_logs',
+        category: 'delete',
+        resource: 'error_log',
+        action: 'delete',
+        scope: 'global',
+        securityLevel: 'internal'
       }
     ];
 
@@ -1088,7 +1193,16 @@ class RBACService {
           'documents.update', 'documents.delete',
           
           // Interview Management - Full Access
-          'interviews.schedule', 'interviews.read', 'interviews.update', 'interviews.cancel'
+          'interviews.schedule', 'interviews.read', 'interviews.update', 'interviews.cancel',
+          
+          // Activity Logs
+          'activity_logs.read', 'activity_logs.export',
+          
+          // Login Logs
+          'login_logs.read', 'login_logs.export', 'login_logs.delete',
+          
+          // Error Logs
+          'error_logs.read', 'error_logs.manage', 'error_logs.export', 'error_logs.delete'
         ]
       },
       {

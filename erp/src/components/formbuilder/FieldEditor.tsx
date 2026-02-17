@@ -1,4 +1,4 @@
-import { Trash2, Settings, ChevronDown, ChevronUp, Zap } from "lucide-react";
+import { Trash2, Settings, ChevronDown, ChevronUp, Zap, Target, Plus, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -7,6 +7,13 @@ import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Card, CardContent } from "@/components/ui/card";
 import { useState } from "react";
+import { 
+  type ScoringRule, 
+  SCORING_CONDITIONS_BY_TYPE, 
+  isScorableType, 
+  isOptionBasedType, 
+  NON_SCORABLE_TYPES 
+} from "@/types/formBuilder";
 
 interface Field {
   id: number;
@@ -26,6 +33,11 @@ interface Field {
     operator: string;
     value: string;
   };
+  scoring?: {
+    enabled: boolean;
+    maxPoints: number;
+    scoringRules: ScoringRule[];
+  };
 }
 
 interface FieldEditorProps {
@@ -40,6 +52,7 @@ interface FieldEditorProps {
 export function FieldEditor({ field, onUpdate, onDelete, onMoveUp, onMoveDown, availableFields = [] }: FieldEditorProps) {
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [showConditional, setShowConditional] = useState(false);
+  const [showScoring, setShowScoring] = useState(false);
 
   return (
     <Card className="group hover:shadow-md transition-shadow">
@@ -268,6 +281,17 @@ export function FieldEditor({ field, onUpdate, onDelete, onMoveUp, onMoveDown, a
                   <Zap className="h-3 w-3 mr-1" />
                   Conditional Logic
                 </Button>
+                {isScorableType(field.type) && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className={`h-7 text-xs ${field.scoring?.enabled ? 'border-green-500 text-green-700 bg-green-50' : ''}`}
+                    onClick={() => setShowScoring(!showScoring)}
+                  >
+                    <Target className="h-3 w-3 mr-1" />
+                    Scoring {field.scoring?.enabled ? `(${field.scoring.maxPoints} pts)` : ''}
+                  </Button>
+                )}
               </div>
 
               {showConditional && availableFields.length > 0 && (
@@ -314,6 +338,266 @@ export function FieldEditor({ field, onUpdate, onDelete, onMoveUp, onMoveDown, a
                     placeholder="Value"
                     className="h-7 text-xs"
                   />
+                </div>
+              )}
+
+              {showScoring && isScorableType(field.type) && (
+                <div className="space-y-3 p-3 border rounded-md bg-green-50/50 border-green-200 animate-fade-in">
+                  <div className="flex items-center justify-between">
+                    <Label className="text-xs font-semibold text-green-800">Scoring Rules</Label>
+                    <div className="flex items-center gap-2">
+                      <label className="text-xs text-green-700">Enable</label>
+                      <Switch
+                        checked={field.scoring?.enabled || false}
+                        onCheckedChange={(enabled) => {
+                          const scoring = field.scoring || { enabled: false, maxPoints: 0, scoringRules: [] };
+                          onUpdate({ ...field, scoring: { ...scoring, enabled } });
+                        }}
+                        className="scale-75"
+                      />
+                    </div>
+                  </div>
+
+                  {field.scoring?.enabled && (
+                    <div className="space-y-3">
+                      {/* Max Points */}
+                      <div className="flex items-center gap-2">
+                        <Label className="text-xs whitespace-nowrap">Max Points:</Label>
+                        <Input
+                          type="number"
+                          min="0"
+                          value={field.scoring?.maxPoints || 0}
+                          onChange={(e) => {
+                            const scoring = field.scoring || { enabled: true, maxPoints: 0, scoringRules: [] };
+                            onUpdate({ ...field, scoring: { ...scoring, maxPoints: Math.max(0, parseInt(e.target.value) || 0) } });
+                          }}
+                          className="h-7 w-20 text-xs"
+                        />
+                      </div>
+
+                      {/* Option-based scoring (auto-generated for select/radio/dropdown/multiselect/yesno/checkbox) */}
+                      {isOptionBasedType(field.type) && field.type !== 'yesno' && field.type !== 'checkbox' && (
+                        <div className="space-y-2">
+                          <Label className="text-xs font-medium text-green-700">Points per Option</Label>
+                          {(field.options || []).map((option, idx) => {
+                            const optionStr = typeof option === 'object' ? (option as any).label || String(option) : String(option);
+                            const existingRule = field.scoring?.scoringRules?.find(
+                              r => r.value === optionStr && (r.condition === 'equals' || r.condition === 'includes')
+                            );
+                            return (
+                              <div key={idx} className="flex items-center gap-2">
+                                <span className="text-xs flex-1 truncate">{optionStr}</span>
+                                <Input
+                                  type="number"
+                                  min="0"
+                                  value={existingRule?.points || 0}
+                                  onChange={(e) => {
+                                    const points = Math.max(0, parseInt(e.target.value) || 0);
+                                    const scoring = field.scoring || { enabled: true, maxPoints: 0, scoringRules: [] };
+                                    const condition = field.type === 'multiselect' ? 'includes' : 'equals';
+                                    const rules = [...(scoring.scoringRules || [])];
+                                    const existIdx = rules.findIndex(r => r.value === optionStr && (r.condition === 'equals' || r.condition === 'includes'));
+                                    if (existIdx >= 0) {
+                                      rules[existIdx] = { ...rules[existIdx], points };
+                                    } else {
+                                      rules.push({ condition, value: optionStr, points });
+                                    }
+                                    onUpdate({ ...field, scoring: { ...scoring, scoringRules: rules } });
+                                  }}
+                                  className="h-7 w-16 text-xs"
+                                  placeholder="pts"
+                                />
+                              </div>
+                            );
+                          })}
+                        </div>
+                      )}
+
+                      {/* Yes/No scoring */}
+                      {field.type === 'yesno' && (
+                        <div className="space-y-2">
+                          <Label className="text-xs font-medium text-green-700">Points per Answer</Label>
+                          {['Yes', 'No'].map((answer) => {
+                            const existingRule = field.scoring?.scoringRules?.find(r => r.value === answer.toLowerCase());
+                            return (
+                              <div key={answer} className="flex items-center gap-2">
+                                <span className="text-xs flex-1">{answer}</span>
+                                <Input
+                                  type="number"
+                                  min="0"
+                                  value={existingRule?.points || 0}
+                                  onChange={(e) => {
+                                    const points = Math.max(0, parseInt(e.target.value) || 0);
+                                    const scoring = field.scoring || { enabled: true, maxPoints: 0, scoringRules: [] };
+                                    const rules = [...(scoring.scoringRules || [])];
+                                    const existIdx = rules.findIndex(r => r.value === answer.toLowerCase());
+                                    if (existIdx >= 0) {
+                                      rules[existIdx] = { ...rules[existIdx], points };
+                                    } else {
+                                      rules.push({ condition: 'equals' as const, value: answer.toLowerCase(), points });
+                                    }
+                                    onUpdate({ ...field, scoring: { ...scoring, scoringRules: rules } });
+                                  }}
+                                  className="h-7 w-16 text-xs"
+                                  placeholder="pts"
+                                />
+                              </div>
+                            );
+                          })}
+                        </div>
+                      )}
+
+                      {/* Checkbox scoring */}
+                      {field.type === 'checkbox' && (
+                        <div className="space-y-2">
+                          <Label className="text-xs font-medium text-green-700">Points</Label>
+                          {['Checked', 'Unchecked'].map((state) => {
+                            const boolVal = state === 'Checked' ? 'true' : 'false';
+                            const existingRule = field.scoring?.scoringRules?.find(r => r.value === boolVal);
+                            return (
+                              <div key={state} className="flex items-center gap-2">
+                                <span className="text-xs flex-1">{state}</span>
+                                <Input
+                                  type="number"
+                                  min="0"
+                                  value={existingRule?.points || 0}
+                                  onChange={(e) => {
+                                    const points = Math.max(0, parseInt(e.target.value) || 0);
+                                    const scoring = field.scoring || { enabled: true, maxPoints: 0, scoringRules: [] };
+                                    const rules = [...(scoring.scoringRules || [])];
+                                    const existIdx = rules.findIndex(r => r.value === boolVal);
+                                    if (existIdx >= 0) {
+                                      rules[existIdx] = { ...rules[existIdx], points };
+                                    } else {
+                                      rules.push({ condition: 'equals' as const, value: boolVal, points });
+                                    }
+                                    onUpdate({ ...field, scoring: { ...scoring, scoringRules: rules } });
+                                  }}
+                                  className="h-7 w-16 text-xs"
+                                  placeholder="pts"
+                                />
+                              </div>
+                            );
+                          })}
+                        </div>
+                      )}
+
+                      {/* Rule-based scoring for number/text/date/file etc. */}
+                      {!isOptionBasedType(field.type) && (
+                        <div className="space-y-2">
+                          <div className="flex items-center justify-between">
+                            <Label className="text-xs font-medium text-green-700">Rules (first match wins)</Label>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-6 text-xs text-green-700"
+                              onClick={() => {
+                                const scoring = field.scoring || { enabled: true, maxPoints: 0, scoringRules: [] };
+                                const conditions = SCORING_CONDITIONS_BY_TYPE[field.type] || [{ value: 'is_not_empty', label: 'Is filled' }];
+                                const newRule: ScoringRule = {
+                                  condition: conditions[0].value as ScoringRule['condition'],
+                                  value: '',
+                                  points: 0
+                                };
+                                onUpdate({ ...field, scoring: { ...scoring, scoringRules: [...(scoring.scoringRules || []), newRule] } });
+                              }}
+                            >
+                              <Plus className="h-3 w-3 mr-1" />
+                              Add Rule
+                            </Button>
+                          </div>
+                          
+                          {(field.scoring?.scoringRules || []).map((rule, ruleIdx) => {
+                            const conditions = SCORING_CONDITIONS_BY_TYPE[field.type] || [];
+                            return (
+                              <div key={ruleIdx} className="flex items-center gap-1 p-2 border rounded bg-white">
+                                <Select
+                                  value={rule.condition}
+                                  onValueChange={(condition) => {
+                                    const scoring = { ...field.scoring! };
+                                    const rules = [...scoring.scoringRules];
+                                    rules[ruleIdx] = { ...rules[ruleIdx], condition: condition as ScoringRule['condition'] };
+                                    onUpdate({ ...field, scoring: { ...scoring, scoringRules: rules } });
+                                  }}
+                                >
+                                  <SelectTrigger className="h-7 text-xs w-28">
+                                    <SelectValue />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    {conditions.map(c => (
+                                      <SelectItem key={c.value} value={c.value} className="text-xs">{c.label}</SelectItem>
+                                    ))}
+                                  </SelectContent>
+                                </Select>
+
+                                {rule.condition !== 'is_not_empty' && rule.condition !== 'is_uploaded' && (
+                                  <Input
+                                    type={['number', 'date', 'datetime'].includes(field.type) && !['contains', 'equals'].includes(rule.condition) ? (field.type === 'number' ? 'number' : 'date') : 'text'}
+                                    value={rule.value || ''}
+                                    onChange={(e) => {
+                                      const scoring = { ...field.scoring! };
+                                      const rules = [...scoring.scoringRules];
+                                      rules[ruleIdx] = { ...rules[ruleIdx], value: e.target.value };
+                                      onUpdate({ ...field, scoring: { ...scoring, scoringRules: rules } });
+                                    }}
+                                    placeholder="Value"
+                                    className="h-7 text-xs flex-1"
+                                  />
+                                )}
+
+                                {rule.condition === 'between' && (
+                                  <Input
+                                    type={field.type === 'number' ? 'number' : 'date'}
+                                    value={rule.value2 || ''}
+                                    onChange={(e) => {
+                                      const scoring = { ...field.scoring! };
+                                      const rules = [...scoring.scoringRules];
+                                      rules[ruleIdx] = { ...rules[ruleIdx], value2: e.target.value };
+                                      onUpdate({ ...field, scoring: { ...scoring, scoringRules: rules } });
+                                    }}
+                                    placeholder="To"
+                                    className="h-7 text-xs w-20"
+                                  />
+                                )}
+
+                                <Input
+                                  type="number"
+                                  min="0"
+                                  value={rule.points}
+                                  onChange={(e) => {
+                                    const scoring = { ...field.scoring! };
+                                    const rules = [...scoring.scoringRules];
+                                    rules[ruleIdx] = { ...rules[ruleIdx], points: Math.max(0, parseInt(e.target.value) || 0) };
+                                    onUpdate({ ...field, scoring: { ...scoring, scoringRules: rules } });
+                                  }}
+                                  className="h-7 w-14 text-xs"
+                                  placeholder="pts"
+                                />
+
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-7 w-7 text-destructive"
+                                  onClick={() => {
+                                    const scoring = { ...field.scoring! };
+                                    const rules = [...scoring.scoringRules];
+                                    rules.splice(ruleIdx, 1);
+                                    onUpdate({ ...field, scoring: { ...scoring, scoringRules: rules } });
+                                  }}
+                                >
+                                  <X className="h-3 w-3" />
+                                </Button>
+                              </div>
+                            );
+                          })}
+
+                          {(!field.scoring?.scoringRules || field.scoring.scoringRules.length === 0) && (
+                            <p className="text-xs text-muted-foreground italic px-2">No rules added. Click "Add Rule" above.</p>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
               )}
             </div>

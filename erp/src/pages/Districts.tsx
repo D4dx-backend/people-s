@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Plus, Map, Edit, Trash2, Loader2, Search, Download } from "lucide-react";
+import { Plus, Map, Edit, Trash2, Loader2, Search } from "lucide-react";
 import { locations, type Location } from "@/lib/api";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
@@ -10,6 +10,9 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { AdvancedPagination } from "@/components/ui/pagination";
 import { useRBAC } from "@/hooks/useRBAC";
+import { useExport } from "@/hooks/useExport";
+import ExportButton from "@/components/common/ExportButton";
+import { locationExportColumns } from "@/utils/exportColumns";
 
 export default function Districts() {
   const { toast } = useToast();
@@ -17,6 +20,17 @@ export default function Districts() {
   
   const canViewLocations = hasPermission('settings.read');
   const canUpdateLocations = hasPermission('settings.update');
+
+  const { exportCSV, exportPDF, printData, exporting } = useExport({
+    apiCall: (params) => locations.export(params),
+    filenamePrefix: 'districts',
+    pdfTitle: 'Districts Report',
+    pdfColumns: locationExportColumns,
+    getFilterParams: () => ({
+      type: 'district',
+      search: search || undefined,
+    }),
+  });
   
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
@@ -168,58 +182,18 @@ export default function Districts() {
         itemName={selectedLocation?.name}
       />
 
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-xl font-bold">Districts</h1>
+          <h1 className="text-lg font-bold">Districts</h1>
           <p className="text-muted-foreground mt-1">Manage district master data</p>
         </div>
         <div className="flex gap-2">
-          <Button 
-            variant="outline" 
-            onClick={async () => {
-              try {
-                const params: any = { type: 'district' };
-                if (search) params.search = search;
-                
-                const response = await locations.getAll({ ...params, limit: 1000 });
-                if (response.success) {
-                  const data = Array.isArray(response.data?.locations) ? response.data.locations : [];
-                  const csv = [
-                    ['Name', 'Code', 'Status', 'Areas Count', 'Contact Person', 'Phone'].join(','),
-                    ...data.map((district: Location) => [
-                      district.name,
-                      district.code,
-                      district.isActive ? 'Active' : 'Inactive',
-                      district.childrenCount || 0,
-                      district.contactPerson?.name || '',
-                      district.contactPerson?.phone || ''
-                    ].join(','))
-                  ].join('\n');
-                  
-                  const blob = new Blob([csv], { type: 'text/csv' });
-                  const url = window.URL.createObjectURL(blob);
-                  const a = document.createElement('a');
-                  a.href = url;
-                  a.download = `districts-${new Date().toISOString().split('T')[0]}.csv`;
-                  a.click();
-                  
-                  toast({
-                    title: "Success",
-                    description: "Districts exported successfully",
-                  });
-                }
-              } catch (error) {
-                toast({
-                  title: "Error",
-                  description: "Failed to export districts",
-                  variant: "destructive",
-                });
-              }
-            }}
-          >
-            <Download className="mr-2 h-4 w-4" />
-            Export
-          </Button>
+          <ExportButton
+            onExportCSV={() => exportCSV()}
+            onExportPDF={() => exportPDF()}
+            onPrint={() => printData()}
+            exporting={exporting}
+          />
           {canUpdateLocations && (
             <Button className="bg-gradient-primary shadow-glow" onClick={() => setShowModal(true)}>
               <Plus className="mr-2 h-4 w-4" />
@@ -231,9 +205,9 @@ export default function Districts() {
 
       <Card>
         <CardHeader>
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <CardTitle>District Master Data</CardTitle>
-            <div className="relative w-64">
+            <div className="relative w-full sm:w-64">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
               <Input
                 placeholder="Search districts..."
@@ -256,7 +230,7 @@ export default function Districts() {
                 {districtList.map((district) => (
                   <div
                     key={district.id}
-                    className="flex items-center justify-between border rounded-lg p-4 hover:shadow-elegant transition-shadow"
+                    className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between border rounded-lg p-4 hover:shadow-elegant transition-shadow"
                   >
                     <div className="flex items-center gap-4">
                       <div className="h-12 w-12 rounded-full bg-gradient-primary flex items-center justify-center text-primary-foreground font-bold">

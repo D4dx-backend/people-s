@@ -1,8 +1,12 @@
 const express = require('express');
 const donorController = require('../controllers/donorController');
 const donationController = require('../controllers/donationController');
+const donorFollowUpController = require('../controllers/donorFollowUpController');
 const { authenticate, authorize } = require('../middleware/auth');
 const RBACMiddleware = require('../middleware/rbacMiddleware');
+const { createExportHandler } = require('../middleware/exportHandler');
+const exportConfigs = require('../config/exportConfigs');
+const Donor = require('../models/Donor');
 
 const router = express.Router();
 
@@ -89,6 +93,12 @@ router.use(authenticate);
  *       401:
  *         description: Authentication required
  */
+// Export donors as CSV or JSON
+router.get('/export',
+  RBACMiddleware.hasPermission('donors.read.regional'),
+  createExportHandler(Donor, exportConfigs.donor)
+);
+
 router.get('/history',
   RBACMiddleware.hasPermission('donors.read.regional'),
   donorController.getDonationHistory
@@ -681,4 +691,11 @@ router.get('/analytics/trends',
  *       401:
  *         description: Authentication required
  */
+
+// Send manual reminder to a specific donor
+router.post('/:id/send-reminder',
+  RBACMiddleware.hasAnyPermission(['donors.update', 'donors.update.regional']),
+  donorFollowUpController.sendDonorReminder.bind(donorFollowUpController)
+);
+
 module.exports = router;

@@ -6,6 +6,9 @@ const beneficiaryController = require('../controllers/beneficiaryController');
 const { authenticate, authorize } = require('../middleware/auth');
 const { validateRequest } = require('../middleware/validation');
 const { body, param, query } = require('express-validator');
+const { createExportHandler } = require('../middleware/exportHandler');
+const exportConfigs = require('../config/exportConfigs');
+const Beneficiary = require('../models/Beneficiary');
 
 // ============================================================================
 // BENEFICIARY-FACING ROUTES (Public & Protected)
@@ -91,6 +94,88 @@ router.get('/schemes/:id',
     validateRequest
   ], 
   beneficiaryApplicationController.getSchemeDetails
+);
+
+// Renewal routes (must come before generic /applications/:id)
+router.get('/applications/renewal-due',
+  authenticate,
+  authorize('beneficiary'),
+  beneficiaryApplicationController.getRenewalDueApplications
+);
+
+router.get('/applications/:id/renewal-form',
+  authenticate,
+  authorize('beneficiary'),
+  [
+    param('id').isMongoId().withMessage('Invalid application ID'),
+    validateRequest
+  ],
+  beneficiaryApplicationController.getRenewalForm
+);
+
+router.post('/applications/:id/renew',
+  authenticate,
+  authorize('beneficiary'),
+  [
+    param('id').isMongoId().withMessage('Invalid application ID'),
+    body('formData')
+      .notEmpty()
+      .withMessage('Form data is required')
+      .isObject()
+      .withMessage('Form data must be an object'),
+    body('documents').optional().isArray(),
+    validateRequest
+  ],
+  beneficiaryApplicationController.submitRenewal
+);
+
+// Draft routes (must come before POST /applications)
+router.post('/applications/draft',
+  authenticate,
+  authorize('beneficiary'),
+  [
+    body('schemeId')
+      .notEmpty()
+      .withMessage('Scheme ID is required')
+      .isMongoId()
+      .withMessage('Invalid scheme ID'),
+    body('formData').optional().isObject().withMessage('Form data must be an object'),
+    body('currentPage').optional().isInt({ min: 0 }),
+    validateRequest
+  ],
+  beneficiaryApplicationController.saveDraft
+);
+
+router.put('/applications/draft/:id',
+  authenticate,
+  authorize('beneficiary'),
+  [
+    param('id').isMongoId().withMessage('Invalid draft ID'),
+    body('formData').optional().isObject().withMessage('Form data must be an object'),
+    body('currentPage').optional().isInt({ min: 0 }),
+    validateRequest
+  ],
+  beneficiaryApplicationController.updateDraft
+);
+
+router.get('/applications/draft/scheme/:schemeId',
+  authenticate,
+  authorize('beneficiary'),
+  [
+    param('schemeId').isMongoId().withMessage('Invalid scheme ID'),
+    validateRequest
+  ],
+  beneficiaryApplicationController.getDraftForScheme
+);
+
+router.delete('/applications/draft/:id',
+  authenticate,
+  authorize('beneficiary'),
+  [
+    param('id').isMongoId().withMessage('Invalid draft ID'),
+    validateRequest
+  ],
+  beneficiaryApplicationController.deleteDraft
 );
 
 // Application routes
@@ -210,6 +295,13 @@ router.post('/',
     validateRequest
   ],
   beneficiaryController.createBeneficiary
+);
+
+// Export beneficiaries as CSV or JSON (admin route)
+router.get('/export',
+  authenticate,
+  authorize('super_admin', 'state_admin', 'district_admin', 'area_admin', 'unit_admin'),
+  createExportHandler(Beneficiary, exportConfigs.beneficiary)
 );
 
 // Get all beneficiaries (admin route)

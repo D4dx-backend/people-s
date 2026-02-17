@@ -79,6 +79,11 @@ interface ActivityLog {
     statusCode: number;
     duration: number;
   };
+  changes?: Array<{
+    field: string;
+    oldValue: any;
+    newValue: any;
+  }>;
   timestamp: string;
 }
 
@@ -287,9 +292,9 @@ const ActivityLogs: React.FC = () => {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-xl font-bold text-gray-900">Activity Logs</h1>
+          <h1 className="text-lg font-bold text-gray-900">Activity Logs</h1>
           <p className="text-gray-600">Monitor system activities and user actions</p>
         </div>
         
@@ -610,7 +615,7 @@ const ActivityLogs: React.FC = () => {
                               <Eye className="h-4 w-4" />
                             </Button>
                           </DialogTrigger>
-                          <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
+                          <DialogContent className="max-w-[95vw] sm:max-w-4xl max-h-[80vh] overflow-y-auto">
                             <DialogHeader>
                               <DialogTitle>Activity Log Details</DialogTitle>
                             </DialogHeader>
@@ -694,6 +699,38 @@ const ActivityLogs: React.FC = () => {
                                     {selectedLog.description}
                                   </p>
                                 </div>
+
+                                {selectedLog.changes && selectedLog.changes.length > 0 && (
+                                  <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                                      Changes (Before → After)
+                                    </label>
+                                    <div className="border rounded overflow-hidden">
+                                      <table className="w-full text-sm">
+                                        <thead className="bg-gray-100">
+                                          <tr>
+                                            <th className="px-3 py-2 text-left font-medium text-gray-600">Field</th>
+                                            <th className="px-3 py-2 text-left font-medium text-red-600">Old Value</th>
+                                            <th className="px-3 py-2 text-left font-medium text-green-600">New Value</th>
+                                          </tr>
+                                        </thead>
+                                        <tbody className="divide-y divide-gray-200">
+                                          {selectedLog.changes.map((change, idx) => (
+                                            <tr key={idx} className="hover:bg-gray-50">
+                                              <td className="px-3 py-2 font-mono text-xs font-medium">{change.field}</td>
+                                              <td className="px-3 py-2 font-mono text-xs text-red-700 bg-red-50">
+                                                {change.oldValue != null ? (typeof change.oldValue === 'object' ? JSON.stringify(change.oldValue) : String(change.oldValue)) : '—'}
+                                              </td>
+                                              <td className="px-3 py-2 font-mono text-xs text-green-700 bg-green-50">
+                                                {change.newValue != null ? (typeof change.newValue === 'object' ? JSON.stringify(change.newValue) : String(change.newValue)) : '—'}
+                                              </td>
+                                            </tr>
+                                          ))}
+                                        </tbody>
+                                      </table>
+                                    </div>
+                                  </div>
+                                )}
                                 
                                 {selectedLog.userAgent && (
                                   <div>
