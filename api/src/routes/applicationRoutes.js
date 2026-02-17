@@ -8,6 +8,7 @@ const {
   reviewApplication,
   approveApplication,
   deleteApplication,
+  getAvailableRevertRoles,
   revertApplicationStage,
   updateApplicationStage,
   addStageComment,
@@ -105,6 +106,13 @@ router.get('/:id/renewal-history',
   authenticate,
   authorize('super_admin', 'state_admin', 'district_admin', 'area_admin', 'unit_admin'),
   getRenewalHistory
+);
+
+// Get available roles to revert application to (must be before /:id route)
+router.get('/:id/available-revert-roles',
+  authenticate,
+  authorize('super_admin', 'state_admin', 'district_admin', 'area_admin'),
+  getAvailableRevertRoles
 );
 
 router.get('/', 

@@ -89,9 +89,26 @@ const VoiceToTextButton: React.FC<VoiceToTextButtonProps> = ({
       }
     };
 
-    recognition.onend = () => {
+    recognition.onend = async () => {
       if (fullTranscript.trim()) {
-        onTranscript(fullTranscript.trim());
+        // Send through backend for Gemini AI correction
+        setIsProcessing(true);
+        try {
+          const response = await speech.transcribe('', {
+            languageCode,
+            rawText: fullTranscript.trim()
+          });
+          if (response.success && response.data?.text) {
+            onTranscript(response.data.text);
+          } else {
+            onTranscript(fullTranscript.trim());
+          }
+        } catch {
+          // Fallback to raw transcript if correction fails
+          onTranscript(fullTranscript.trim());
+        } finally {
+          setIsProcessing(false);
+        }
       }
       setIsRecording(false);
     };

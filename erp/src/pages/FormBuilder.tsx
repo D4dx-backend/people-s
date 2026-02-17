@@ -198,11 +198,8 @@ export default function FormBuilder() {
             variant: "destructive"
           });
         } else {
-          toast({
-            title: "Using default configuration",
-            description: "Could not load existing form configuration. Using default template.",
-            variant: "destructive"
-          });
+          // Silently use default template - no need to alert the user
+          console.log('No existing form configuration found. Using default template.');
         }
       } finally {
         setLoading(false);

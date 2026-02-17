@@ -104,6 +104,122 @@ Complete API documentation for People's Foundation ERP system serving all user r
       {
         name: 'Locations',
         description: 'Location management endpoints for cascading selection (District > Area > Unit) used in profile updates and regional filtering'
+      },
+      {
+        name: 'Users',
+        description: 'User management - CRUD operations, role assignment, status management'
+      },
+      {
+        name: 'Beneficiaries',
+        description: 'Beneficiary admin management - CRUD, verification, export'
+      },
+      {
+        name: 'Application Management',
+        description: 'Admin application management - review, approval, stages, committee decisions'
+      },
+      {
+        name: 'Projects',
+        description: 'Project management - CRUD, progress tracking, status updates'
+      },
+      {
+        name: 'Donors',
+        description: 'Donor management and analytics'
+      },
+      {
+        name: 'Donations',
+        description: 'Donation tracking and receipt management'
+      },
+      {
+        name: 'Donor Follow-ups',
+        description: 'Donor follow-up scheduling and reminder management'
+      },
+      {
+        name: 'Payments',
+        description: 'Payment processing and receipt generation'
+      },
+      {
+        name: 'Recurring Payments',
+        description: 'Recurring payment schedules and budget forecasting'
+      },
+      {
+        name: 'Budget',
+        description: 'Budget analytics and financial reporting'
+      },
+      {
+        name: 'Interviews',
+        description: 'Interview scheduling and completion tracking'
+      },
+      {
+        name: 'Reports',
+        description: 'Report generation and field verification'
+      },
+      {
+        name: 'Dashboard',
+        description: 'Dashboard widgets and analytics'
+      },
+      {
+        name: 'RBAC',
+        description: 'Role-based access control - roles, permissions, assignments'
+      },
+      {
+        name: 'SMS',
+        description: 'SMS messaging and templates'
+      },
+      {
+        name: 'Notifications',
+        description: 'Push notification management'
+      },
+      {
+        name: 'File Upload',
+        description: 'File upload and management'
+      },
+      {
+        name: 'Master Data',
+        description: 'Master data configuration'
+      },
+      {
+        name: 'Form Configuration',
+        description: 'Dynamic form builder and configuration'
+      },
+      {
+        name: 'Activity Logs',
+        description: 'Activity audit logs and user tracking'
+      },
+      {
+        name: 'Login Logs',
+        description: 'Login event tracking and suspicious activity detection'
+      },
+      {
+        name: 'Error Logs',
+        description: 'Error monitoring and resolution tracking'
+      },
+      {
+        name: 'Application Config',
+        description: 'Application configuration settings'
+      },
+      {
+        name: 'Website',
+        description: 'Website settings and CMS'
+      },
+      {
+        name: 'News & Events',
+        description: 'News and events content management'
+      },
+      {
+        name: 'Brochures',
+        description: 'Brochure management and download tracking'
+      },
+      {
+        name: 'Partners',
+        description: 'Partner management'
+      },
+      {
+        name: 'Banners',
+        description: 'Banner management'
+      },
+      {
+        name: 'Speech',
+        description: 'Speech-to-text transcription'
       }
     ],
     components: {
@@ -365,6 +481,348 @@ Complete API documentation for People's Foundation ERP system serving all user r
             parent: {
               type: 'string',
               example: '507f1f77bcf86cd799439010'
+            }
+          }
+        },
+        Pagination: {
+          type: 'object',
+          properties: {
+            success: {
+              type: 'boolean',
+              example: true
+            },
+            data: {
+              type: 'array',
+              items: {
+                type: 'object'
+              }
+            },
+            pagination: {
+              type: 'object',
+              properties: {
+                total: {
+                  type: 'integer',
+                  example: 100
+                },
+                page: {
+                  type: 'integer',
+                  example: 1
+                },
+                limit: {
+                  type: 'integer',
+                  example: 10
+                },
+                pages: {
+                  type: 'integer',
+                  example: 10
+                }
+              }
+            }
+          }
+        },
+        Beneficiary: {
+          type: 'object',
+          properties: {
+            _id: {
+              type: 'string',
+              example: '507f1f77bcf86cd799439011'
+            },
+            name: {
+              type: 'string',
+              example: 'Aisha Mohammed'
+            },
+            phone: {
+              type: 'string',
+              example: '9876543210'
+            },
+            state: {
+              type: 'string',
+              example: '507f1f77bcf86cd799439010'
+            },
+            district: {
+              type: 'string',
+              example: '507f1f77bcf86cd799439011'
+            },
+            area: {
+              type: 'string',
+              example: '507f1f77bcf86cd799439012'
+            },
+            unit: {
+              type: 'string',
+              example: '507f1f77bcf86cd799439013'
+            },
+            status: {
+              type: 'string',
+              enum: ['active', 'inactive', 'blocked'],
+              example: 'active'
+            },
+            isVerified: {
+              type: 'boolean',
+              example: true
+            }
+          }
+        },
+        Project: {
+          type: 'object',
+          properties: {
+            _id: {
+              type: 'string',
+              example: '507f1f77bcf86cd799439011'
+            },
+            name: {
+              type: 'string',
+              example: 'Educational Support Program 2025'
+            },
+            code: {
+              type: 'string',
+              example: 'PRJ-2025-001'
+            },
+            category: {
+              type: 'string',
+              enum: ['education', 'healthcare', 'housing', 'welfare', 'emergency', 'infrastructure', 'livelihood', 'other'],
+              example: 'education'
+            },
+            status: {
+              type: 'string',
+              enum: ['draft', 'active', 'on_hold', 'completed', 'cancelled', 'archived'],
+              example: 'active'
+            },
+            budget: {
+              type: 'object',
+              properties: {
+                total: {
+                  type: 'number',
+                  example: 1000000
+                },
+                utilized: {
+                  type: 'number',
+                  example: 450000
+                }
+              }
+            }
+          }
+        },
+        Donor: {
+          type: 'object',
+          properties: {
+            _id: {
+              type: 'string',
+              example: '507f1f77bcf86cd799439011'
+            },
+            name: {
+              type: 'string',
+              example: 'Ibrahim Ahmed'
+            },
+            email: {
+              type: 'string',
+              example: 'ibrahim@example.com'
+            },
+            phone: {
+              type: 'string',
+              example: '9876543210'
+            },
+            type: {
+              type: 'string',
+              enum: ['individual', 'corporate', 'trust', 'institution', 'anonymous'],
+              example: 'individual'
+            },
+            category: {
+              type: 'string',
+              enum: ['regular', 'major', 'recurring', 'one_time', 'legacy'],
+              example: 'regular'
+            }
+          }
+        },
+        Donation: {
+          type: 'object',
+          properties: {
+            _id: {
+              type: 'string',
+              example: '507f1f77bcf86cd799439011'
+            },
+            donationNumber: {
+              type: 'string',
+              example: 'DON-2025-001234'
+            },
+            donor: {
+              type: 'string',
+              example: '507f1f77bcf86cd799439012'
+            },
+            amount: {
+              type: 'number',
+              example: 50000
+            },
+            method: {
+              type: 'string',
+              enum: ['cash', 'cheque', 'bank_transfer', 'upi', 'card', 'online', 'other'],
+              example: 'upi'
+            },
+            status: {
+              type: 'string',
+              enum: ['pending', 'received', 'verified', 'receipted', 'rejected', 'refunded'],
+              example: 'received'
+            },
+            date: {
+              type: 'string',
+              format: 'date-time',
+              example: '2025-11-17T10:30:00.000Z'
+            }
+          }
+        },
+        Payment: {
+          type: 'object',
+          properties: {
+            _id: {
+              type: 'string',
+              example: '507f1f77bcf86cd799439011'
+            },
+            paymentNumber: {
+              type: 'string',
+              example: 'PAY-2025-001234'
+            },
+            application: {
+              type: 'string',
+              example: '507f1f77bcf86cd799439012'
+            },
+            amount: {
+              type: 'number',
+              example: 50000
+            },
+            type: {
+              type: 'string',
+              enum: ['full', 'partial', 'installment', 'advance', 'recurring'],
+              example: 'full'
+            },
+            method: {
+              type: 'string',
+              enum: ['cash', 'cheque', 'bank_transfer', 'upi', 'other'],
+              example: 'bank_transfer'
+            },
+            status: {
+              type: 'string',
+              enum: ['pending', 'approved', 'processing', 'completed', 'failed', 'cancelled', 'refunded'],
+              example: 'completed'
+            }
+          }
+        },
+        Role: {
+          type: 'object',
+          properties: {
+            _id: {
+              type: 'string',
+              example: '507f1f77bcf86cd799439011'
+            },
+            name: {
+              type: 'string',
+              example: 'district_admin'
+            },
+            displayName: {
+              type: 'string',
+              example: 'District Administrator'
+            },
+            type: {
+              type: 'string',
+              enum: ['system', 'custom'],
+              example: 'system'
+            },
+            level: {
+              type: 'integer',
+              example: 3
+            },
+            permissions: {
+              type: 'array',
+              items: {
+                type: 'string'
+              },
+              example: ['507f1f77bcf86cd799439012']
+            }
+          }
+        },
+        Permission: {
+          type: 'object',
+          properties: {
+            _id: {
+              type: 'string',
+              example: '507f1f77bcf86cd799439011'
+            },
+            name: {
+              type: 'string',
+              example: 'users.read.regional'
+            },
+            module: {
+              type: 'string',
+              example: 'users'
+            },
+            category: {
+              type: 'string',
+              example: 'read'
+            },
+            description: {
+              type: 'string',
+              example: 'View users within regional scope'
+            }
+          }
+        },
+        Interview: {
+          type: 'object',
+          properties: {
+            _id: {
+              type: 'string',
+              example: '507f1f77bcf86cd799439011'
+            },
+            application: {
+              type: 'string',
+              example: '507f1f77bcf86cd799439012'
+            },
+            scheduledDate: {
+              type: 'string',
+              format: 'date',
+              example: '2025-11-20'
+            },
+            scheduledTime: {
+              type: 'string',
+              example: '10:00'
+            },
+            type: {
+              type: 'string',
+              enum: ['in_person', 'virtual'],
+              example: 'in_person'
+            },
+            status: {
+              type: 'string',
+              enum: ['scheduled', 'completed', 'cancelled', 'rescheduled'],
+              example: 'scheduled'
+            }
+          }
+        },
+        Notification: {
+          type: 'object',
+          properties: {
+            _id: {
+              type: 'string',
+              example: '507f1f77bcf86cd799439011'
+            },
+            title: {
+              type: 'string',
+              example: 'Application Approved'
+            },
+            message: {
+              type: 'string',
+              example: 'Your application has been approved'
+            },
+            type: {
+              type: 'string',
+              enum: ['info', 'success', 'warning', 'error', 'announcement'],
+              example: 'success'
+            },
+            isRead: {
+              type: 'boolean',
+              example: false
+            },
+            createdAt: {
+              type: 'string',
+              format: 'date-time',
+              example: '2025-11-17T10:30:00.000Z'
             }
           }
         }
@@ -1802,7 +2260,10 @@ Complete API documentation for People's Foundation ERP system serving all user r
       }
     }
   },
-  apis: []
+  apis: [
+    './src/routes/*.js',
+    './src/docs/swagger/*.yaml'
+  ]
 };
 
 const specs = swaggerJsdoc(options);

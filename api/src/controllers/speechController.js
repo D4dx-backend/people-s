@@ -3,28 +3,103 @@ const axios = require('axios');
 /**
  * Speech-to-Text Controller
  * Converts audio to Malayalam text using Google Cloud Speech-to-Text API
+ * Then corrects/polishes the text using Google Gemini AI
  */
 
 /**
+ * Correct and polish transcribed text using Google Gemini API
+ * Fixes spelling, grammar, and makes the text natural
+ */
+const correctTranscription = async (rawText, languageCode, apiKey) => {
+  try {
+    if (!rawText || rawText.trim().length < 2) return rawText;
+
+    const isMalayalam = languageCode?.startsWith('ml');
+    
+    const prompt = isMalayalam 
+      ? `You are a Malayalam language expert. The following text was transcribed from speech and may contain errors. 
+Please correct any spelling mistakes, grammar errors, and make the text natural and readable in Malayalam.
+Only return the corrected text, nothing else. Do not add explanations or quotes.
+If the text is already correct, return it as-is.
+If the text contains a mix of Malayalam and English, keep the English words as-is but fix any Malayalam errors.
+
+Raw transcription: "${rawText}"`
+      : `The following text was transcribed from speech and may contain errors.
+Please correct any spelling mistakes, grammar errors, and make the text natural and readable.
+Only return the corrected text, nothing else. Do not add explanations or quotes.
+If the text is already correct, return it as-is.
+
+Raw transcription: "${rawText}"`;
+
+    const response = await axios.post(
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`,
+      {
+        contents: [{
+          parts: [{ text: prompt }]
+        }],
+        generationConfig: {
+          temperature: 0.1,
+          maxOutputTokens: 1024,
+          topP: 0.8
+        }
+      },
+      {
+        headers: { 'Content-Type': 'application/json' },
+        timeout: 15000
+      }
+    );
+
+    const correctedText = response.data?.candidates?.[0]?.content?.parts?.[0]?.text?.trim();
+    
+    if (correctedText && correctedText.length > 0) {
+      // Remove any surrounding quotes that Gemini might add
+      return correctedText.replace(/^["']|["']$/g, '').trim();
+    }
+    
+    return rawText;
+  } catch (error) {
+    console.error('Gemini correction error:', error.response?.data?.error?.message || error.message);
+    // If Gemini fails, return the raw transcription (graceful fallback)
+    return rawText;
+  }
+};
+
+/**
  * POST /api/speech/transcribe
- * Accepts audio as base64 encoded data and returns Malayalam text
+ * Accepts audio as base64 encoded data and returns corrected Malayalam text
+ * Also accepts rawText directly (from Web Speech API) for correction only
  */
 const transcribeAudio = async (req, res) => {
   try {
-    const { audio, encoding, sampleRateHertz, languageCode } = req.body;
-
-    if (!audio) {
-      return res.status(400).json({
-        success: false,
-        message: 'Audio data is required (base64 encoded)'
-      });
-    }
+    const { audio, encoding, sampleRateHertz, languageCode, rawText } = req.body;
 
     const apiKey = process.env.GOOGLE_SPEECH_API_KEY;
     if (!apiKey) {
       return res.status(500).json({
         success: false,
         message: 'Google Speech API key is not configured'
+      });
+    }
+
+    const lang = languageCode || 'ml-IN';
+
+    // If rawText is provided directly (from Web Speech API), skip transcription and just correct
+    if (rawText && rawText.trim()) {
+      const correctedText = await correctTranscription(rawText.trim(), lang, apiKey);
+      return res.status(200).json({
+        success: true,
+        text: correctedText,
+        rawText: rawText.trim(),
+        corrected: correctedText !== rawText.trim(),
+        confidence: 1,
+        languageCode: lang
+      });
+    }
+
+    if (!audio) {
+      return res.status(400).json({
+        success: false,
+        message: 'Audio data or rawText is required'
       });
     }
 
@@ -62,18 +137,23 @@ const transcribeAudio = async (req, res) => {
     }
 
     // Combine all transcription results
-    const transcription = results
+    const rawTranscription = results
       .map(result => result.alternatives[0]?.transcript || '')
       .join(' ')
       .trim();
 
     const confidence = results[0]?.alternatives[0]?.confidence || 0;
 
+    // Step 2: Correct and polish the transcription using Gemini AI
+    const correctedText = await correctTranscription(rawTranscription, lang, apiKey);
+
     return res.status(200).json({
       success: true,
-      text: transcription,
+      text: correctedText,
+      rawText: rawTranscription,
+      corrected: correctedText !== rawTranscription,
       confidence: confidence,
-      languageCode: languageCode || 'ml-IN'
+      languageCode: lang
     });
 
   } catch (error) {

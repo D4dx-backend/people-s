@@ -4,6 +4,7 @@ const Scheme = require('../models/Scheme');
 const Project = require('../models/Project');
 const MasterData = require('../models/MasterData');
 const FormConfiguration = require('../models/FormConfiguration');
+const User = require('../models/User');
 const notificationService = require('../services/notificationService');
 const recurringPaymentService = require('../services/recurringPaymentService');
 const { calculateApplicationScore } = require('../utils/scoringEngine');
@@ -1130,18 +1131,127 @@ const updateApplicationsDistributionTimeline = async (schemeId, newDistributionT
   }
 };
 
+// ==============================
+// HELPER: GET USERS BY ROLE AND SCOPE
+// ==============================
+const getUsersByRoleAndScope = async (role, application) => {
+  try {
+    const query = { role, isActive: true };
+    
+    // Add geographic scope filtering based on role
+    if (role === 'unit_admin' && application.unit) {
+      query['adminScope.unit'] = application.unit;
+    } else if (role === 'area_admin' && application.area) {
+      query['adminScope.area'] = application.area;
+    } else if (role === 'district_admin' && application.district) {
+      query['adminScope.district'] = application.district;
+    }
+    
+    const users = await User.find(query)
+      .select('_id name phone email role adminScope')
+      .lean();
+    
+    return users;
+  } catch (error) {
+    console.error(`Error fetching users for role ${role}:`, error);
+    return [];
+  }
+};
+
+// ==============================
+// GET AVAILABLE REVERT ROLES
+// ==============================
+const getAvailableRevertRoles = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const application = await Application.findById(id);
+    if (!application) {
+      return res.status(404).json({
+        success: false,
+        message: 'Application not found'
+      });
+    }
+
+    // Find current stage
+    const sortedStages = [...application.applicationStages].sort((a, b) => a.order - b.order);
+    const currentStageIndex = sortedStages.findIndex(s => s.status === 'pending' || s.status === 'in_progress');
+    const effectiveCurrentIndex = currentStageIndex === -1 ? sortedStages.length - 1 : currentStageIndex;
+
+    // Get all stages before current
+    const previousStages = sortedStages.slice(0, effectiveCurrentIndex);
+
+    // Extract unique roles from previous stages (only admin roles)
+    const adminRoles = ['unit_admin', 'area_admin', 'district_admin'];
+    const rolesSet = new Set();
+    
+    previousStages.forEach(stage => {
+      if (stage.allowedRoles && stage.allowedRoles.length > 0) {
+        stage.allowedRoles.forEach(role => {
+          if (adminRoles.includes(role)) {
+            rolesSet.add(role);
+          }
+        });
+      }
+    });
+
+    // If no roles found in previous stages, use default hierarchy based on current stage
+    if (rolesSet.size === 0 && effectiveCurrentIndex > 0) {
+      // Default to unit_admin as a fallback
+      rolesSet.add('unit_admin');
+    }
+
+    const roles = Array.from(rolesSet);
+
+    // Sort roles by hierarchy: unit_admin < area_admin < district_admin
+    const roleHierarchy = { unit_admin: 1, area_admin: 2, district_admin: 3 };
+    roles.sort((a, b) => roleHierarchy[a] - roleHierarchy[b]);
+
+    // Get user counts for each role
+    const rolesWithCounts = await Promise.all(
+      roles.map(async (role) => {
+        const users = await getUsersByRoleAndScope(role, application);
+        return {
+          role,
+          userCount: users.length,
+          displayName: role.split('_').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ')
+        };
+      })
+    );
+
+    // Check if any roles have users
+    const hasAvailableUsers = rolesWithCounts.some(r => r.userCount > 0);
+
+    res.json({
+      success: true,
+      data: {
+        availableRoles: rolesWithCounts,
+        currentStage: sortedStages[effectiveCurrentIndex]?.name,
+        hasAvailableUsers,
+        message: !hasAvailableUsers ? 'No users found for previous stages. Please contact administrators to assign users to the relevant roles.' : null
+      }
+    });
+  } catch (error) {
+    console.error('Error fetching available revert roles:', error);
+    res.status(500).json({
+      success: false,
+      message: error.message || 'Failed to fetch available revert roles'
+    });
+  }
+};
+
 // ========================
 // REVERT APPLICATION STAGE
 // ========================
 const revertApplicationStage = async (req, res) => {
   try {
     const { id } = req.params;
-    const { targetStageId, reason } = req.body;
+    const { targetRole, reason } = req.body;
 
-    if (!targetStageId || !reason) {
+    if (!targetRole || !reason) {
       return res.status(400).json({
         success: false,
-        message: 'Target stage ID and reason are required'
+        message: 'Target role and reason are required'
       });
     }
 
@@ -1159,23 +1269,34 @@ const revertApplicationStage = async (req, res) => {
     // If all completed, consider the last stage as current
     const effectiveCurrentIndex = currentStageIndex === -1 ? sortedStages.length - 1 : currentStageIndex;
 
-    // Find target stage
-    const targetStageIndex = sortedStages.findIndex(s => s._id.toString() === targetStageId);
+    // Find the most recent stage before current that has targetRole in allowedRoles
+    let targetStageIndex = -1;
+    for (let i = effectiveCurrentIndex - 1; i >= 0; i--) {
+      const stage = sortedStages[i];
+      if (stage.allowedRoles && stage.allowedRoles.includes(targetRole)) {
+        targetStageIndex = i;
+        break;
+      }
+    }
+
     if (targetStageIndex === -1) {
       return res.status(404).json({
         success: false,
-        message: 'Target stage not found'
-      });
-    }
-
-    if (targetStageIndex >= effectiveCurrentIndex) {
-      return res.status(400).json({
-        success: false,
-        message: 'Can only revert to a previous stage'
+        message: `No previous stage found for role: ${targetRole}`
       });
     }
 
     const targetStage = sortedStages[targetStageIndex];
+
+    // Get users to forward the application to
+    const targetUsers = await getUsersByRoleAndScope(targetRole, application);
+    if (targetUsers.length === 0) {
+      console.warn(`⚠️ No active users found for role ${targetRole} in application scope`);
+      return res.status(400).json({
+        success: false,
+        message: `No active users found in ${targetRole.split('_').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ')} role for this application's location. Please contact administrators.`
+      });
+    }
 
     // Mark all stages from target to current as reverted, then set target to pending
     for (let i = targetStageIndex; i <= effectiveCurrentIndex; i++) {
@@ -1235,18 +1356,24 @@ const revertApplicationStage = async (req, res) => {
     await application.populate('beneficiary', 'name phone userId');
     await application.populate('scheme', 'name');
 
-    // Send revert notifications (WhatsApp + Push + In-App) to beneficiary + all admin layers
+    // Send revert/forward notifications to beneficiary + targeted users
     notificationService
-      .notifyStageReverted(application, targetStage.name, {
-        revertedBy: req.user._id,
+      .notifyApplicationForwarded(application, targetStage.name, targetRole, targetUsers, {
+        forwardedBy: req.user._id,
         reason
       })
-      .catch(err => console.error('❌ Stage revert notification failed:', err));
+      .catch(err => console.error('❌ Application forward notification failed:', err));
 
     res.json({
       success: true,
-      message: `Application reverted to stage: ${targetStage.name}`,
-      data: { application }
+      message: `Application forwarded to ${targetRole} at stage: ${targetStage.name}`,
+      data: { 
+        application,
+        forwardedTo: {
+          role: targetRole,
+          userCount: targetUsers.length
+        }
+      }
     });
   } catch (error) {
     console.error('Error reverting application stage:', error);
@@ -1704,6 +1831,7 @@ module.exports = {
   generateDistributionTimeline,
   updateDistributionTimelineOnApproval,
   updateApplicationsDistributionTimeline,
+  getAvailableRevertRoles,
   revertApplicationStage,
   updateApplicationStage,
   addStageComment,

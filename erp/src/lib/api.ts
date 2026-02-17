@@ -1093,7 +1093,11 @@ export const applications = {
       method: 'PATCH',
       body: JSON.stringify(data),
     }),
-  revert: (id: string, data: { targetStageId: string; reason: string }) =>
+  getAvailableRevertRoles: (id: string) =>
+    extendedApiClient.request(`/applications/${id}/available-revert-roles`, {
+      method: 'GET',
+    }),
+  revert: (id: string, data: { targetRole: string; reason: string }) =>
     extendedApiClient.request(`/applications/${id}/revert`, {
       method: 'PATCH',
       body: JSON.stringify(data),
@@ -1820,14 +1824,15 @@ export const config = {
 
 // Speech-to-Text API
 export const speech = {
-  transcribe: (audio: string, options?: { encoding?: string; sampleRateHertz?: number; languageCode?: string }) =>
-    apiClient.request<{ text: string; confidence: number; languageCode: string }>('/speech/transcribe', {
+  transcribe: (audio: string, options?: { encoding?: string; sampleRateHertz?: number; languageCode?: string; rawText?: string }) =>
+    apiClient.request<{ text: string; rawText?: string; corrected?: boolean; confidence: number; languageCode: string }>('/speech/transcribe', {
       method: 'POST',
       body: JSON.stringify({
         audio,
         encoding: options?.encoding || 'WEBM_OPUS',
         sampleRateHertz: options?.sampleRateHertz || 48000,
-        languageCode: options?.languageCode || 'ml-IN'
+        languageCode: options?.languageCode || 'ml-IN',
+        rawText: options?.rawText
       })
     })
 };

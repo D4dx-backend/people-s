@@ -380,7 +380,9 @@ export const ApplicationDetailModal: React.FC<ApplicationDetailModalProps> = ({
   const [processingAction, setProcessingAction] = useState(false);
   const [showAction, setShowAction] = useState<"approve" | "reject" | "revert" | null>(null);
   const [remarks, setRemarks] = useState("");
-  const [revertTargetStageId, setRevertTargetStageId] = useState<string>("");
+  const [revertTargetRole, setRevertTargetRole] = useState<string>("");
+  const [availableRevertRoles, setAvailableRevertRoles] = useState<any[]>([]);
+  const [loadingRevertRoles, setLoadingRevertRoles] = useState(false);
   const [forwardToCommittee, setForwardToCommittee] = useState(false);
   const [approvedAmount, setApprovedAmount] = useState(0);
   
@@ -422,6 +424,47 @@ export const ApplicationDetailModal: React.FC<ApplicationDetailModalProps> = ({
       setRecurringStartDate(calculateDate(7));
     }
   }, [isRecurring]);
+
+  // Fetch available roles when revert action is shown
+  useEffect(() => {
+    const fetchAvailableRoles = async () => {
+      if (showAction === "revert" && application?._id) {
+        setLoadingRevertRoles(true);
+        try {
+          const response = await applicationsApi.getAvailableRevertRoles(application._id);
+          if (response.success && response.data?.availableRoles) {
+            setAvailableRevertRoles(response.data.availableRoles);
+            // Show info message if no users available (not an error)
+            if (response.data.message) {
+              toast({
+                title: "Information",
+                description: response.data.message,
+                variant: "default"
+              });
+            }
+          } else {
+            setAvailableRevertRoles([]);
+          }
+        } catch (error: any) {
+          console.error('Failed to fetch available revert roles:', error);
+          // Don't show error toast if it's a 404 (route not found) - server might be restarting
+          const isRouteError = error.message?.includes('not found') || error.response?.status === 404;
+          if (!isRouteError) {
+            toast({
+              title: "Error",
+              description: error.message || "Failed to load available roles",
+              variant: "destructive"
+            });
+          }
+          setAvailableRevertRoles([]);
+        } finally {
+          setLoadingRevertRoles(false);
+        }
+      }
+    };
+    
+    fetchAvailableRoles();
+  }, [showAction, application?._id]);
 
   const fetchApplicationDetails = async () => {
     if (!applicationId) return;
@@ -684,10 +727,10 @@ export const ApplicationDetailModal: React.FC<ApplicationDetailModalProps> = ({
   };
 
   const handleRevertApplication = async () => {
-    if (!application || !remarks.trim() || !revertTargetStageId) {
+    if (!application || !remarks.trim() || !revertTargetRole) {
       toast({ 
         title: "Error", 
-        description: "Please select a target stage and provide a reason", 
+        description: "Please select a target role and provide a reason", 
         variant: "destructive" 
       });
       return;
@@ -696,26 +739,31 @@ export const ApplicationDetailModal: React.FC<ApplicationDetailModalProps> = ({
     setProcessingAction(true);
     try {
       const response = await applicationsApi.revert(application._id, {
-        targetStageId: revertTargetStageId,
+        targetRole: revertTargetRole,
         reason: remarks
       });
 
       if (response.success) {
         toast({ 
           title: "Success", 
-          description: response.message || "Application reverted successfully" 
+          description: response.message || "Application forwarded successfully" 
         });
         setShowAction(null);
         setRemarks("");
-        setRevertTargetStageId("");
+        setRevertTargetRole("");
+        setAvailableRevertRoles([]);
         fetchApplicationDetails();
         if (onActionComplete) onActionComplete();
       }
     } catch (error: any) {
+      const errorMessage = error.response?.data?.message || error.message || "Failed to forward application";
+      // Check if it's a "no users" message vs a real error
+      const isNoUsersError = errorMessage.includes("No active users found") || errorMessage.includes("No users found");
+      
       toast({ 
-        title: "Error", 
-        description: error.message || "Failed to revert application", 
-        variant: "destructive" 
+        title: isNoUsersError ? "Information" : "Error", 
+        description: errorMessage, 
+        variant: isNoUsersError ? "default" : "destructive"
       });
     } finally {
       setProcessingAction(false);
@@ -1153,32 +1201,44 @@ export const ApplicationDetailModal: React.FC<ApplicationDetailModalProps> = ({
                     </>
                   )}
 
-                  <div className="space-y-2">
-                    <Label htmlFor="remarks">
-                      {showAction === "approve" 
-                        ? (forwardToCommittee ? "Interview Report for Committee" : "Approval Comments") 
-                        : "Rejection Reason"}
-                      <span className="text-destructive"> *</span>
-                    </Label>
-                    <Textarea
-                      id="remarks"
-                      placeholder={
-                        showAction === "approve" 
-                          ? (forwardToCommittee 
-                              ? "Enter detailed interview report for committee review..." 
-                              : "Enter approval comments...") 
-                          : "Enter reason for rejection..."
-                      }
-                      value={remarks}
-                      onChange={(e) => setRemarks(e.target.value)}
-                      rows={forwardToCommittee ? 6 : 4}
-                    />
-                    {showAction === "approve" && forwardToCommittee && (
-                      <p className="text-xs text-muted-foreground">
-                        Provide a comprehensive report of the interview for committee members to review.
-                      </p>
-                    )}
-                  </div>
+                  {(showAction === "approve" || showAction === "reject") && (
+                    <div className="space-y-2">
+                      <Label htmlFor="remarks">
+                        {showAction === "approve" 
+                          ? (forwardToCommittee ? "Interview Report for Committee" : "Approval Comments") 
+                          : "Rejection Reason"}
+                        <span className="text-destructive"> *</span>
+                      </Label>
+                      <div className="relative">
+                        <Textarea
+                          id="remarks"
+                          placeholder={
+                            showAction === "approve" 
+                              ? (forwardToCommittee 
+                                  ? "Enter detailed interview report for committee review..." 
+                                  : "Enter approval comments...") 
+                              : "Enter reason for rejection..."
+                          }
+                          value={remarks}
+                          onChange={(e) => setRemarks(e.target.value)}
+                          rows={forwardToCommittee ? 6 : 4}
+                          className="pr-12"
+                        />
+                        <div className="absolute right-2 top-2">
+                          <VoiceToTextButton
+                            onTranscript={(text) => setRemarks(prev => prev ? prev + ' ' + text : text)}
+                            size="icon"
+                            className="h-8 w-8"
+                          />
+                        </div>
+                      </div>
+                      {showAction === "approve" && forwardToCommittee && (
+                        <p className="text-xs text-muted-foreground">
+                          Provide a comprehensive report of the interview for committee members to review.
+                        </p>
+                      )}
+                    </div>
+                  )}
                 </div>
               ) : (
               <div className="p-6 space-y-6">
@@ -1906,17 +1966,19 @@ export const ApplicationDetailModal: React.FC<ApplicationDetailModalProps> = ({
         </div>
 
         {/* Footer */}
-        <div className="flex items-center justify-between p-6 border-t">
-          <Button variant="outline" onClick={() => {
-            if (showAction) {
-              setShowAction(null);
-              setRemarks("");
-            } else {
-              onClose();
-            }
-          }}>
-            {showAction ? "Cancel" : "Close"}
-          </Button>
+        <div className={`${showAction === "revert" ? "block p-4 bg-gray-50/50" : "flex items-center justify-between p-6"} border-t transition-all duration-300`}>
+          {showAction !== "revert" && (
+            <Button variant="outline" onClick={() => {
+              if (showAction) {
+                setShowAction(null);
+                setRemarks("");
+              } else {
+                onClose();
+              }
+            }}>
+              {showAction ? "Cancel" : "Close"}
+            </Button>
+          )}
           
           {application && !showAction && (
             // Show approve/reject buttons if:
@@ -1954,79 +2016,164 @@ export const ApplicationDetailModal: React.FC<ApplicationDetailModalProps> = ({
                 Reject Application
               </Button>
               <Button 
-                variant="outline"
+                className="bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white border-0"
                 onClick={() => setShowAction("revert")}
               >
                 <RotateCcw className="mr-2 h-4 w-4" />
-                Revert
+                Forward Back
               </Button>
             </div>
           )}
 
           {/* Revert Form */}
           {showAction === "revert" && application && (
-            <div className="space-y-3 p-3 rounded-lg border bg-purple-50/30">
-              <div className="flex items-center gap-2">
-                <RotateCcw className="h-4 w-4 text-purple-600" />
-                <h4 className="font-medium text-sm text-purple-800">Revert to Previous Stage</h4>
+            <div className="w-full space-y-4 p-5 rounded-xl border border-purple-200 bg-gradient-to-br from-purple-50 via-white to-indigo-50 shadow-lg relative overflow-hidden">
+              {/* Decorative Background Icon */}
+              <div className="absolute -right-4 -top-4 opacity-[0.03] pointer-events-none select-none">
+                <RotateCcw className="w-64 h-64 text-purple-600" />
               </div>
-              <div>
-                <Label className="text-xs">Select Target Stage</Label>
-                <Select value={revertTargetStageId} onValueChange={setRevertTargetStageId}>
-                  <SelectTrigger className="mt-1">
-                    <SelectValue placeholder="Select a stage to revert to..." />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {application.applicationStages
-                      ?.sort((a: any, b: any) => a.order - b.order)
-                      .filter((s: any) => s.status === 'completed')
-                      .map((stage: any) => (
-                        <SelectItem key={stage._id} value={stage._id}>
-                          #{stage.order} - {stage.name}
+
+              {/* Header */}
+              <div className="flex items-center gap-3 pb-3 border-b border-purple-100/50 relative z-10">
+                <div className="p-2.5 rounded-lg bg-gradient-to-br from-purple-100 to-indigo-100 shadow-sm border border-purple-200/50">
+                  <RotateCcw className="h-5 w-5 text-purple-700" />
+                </div>
+                <div>
+                  <h4 className="font-semibold text-base text-purple-900">Forward Application to Previous Stage</h4>
+                  <p className="text-xs text-purple-600/80 mt-0.5 font-medium">Select a role to send this application back to for review</p>
+                </div>
+              </div>
+
+              {/* Info banner */}
+              {availableRevertRoles.length > 0 && availableRevertRoles.every((r: any) => r.userCount === 0) && (
+                <div className="flex items-start gap-3 p-3 rounded-lg bg-amber-50 border border-amber-200">
+                  <AlertTriangle className="h-5 w-5 text-amber-600 flex-shrink-0 mt-0.5" />
+                  <div>
+                    <p className="text-sm font-medium text-amber-900">No Users Available</p>
+                    <p className="text-xs text-amber-700 mt-1">
+                      No users are currently assigned to these roles. Please contact your administrator to assign users before reverting this application.
+                    </p>
+                  </div>
+                </div>
+              )}
+
+              {/* Form Fields */}
+              <div className="space-y-4 w-full">
+                {/* Role Selection */}
+                <div className="space-y-2 w-full">
+                  <Label className="text-sm font-medium text-gray-700 flex items-center gap-2">
+                    <User className="h-4 w-4 text-purple-600" />
+                    Select Target Role
+                  </Label>
+                  <Select 
+                    value={revertTargetRole} 
+                    onValueChange={setRevertTargetRole}
+                    disabled={loadingRevertRoles}
+                  >
+                    <SelectTrigger className="w-full h-11 border-purple-200 focus:ring-purple-500 focus:border-purple-500 bg-white">
+                      <SelectValue placeholder={loadingRevertRoles ? "Loading available roles..." : "Choose a role to forward to..."} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {loadingRevertRoles ? (
+                        <SelectItem value="loading" disabled>
+                          <div className="flex items-center gap-2">
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                            Loading roles...
+                          </div>
                         </SelectItem>
-                      ))
-                    }
-                  </SelectContent>
-                </Select>
+                      ) : availableRevertRoles.length === 0 ? (
+                        <SelectItem value="none" disabled>
+                          <div className="flex items-center gap-2 text-gray-500">
+                            <AlertTriangle className="h-4 w-4" />
+                            No roles available for this application
+                          </div>
+                        </SelectItem>
+                      ) : availableRevertRoles.every((r: any) => r.userCount === 0) ? (
+                        <SelectItem value="none" disabled>
+                          <div className="flex items-center gap-2 text-amber-600">
+                            <AlertTriangle className="h-4 w-4" />
+                            No users found in any role
+                          </div>
+                        </SelectItem>
+                      ) : (
+                        availableRevertRoles
+                          .filter((roleInfo: any) => roleInfo.userCount > 0)
+                          .map((roleInfo: any) => (
+                            <SelectItem key={roleInfo.role} value={roleInfo.role} className="cursor-pointer">
+                              <div className="flex items-center justify-between gap-3 py-1">
+                                <span className="font-medium">{roleInfo.displayName}</span>
+                                <span className="text-xs bg-purple-100 text-purple-700 px-2 py-0.5 rounded-full">
+                                  {roleInfo.userCount} user{roleInfo.userCount !== 1 ? 's' : ''}
+                                </span>
+                              </div>      
+                            </SelectItem>
+                          ))
+                      )}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {/* Reason Input */}
+                <div className="space-y-2 w-full">
+                  <Label className="text-sm font-medium text-gray-700 flex items-center gap-2">
+                    <MessageSquare className="h-4 w-4 text-purple-600" />
+                    Reason for Revert
+                    <span className="text-red-500">*</span>
+                  </Label>
+                  <div className="relative w-full">
+                    <Textarea
+                      placeholder="Explain why this application needs to be sent back for review..."
+                      value={remarks}
+                      onChange={(e) => setRemarks(e.target.value)}
+                      rows={3}
+                      className="w-full border-purple-200 focus:ring-purple-500 focus:border-purple-500 resize-none bg-white pr-12"
+                    />
+                    <div className="absolute right-2 top-2">
+                      <VoiceToTextButton
+                        onTranscript={(text) => setRemarks(prev => prev ? prev + ' ' + text : text)}
+                        size="icon"
+                        className="h-8 w-8"
+                      />
+                    </div>
+                  </div>
+                  <p className="text-xs text-gray-500 flex items-center gap-1">
+                    <span>💡</span>
+                    Provide a clear reason so the reviewer understands what needs to be addressed
+                  </p>
+                </div>
               </div>
-              <div>
-                <Label className="text-xs">Reason for Revert <span className="text-red-500">*</span></Label>
-                <Textarea
-                  placeholder="Explain why this application needs to be reverted..."
-                  value={remarks}
-                  onChange={(e) => setRemarks(e.target.value)}
-                  rows={2}
-                  className="mt-1 text-sm"
-                />
-              </div>
-              <div className="flex gap-2">
+
+              {/* Action Buttons */}
+              <div className="flex gap-3 pt-2 w-full">
                 <Button
-                  size="sm"
+                  size="lg"
                   variant="outline"
                   onClick={() => {
                     setShowAction(null);
                     setRemarks("");
-                    setRevertTargetStageId("");
+                    setRevertTargetRole("");
+                    setAvailableRevertRoles([]);
                   }}
                   disabled={processingAction}
+                  className="flex-1 border-gray-300 hover:bg-gray-50"
                 >
                   Cancel
                 </Button>
                 <Button
-                  size="sm"
-                  className="bg-purple-600 hover:bg-purple-700"
+                  size="lg"
                   onClick={handleRevertApplication}
-                  disabled={processingAction || !remarks.trim() || !revertTargetStageId}
+                  disabled={processingAction || !remarks.trim() || !revertTargetRole}
+                  className="flex-1 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white shadow-md disabled:opacity-50"
                 >
                   {processingAction ? (
                     <>
-                      <Loader2 className="mr-2 h-3 w-3 animate-spin" />
-                      Reverting...
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Forwarding Application...
                     </>
                   ) : (
                     <>
-                      <RotateCcw className="mr-2 h-3 w-3" />
-                      Confirm Revert
+                      <RotateCcw className="mr-2 h-4 w-4" />
+                      Confirm & Forward
                     </>
                   )}
                 </Button>
