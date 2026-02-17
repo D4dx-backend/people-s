@@ -78,7 +78,7 @@ export default function AllDonors() {
 
       {selectedDonor && (
         <Dialog open={showDetailsModal} onOpenChange={setShowDetailsModal}>
-          <DialogContent className="max-w-6xl max-h-[90vh] overflow-y-auto">
+          <DialogContent className="max-w-[95vw] sm:max-w-6xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>Donor Details</DialogTitle>
             </DialogHeader>
@@ -91,9 +91,9 @@ export default function AllDonors() {
       )}
 
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-3xl font-bold">All Donors</h1>
+          <h1 className="text-lg font-bold">All Donors</h1>
           <p className="text-muted-foreground mt-1">
             View and manage donor information (no transactions shown here)
           </p>

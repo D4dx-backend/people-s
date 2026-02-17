@@ -1,11 +1,17 @@
 const express = require('express');
 const schemeController = require('../controllers/schemeController');
 const { authenticate, authorize } = require('../middleware/auth');
+const { createExportHandler } = require('../middleware/exportHandler');
+const exportConfigs = require('../config/exportConfigs');
+const Scheme = require('../models/Scheme');
 
 const router = express.Router();
 
 // Apply authentication to all routes
 router.use(authenticate);
+
+// Export schemes as CSV or JSON
+router.get('/export', createExportHandler(Scheme, exportConfigs.scheme));
 
 /**
  * @swagger

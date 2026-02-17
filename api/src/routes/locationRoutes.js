@@ -60,6 +60,9 @@ const { authenticate, authorize } = require('../middleware/auth');
 const { validate } = require('../middleware/validation');
 const { commonSchemas } = require('../middleware/validation');
 const Joi = require('joi');
+const { createExportHandler } = require('../middleware/exportHandler');
+const exportConfigs = require('../config/exportConfigs');
+const Location = require('../models/Location');
 
 const router = express.Router();
 
@@ -279,6 +282,13 @@ const locationSchemas = {
  *       500:
  *         description: Server error
  */
+// Export locations as CSV or JSON
+router.get('/export',
+  authenticate,
+  authorize('super_admin', 'state_admin', 'district_admin', 'area_admin', 'unit_admin'),
+  createExportHandler(Location, exportConfigs.location)
+);
+
 router.get('/',
   authenticate,
   authorize('super_admin', 'state_admin', 'district_admin', 'area_admin', 'unit_admin'),

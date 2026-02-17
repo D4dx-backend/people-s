@@ -37,6 +37,7 @@ import PaymentScheduleView from "./pages/recurring-payments/PaymentScheduleView"
 import BudgetForecastPage from "./pages/recurring-payments/BudgetForecastPage";
 
 
+import FollowUpDashboard from "./pages/donors/FollowUpDashboard";
 import AnonymousDonation from "./pages/donors/AnonymousDonation";
 import DonationHistory from "./pages/donors/DonationHistory";
 import Donations from "./pages/donors/Donations";
@@ -67,6 +68,11 @@ import ActivityLogAnalytics from "./pages/ActivityLogAnalytics";
 import UserActivity from "./pages/UserActivity";
 import SecurityEvents from "./pages/SecurityEvents";
 import SystemEvents from "./pages/SystemEvents";
+import LoginLogs from "./pages/LoginLogs";
+import LoginAnalytics from "./pages/LoginAnalytics";
+import SuspiciousActivity from "./pages/SuspiciousActivity";
+import ErrorLogs from "./pages/ErrorLogs";
+import ErrorAnalytics from "./pages/ErrorAnalytics";
 import TimelineDemo from "./pages/TimelineDemo";
 import WebsiteSettings from "./pages/WebsiteSettings";
 import NewsEvents from "./pages/NewsEvents";
@@ -74,6 +80,7 @@ import Brochures from "./pages/Brochures";
 import Partners from "./pages/Partners";
 import Banners from "./pages/Banners";
 import FormBuilder from "./pages/FormBuilder";
+import Profile from "./pages/Profile";
 
 const queryClient = new QueryClient();
 
@@ -138,6 +145,7 @@ const App = () => (
             <Route path="/donors/all" element={<AuthGuard><Layout><AllDonors /></Layout></AuthGuard>} />
             <Route path="/donors/donations" element={<AuthGuard><Layout><Donations /></Layout></AuthGuard>} />
             <Route path="/donors/history" element={<AuthGuard><Layout><DonationHistory /></Layout></AuthGuard>} />
+            <Route path="/donors/followups" element={<AuthGuard><Layout><FollowUpDashboard /></Layout></AuthGuard>} />
             <Route path="/budget" element={<AuthGuard><Layout><Budget /></Layout></AuthGuard>} />
             <Route path="/locations" element={<AuthGuard><Layout><Locations /></Layout></AuthGuard>} />
             <Route path="/locations/districts" element={<AuthGuard><Layout><Districts /></Layout></AuthGuard>} />
@@ -148,11 +156,22 @@ const App = () => (
 
             <Route path="/communications" element={<AuthGuard><Layout><Communications /></Layout></AuthGuard>} />
             <Route path="/settings" element={<AuthGuard><Layout><Settings /></Layout></AuthGuard>} />
+            <Route path="/profile" element={<AuthGuard><Layout><Profile /></Layout></AuthGuard>} />
             <Route path="/activity-logs" element={<AuthGuard><Layout><ActivityLogs /></Layout></AuthGuard>} />
             <Route path="/activity-logs/analytics" element={<AuthGuard><Layout><ActivityLogAnalytics /></Layout></AuthGuard>} />
             <Route path="/activity-logs/user-activity" element={<AuthGuard><Layout><UserActivity /></Layout></AuthGuard>} />
             <Route path="/activity-logs/security-events" element={<AuthGuard><Layout><SecurityEvents /></Layout></AuthGuard>} />
             <Route path="/activity-logs/system-events" element={<AuthGuard><Layout><SystemEvents /></Layout></AuthGuard>} />
+            
+            {/* Login Logs Routes */}
+            <Route path="/login-logs" element={<AuthGuard><Layout><LoginLogs /></Layout></AuthGuard>} />
+            <Route path="/login-logs/analytics" element={<AuthGuard><Layout><LoginAnalytics /></Layout></AuthGuard>} />
+            <Route path="/login-logs/suspicious" element={<AuthGuard><Layout><SuspiciousActivity /></Layout></AuthGuard>} />
+            
+            {/* Error Logs Routes */}
+            <Route path="/error-logs" element={<AuthGuard><Layout><ErrorLogs /></Layout></AuthGuard>} />
+            <Route path="/error-logs/analytics" element={<AuthGuard><Layout><ErrorAnalytics /></Layout></AuthGuard>} />
+            
             <Route path="/timeline-demo" element={<AuthGuard><Layout><TimelineDemo /></Layout></AuthGuard>} />
             
             {/* Website Management Routes */}

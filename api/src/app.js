@@ -61,7 +61,7 @@ if (config.NODE_ENV === 'development') {
 
 // Activity logging middleware for all routes
 app.use(activityLogger({
-  skipEndpoints: ['/api/activity-logs'],
+  skipEndpoints: ['/api/activity-logs', '/api/login-logs', '/api/error-logs'],
   includeResponseData: false
 }));
 
@@ -99,10 +99,12 @@ const formConfigurationRoutes = require('./routes/formConfigurationRoutes');
 const budgetRoutes = require('./routes/budgetRoutes');
 const donorRoutes = require('./routes/donorRoutes');
 const donationRoutes = require('./routes/donationRoutes');
+const donorFollowUpRoutes = require('./routes/donorFollowUpRoutes');
 const interviewRoutes = require('./routes/interviewRoutes');
 const paymentRoutes = require('./routes/paymentRoutes');
 const reportRoutes = require('./routes/reportRoutes');
 const recurringPaymentRoutes = require('./routes/recurringPaymentRoutes');
+const speechRoutes = require('./routes/speechRoutes');
 
 const dashboardRoutes = require('./routes/dashboardRoutes');
 const rbacRoutes = require('./routes/rbacRoutes');
@@ -111,6 +113,8 @@ const masterDataRoutes = require('./routes/masterDataRoutes');
 const uploadRoutes = require('./routes/uploadRoutes');
 const regionalAdminRoutes = require('./routes/regionalAdminRoutes');
 const mobileRoutes = require('./routes/mobileRoutes');
+const loginLogRoutes = require('./routes/loginLogs');
+const errorLogRoutes = require('./routes/errorLogs');
 
 // Website Management Routes
 const websiteRoutes = require('./routes/websiteRoutes');
@@ -136,14 +140,18 @@ app.use('/api/applications', applicationRoutes);
 app.use('/api/budget', budgetRoutes);
 app.use('/api/donors', donorRoutes);
 app.use('/api/donations', donationRoutes);
+app.use('/api/donor-followups', donorFollowUpRoutes);
 app.use('/api/interviews', interviewRoutes);
 app.use('/api/payments', paymentRoutes);
 app.use('/api/reports', reportRoutes);
 app.use('/api/recurring-payments', recurringPaymentRoutes);
+app.use('/api/speech', speechRoutes);
 
 app.use('/api/dashboard', dashboardRoutes);
 app.use('/api/rbac', rbacRoutes);
 app.use('/api/activity-logs', activityLogRoutes);
+app.use('/api/login-logs', loginLogRoutes);
+app.use('/api/error-logs', errorLogRoutes);
 app.use('/api/master-data', masterDataRoutes);
 app.use('/api/upload', uploadRoutes);
 app.use('/api/mobile', mobileRoutes);
@@ -221,12 +229,57 @@ if (config.NODE_ENV === 'production') {
 // Error handling middleware
 app.use(errorHandler);
 
+// Unhandled rejection and exception handlers
+const ErrorLogService = require('./services/errorLogService');
+
+process.on('unhandledRejection', async (reason, promise) => {
+  console.error('❌ Unhandled Rejection:', reason);
+  try {
+    const err = reason instanceof Error ? reason : new Error(String(reason));
+    err.name = 'UnhandledRejection';
+    await ErrorLogService.logError(err, null, 500);
+  } catch (logError) {
+    console.error('Failed to log unhandled rejection:', logError);
+  }
+});
+
+process.on('uncaughtException', async (err) => {
+  console.error('❌ Uncaught Exception:', err);
+  try {
+    err.name = err.name || 'UncaughtException';
+    await ErrorLogService.logError(err, null, 500);
+  } catch (logError) {
+    console.error('Failed to log uncaught exception:', logError);
+  }
+});
+
 const PORT = config.PORT;
 app.listen(PORT, () => {
   console.log(`🚀 Server running on port ${PORT} in ${config.NODE_ENV} mode`);
   console.log(`📊 Health check: http://localhost:${PORT}/health`);
   console.log(`🔑 JWT Secret loaded: ${config.JWT_SECRET ? 'YES' : 'NO'}`);
   console.log(`🔑 JWT Secret (first 10 chars): ${config.JWT_SECRET ? config.JWT_SECRET.substring(0, 10) + '...' : 'NOT SET'}`);
+
+  // Start periodic renewal checker (every 6 hours)
+  const renewalCheckerService = require('./services/renewalCheckerService');
+  renewalCheckerService.startPeriodicCheck(6 * 60 * 60 * 1000);
+
+  // Start donor reminder cron job (runs daily at 9 AM IST)
+  const cron = require('node-cron');
+  const donorReminderService = require('./services/donorReminderService');
+  
+  // Schedule: 9:00 AM every day (IST is UTC+5:30, so 3:30 AM UTC)
+  cron.schedule('30 3 * * *', async () => {
+    console.log('⏰ Cron: Running daily donor reminder processing...');
+    try {
+      await donorReminderService.processReminders();
+    } catch (error) {
+      console.error('❌ Cron: Donor reminder processing failed:', error);
+    }
+  }, {
+    timezone: 'Asia/Kolkata'
+  });
+  console.log('🔔 Donor reminder cron scheduled (daily at 9:00 AM IST)');
 });
 
 module.exports = app;

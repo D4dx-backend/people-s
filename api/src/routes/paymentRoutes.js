@@ -5,6 +5,8 @@ const RecurringPayment = require('../models/RecurringPayment');
 const { authenticate, authorize } = require('../middleware/auth');
 const RBACMiddleware = require('../middleware/rbacMiddleware');
 const pdfReceiptController = require('../controllers/pdfReceiptController');
+const { createExportHandler } = require('../middleware/exportHandler');
+const exportConfigs = require('../config/exportConfigs');
 
 // Apply authentication to all routes
 router.use(authenticate);
@@ -38,6 +40,12 @@ router.get('/test', async (req, res) => {
     });
   }
 });
+
+// Export payments as CSV or JSON
+router.get('/export',
+  RBACMiddleware.hasPermission('finances.read.regional'),
+  createExportHandler(Payment, exportConfigs.payment)
+);
 
 /**
  * @swagger

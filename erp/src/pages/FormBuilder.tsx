@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Eye, Code, Save, Copy, Download, Settings2, ArrowLeft, Loader2, MoreVertical, FileText } from "lucide-react";
+import { Eye, Code, Save, Copy, Download, Settings2, ArrowLeft, Loader2, MoreVertical, FileText, Target, RefreshCw } from "lucide-react";
 import { useSearchParams, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -18,6 +18,8 @@ import { useToast } from "@/hooks/use-toast";
 import { api, schemes as schemesApi } from "@/lib/api";
 import { useRBAC } from "@/hooks/useRBAC";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Badge } from "@/components/ui/badge";
+import { type FormScoringConfig, isScorableType, NON_SCORABLE_TYPES } from "@/types/formBuilder";
 
 interface Field {
   id: number;
@@ -33,6 +35,11 @@ interface Field {
     field: number;
     operator: string;
     value: string;
+  };
+  scoring?: {
+    enabled: boolean;
+    maxPoints: number;
+    scoringRules: { condition: string; value: string; value2?: string; points: number }[];
   };
 }
 
@@ -54,6 +61,8 @@ export default function FormBuilder() {
   // Get scheme context from URL parameters
   const schemeId = searchParams.get('schemeId');
   const schemeName = searchParams.get('schemeName');
+  const isRenewalForm = searchParams.get('renewal') === 'true';
+  const [schemeIsRenewable, setSchemeIsRenewable] = useState(false);
   
   const [formTitle, setFormTitle] = useState("Student Scholarship Application");
   const [formDescription, setFormDescription] = useState("Application form for students seeking financial assistance for higher education.");
@@ -68,6 +77,13 @@ export default function FormBuilder() {
   const [isPublished, setIsPublished] = useState(false);
   const [formVersion, setFormVersion] = useState(1);
   const [isDefaultTemplate, setIsDefaultTemplate] = useState(false);
+  const [scoringConfig, setScoringConfig] = useState<FormScoringConfig>({
+    enabled: false,
+    minimumThreshold: 0,
+    autoRejectBelowThreshold: false,
+    showScoreToAdmin: true
+  });
+  const [showScoringOverview, setShowScoringOverview] = useState(false);
 
   const schemes = [
     { id: 1, value: "scholarship", label: "Student Scholarship Program" },
@@ -86,7 +102,19 @@ export default function FormBuilder() {
 
       setLoading(true);
       try {
-        const response = await api.getFormConfiguration(schemeId);
+        // Check if scheme is renewable
+        try {
+          const schemeResponse = await schemesApi.getById(schemeId);
+          if (schemeResponse?.data?.scheme?.renewalSettings?.isRenewable) {
+            setSchemeIsRenewable(true);
+          }
+        } catch (e) {
+          // Non-critical - continue loading form
+        }
+
+        const response = isRenewalForm
+          ? await schemesApi.getRenewalFormConfig(schemeId)
+          : await api.getFormConfiguration(schemeId);
         const hasConfiguration = response.data.hasConfiguration;
         
         if (hasConfiguration) {
@@ -97,6 +125,16 @@ export default function FormBuilder() {
           setEmailNotifications(config.emailNotifications);
           setSelectedScheme(schemeId);
           setPages(config.pages);
+          
+          // Load scoring config if available
+          if (config.scoringConfig) {
+            setScoringConfig({
+              enabled: config.scoringConfig.enabled || false,
+              minimumThreshold: config.scoringConfig.minimumThreshold || 0,
+              autoRejectBelowThreshold: config.scoringConfig.autoRejectBelowThreshold || false,
+              showScoreToAdmin: config.scoringConfig.showScoreToAdmin !== false
+            });
+          }
           
           if (config.lastModified) {
             setLastSaved(new Date(config.lastModified));
@@ -175,7 +213,12 @@ export default function FormBuilder() {
     if (initialLoad) {
       loadFormConfiguration();
     }
-  }, [schemeId, schemeName, initialLoad, toast]);
+  }, [schemeId, schemeName, initialLoad, isRenewalForm, toast]);
+
+  // Reset initialLoad when switching between main/renewal form
+  useEffect(() => {
+    setInitialLoad(true);
+  }, [isRenewalForm]);
   
   const [pages, setPages] = useState<Page[]>([]);
   const [showPreview, setShowPreview] = useState(false);
@@ -253,10 +296,15 @@ export default function FormBuilder() {
         description: formDescription,
         enabled: formEnabled,
         emailNotifications,
-        pages
+        pages,
+        scoringConfig
       };
 
-      await api.updateFormConfiguration(schemeId, formData);
+      if (isRenewalForm) {
+        await schemesApi.updateRenewalFormConfig(schemeId, formData);
+      } else {
+        await api.updateFormConfiguration(schemeId, formData);
+      }
       
       setLastSaved(new Date());
       setHasUnsavedChanges(false);
@@ -369,10 +417,13 @@ export default function FormBuilder() {
             </Button>
           )}
           <div>
-            <h1 className="text-lg sm:text-xl font-bold">Form Builder</h1>
+            <h1 className="text-lg font-bold">
+              {isRenewalForm ? 'Renewal Form Builder' : 'Form Builder'}
+            </h1>
             {schemeId && schemeName && (
               <p className="text-muted-foreground text-sm mt-1">
                 {decodeURIComponent(schemeName)}
+                {isRenewalForm && <Badge variant="outline" className="ml-2 text-xs">Renewal</Badge>}
               </p>
             )}
           </div>
@@ -395,6 +446,41 @@ export default function FormBuilder() {
           >
             <Eye className="h-4 w-4 sm:mr-2" />
             <span className="hidden sm:inline">Preview</span>
+          </Button>
+
+          {schemeId && schemeIsRenewable && !isRenewalForm && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => navigate(`/form-builder?schemeId=${schemeId}&schemeName=${schemeName}&renewal=true`)}
+              className="hidden sm:flex border-blue-300 text-blue-700 hover:bg-blue-50"
+            >
+              <RefreshCw className="h-4 w-4 sm:mr-2" />
+              <span className="hidden sm:inline">Renewal Form</span>
+            </Button>
+          )}
+
+          {isRenewalForm && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => navigate(`/form-builder?schemeId=${schemeId}&schemeName=${schemeName}`)}
+              className="hidden sm:flex"
+            >
+              <ArrowLeft className="h-4 w-4 sm:mr-2" />
+              <span className="hidden sm:inline">Main Form</span>
+            </Button>
+          )}
+
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setShowScoringOverview(true)}
+            disabled={pages.length === 0}
+            className={`hidden sm:flex ${scoringConfig.enabled ? 'border-green-500 text-green-700 bg-green-50' : ''}`}
+          >
+            <Target className="h-4 w-4 sm:mr-2" />
+            <span className="hidden sm:inline">Scoring</span>
           </Button>
           
           <Button 
@@ -424,6 +510,31 @@ export default function FormBuilder() {
                 <Settings2 className="mr-2 h-4 w-4" />
                 Settings
               </DropdownMenuItem>
+              <DropdownMenuItem 
+                onClick={() => setShowScoringOverview(true)}
+                disabled={pages.length === 0}
+              >
+                <Target className="mr-2 h-4 w-4" />
+                Scoring
+              </DropdownMenuItem>
+              {schemeId && schemeIsRenewable && !isRenewalForm && (
+                <DropdownMenuItem 
+                  onClick={() => navigate(`/form-builder?schemeId=${schemeId}&schemeName=${schemeName}&renewal=true`)}
+                  className="sm:hidden"
+                >
+                  <RefreshCw className="mr-2 h-4 w-4" />
+                  Renewal Form
+                </DropdownMenuItem>
+              )}
+              {isRenewalForm && (
+                <DropdownMenuItem 
+                  onClick={() => navigate(`/form-builder?schemeId=${schemeId}&schemeName=${schemeName}`)}
+                  className="sm:hidden"
+                >
+                  <ArrowLeft className="mr-2 h-4 w-4" />
+                  Main Form
+                </DropdownMenuItem>
+              )}
               <DropdownMenuItem 
                 onClick={() => setShowPreview(true)}
                 disabled={pages.length === 0}
@@ -523,6 +634,172 @@ export default function FormBuilder() {
         )}
       </div>
 
+      {/* Scoring Overview Dialog */}
+      <Dialog open={showScoringOverview} onOpenChange={setShowScoringOverview}>
+        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Target className="h-5 w-5" />
+              Scoring Configuration
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-6">
+            {/* Master Enable Toggle */}
+            <div className="flex items-center justify-between p-4 border rounded-lg bg-green-50/50">
+              <div>
+                <Label className="text-sm font-semibold">Enable Scoring System</Label>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Calculate eligibility scores when applications are submitted
+                </p>
+              </div>
+              <Switch
+                checked={scoringConfig.enabled}
+                onCheckedChange={(enabled) => {
+                  setScoringConfig(prev => ({ ...prev, enabled }));
+                  setHasUnsavedChanges(true);
+                }}
+              />
+            </div>
+
+            {scoringConfig.enabled && (
+              <>
+                {/* Threshold Settings */}
+                <div className="grid gap-4 md:grid-cols-2">
+                  <div className="space-y-2">
+                    <Label className="text-sm">Minimum Threshold (%)</Label>
+                    <Input
+                      type="number"
+                      min="0"
+                      max="100"
+                      value={scoringConfig.minimumThreshold}
+                      onChange={(e) => {
+                        setScoringConfig(prev => ({ ...prev, minimumThreshold: Math.max(0, Math.min(100, parseInt(e.target.value) || 0)) }));
+                        setHasUnsavedChanges(true);
+                      }}
+                      placeholder="0"
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      Applications scoring below this % will be flagged
+                    </p>
+                  </div>
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between">
+                      <Label className="text-sm">Auto-reject below threshold</Label>
+                      <Switch
+                        checked={scoringConfig.autoRejectBelowThreshold}
+                        onCheckedChange={(autoRejectBelowThreshold) => {
+                          setScoringConfig(prev => ({ ...prev, autoRejectBelowThreshold }));
+                          setHasUnsavedChanges(true);
+                        }}
+                      />
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <Label className="text-sm">Show score to admin</Label>
+                      <Switch
+                        checked={scoringConfig.showScoreToAdmin}
+                        onCheckedChange={(showScoreToAdmin) => {
+                          setScoringConfig(prev => ({ ...prev, showScoreToAdmin }));
+                          setHasUnsavedChanges(true);
+                        }}
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Scored Fields Overview */}
+                <div className="space-y-3">
+                  <Label className="text-sm font-semibold">Scored Fields Overview</Label>
+                  {(() => {
+                    const scoredFields = pages.flatMap(page =>
+                      page.fields
+                        .filter(f => f.scoring?.enabled && !NON_SCORABLE_TYPES.includes(f.type))
+                        .map(f => ({ ...f, pageName: page.title }))
+                    );
+                    const totalMaxPoints = scoredFields.reduce((sum, f) => sum + (f.scoring?.maxPoints || 0), 0);
+
+                    if (scoredFields.length === 0) {
+                      return (
+                        <div className="text-center py-6 bg-muted/50 rounded-lg">
+                          <Target className="h-8 w-8 text-muted-foreground mx-auto mb-2" />
+                          <p className="text-sm text-muted-foreground">No fields have scoring enabled.</p>
+                          <p className="text-xs text-muted-foreground mt-1">
+                            Open individual field settings and enable scoring under the "Scoring" section.
+                          </p>
+                        </div>
+                      );
+                    }
+
+                    return (
+                      <>
+                        <div className="flex items-center gap-4 p-3 bg-green-50 rounded-lg border border-green-200">
+                          <div>
+                            <span className="text-2xl font-bold text-green-700">{totalMaxPoints}</span>
+                            <span className="text-sm text-green-600 ml-1">total max points</span>
+                          </div>
+                          <div className="text-sm text-green-600">
+                            {scoredFields.length} field{scoredFields.length > 1 ? 's' : ''} scored
+                          </div>
+                          {scoringConfig.minimumThreshold > 0 && (
+                            <Badge variant="outline" className="border-green-300 text-green-700">
+                              Threshold: {scoringConfig.minimumThreshold}%
+                              {scoringConfig.autoRejectBelowThreshold && ' (auto-reject)'}
+                            </Badge>
+                          )}
+                        </div>
+
+                        <div className="border rounded-lg overflow-hidden">
+                          <table className="w-full text-sm">
+                            <thead>
+                              <tr className="bg-muted text-left">
+                                <th className="p-2 font-medium">Field</th>
+                                <th className="p-2 font-medium">Type</th>
+                                <th className="p-2 font-medium">Page</th>
+                                <th className="p-2 font-medium text-right">Max Points</th>
+                                <th className="p-2 font-medium text-right">Rules</th>
+                                <th className="p-2 font-medium text-right">Weight</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {scoredFields.map((field) => {
+                                const weight = totalMaxPoints > 0
+                                  ? Math.round(((field.scoring?.maxPoints || 0) / totalMaxPoints) * 100)
+                                  : 0;
+                                return (
+                                  <tr key={field.id} className="border-t">
+                                    <td className="p-2 font-medium">{field.label}</td>
+                                    <td className="p-2">
+                                      <Badge variant="outline" className="text-xs">{field.type}</Badge>
+                                    </td>
+                                    <td className="p-2 text-muted-foreground">{field.pageName}</td>
+                                    <td className="p-2 text-right font-semibold">{field.scoring?.maxPoints || 0}</td>
+                                    <td className="p-2 text-right">{field.scoring?.scoringRules?.length || 0}</td>
+                                    <td className="p-2 text-right">
+                                      <div className="flex items-center justify-end gap-1">
+                                        <div className="w-16 bg-muted rounded-full h-2">
+                                          <div
+                                            className="bg-green-500 h-2 rounded-full"
+                                            style={{ width: `${weight}%` }}
+                                          />
+                                        </div>
+                                        <span className="text-xs text-muted-foreground w-8">{weight}%</span>
+                                      </div>
+                                    </td>
+                                  </tr>
+                                );
+                              })}
+                            </tbody>
+                          </table>
+                        </div>
+                      </>
+                    );
+                  })()}
+                </div>
+              </>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
+
       {/* Settings Dialog */}
       <Dialog open={showSettings} onOpenChange={setShowSettings}>
         <DialogContent className="max-w-2xl">
@@ -607,7 +884,7 @@ export default function FormBuilder() {
 
       {/* Preview Dialog */}
       <Dialog open={showPreview} onOpenChange={setShowPreview}>
-        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="max-w-[95vw] sm:max-w-4xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Form Preview</DialogTitle>
           </DialogHeader>

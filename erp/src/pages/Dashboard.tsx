@@ -172,7 +172,7 @@ export default function Dashboard() {
             <LayoutDashboard className="h-6 w-6 text-primary-foreground" />
           </div>
           <div>
-            <h1 className="text-xl font-bold">Dashboard</h1>
+            <h1 className="text-lg font-bold">Dashboard</h1>
             <p className="text-muted-foreground mt-1">Welcome back! Here's an overview of your NGO operations.</p>
           </div>
         </div>

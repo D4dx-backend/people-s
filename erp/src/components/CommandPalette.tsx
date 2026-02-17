@@ -1,6 +1,15 @@
-import React, { useState, useEffect, useCallback, memo } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, memo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useConfig } from '@/hooks/useConfig';
+import { useRBAC } from '@/hooks/useRBAC';
+import { useAuth } from '@/hooks/useAuth';
+import {
+  menuCategories,
+  limitedAdminMenuCategories,
+  type MenuCategory,
+  type MenuItem,
+  type SubMenuItem,
+} from '@/lib/menuConfig';
 import {
   CommandDialog,
   CommandEmpty,
@@ -11,203 +20,214 @@ import {
   CommandSeparator,
 } from '@/components/ui/command';
 import {
-  Home,
-  Users,
-  FolderKanban,
-  FileText,
-  FileCheck,
-  Heart,
-  HandCoins,
-  Settings,
-  BarChart3,
   Sun,
   Moon,
   Laptop,
-  Search,
+  RefreshCw,
+  LogOut,
+  type LucideIcon,
 } from 'lucide-react';
 import { toast } from 'sonner';
 
-interface CommandItem {
+// ── Types ──────────────────────────────────────────────────────────
+
+interface PaletteCommand {
   id: string;
   label: string;
-  icon: React.ComponentType<{ className?: string }>;
+  icon: LucideIcon;
   action: () => void;
   group: string;
   keywords?: string[];
 }
 
+// ── Component ──────────────────────────────────────────────────────
+
 const CommandPalette: React.FC = () => {
   const [open, setOpen] = useState(false);
   const navigate = useNavigate();
-  const { commandPaletteEnabled, darkMode, colorTheme, refreshConfig } = useConfig();
+  const { commandPaletteEnabled, refreshConfig } = useConfig();
+  const { hasAnyPermission } = useRBAC();
+  const { user, logout } = useAuth();
 
-  // Toggle command palette with Ctrl/Cmd + K
+  // Toggle with Ctrl/Cmd + K
   useEffect(() => {
     const down = (e: KeyboardEvent) => {
       if (e.key === 'k' && (e.metaKey || e.ctrlKey)) {
         e.preventDefault();
-        setOpen((open) => !open);
+        setOpen((prev) => !prev);
       }
     };
-
     document.addEventListener('keydown', down);
     return () => document.removeEventListener('keydown', down);
   }, []);
 
-  // Navigation commands
-  const navigationCommands: CommandItem[] = [
-    {
-      id: 'nav-dashboard',
-      label: 'Dashboard',
-      icon: Home,
-      action: () => navigate('/dashboard'),
-      group: 'Navigation',
-      keywords: ['home', 'overview'],
-    },
-    {
-      id: 'nav-projects',
-      label: 'Projects',
-      icon: FolderKanban,
-      action: () => navigate('/projects'),
-      group: 'Navigation',
-    },
-    {
-      id: 'nav-schemes',
-      label: 'Schemes',
-      icon: FileText,
-      action: () => navigate('/schemes'),
-      group: 'Navigation',
-    },
-    {
-      id: 'nav-applications',
-      label: 'Applications',
-      icon: FileCheck,
-      action: () => navigate('/applications/all'),
-      group: 'Navigation',
-    },
-    {
-      id: 'nav-beneficiaries',
-      label: 'Beneficiaries',
-      icon: Users,
-      action: () => navigate('/beneficiaries'),
-      group: 'Navigation',
-    },
-    {
-      id: 'nav-donors',
-      label: 'Donors',
-      icon: Heart,
-      action: () => navigate('/donors'),
-      group: 'Navigation',
-    },
-    {
-      id: 'nav-donations',
-      label: 'Donations',
-      icon: HandCoins,
-      action: () => navigate('/donations'),
-      group: 'Navigation',
-    },
-    {
-      id: 'nav-reports',
-      label: 'Reports',
-      icon: BarChart3,
-      action: () => navigate('/reports'),
-      group: 'Navigation',
-    },
-    {
-      id: 'nav-settings',
-      label: 'Settings',
-      icon: Settings,
-      action: () => navigate('/settings'),
-      group: 'Navigation',
-      keywords: ['preferences', 'configuration'],
-    },
-  ];
+  // ── Permission helpers (same logic as Sidebar) ──
 
-  // Quick action commands
-  const actionCommands: CommandItem[] = [
-    {
-      id: 'action-search',
-      label: 'Search...',
-      icon: Search,
-      action: () => {
-        toast.info('Search feature coming soon');
-      },
-      group: 'Actions',
-    },
-    {
-      id: 'action-refresh-config',
-      label: 'Refresh Configuration',
-      icon: Settings,
-      action: async () => {
-        await refreshConfig();
-        toast.success('Configuration refreshed');
-      },
-      group: 'Actions',
-    },
-  ];
+  const isLimitedAdmin = user && ['area_admin', 'district_admin', 'unit_admin'].includes(user.role);
 
-  // Theme commands
-  const themeCommands: CommandItem[] = [
-    {
-      id: 'theme-light',
-      label: darkMode ? 'Switch to Light Mode' : 'Light Mode (Active)',
-      icon: Sun,
-      action: async () => {
-        toast.info('Theme changes require admin permission');
-      },
-      group: 'Theme',
+  const hasAccessToItem = useCallback(
+    (item: { permissions: string[]; requireSuperAdmin?: boolean }) => {
+      if (item.requireSuperAdmin && user?.role !== 'super_admin') return false;
+      if (!item.permissions || item.permissions.length === 0) return true;
+      return hasAnyPermission(item.permissions);
     },
-    {
-      id: 'theme-dark',
-      label: darkMode ? 'Dark Mode (Active)' : 'Switch to Dark Mode',
-      icon: Moon,
-      action: async () => {
-        toast.info('Theme changes require admin permission');
+    [hasAnyPermission, user]
+  );
+
+  // ── Build filtered navigation commands from shared menu config ──
+
+  const navigationCommands = useMemo<PaletteCommand[]>(() => {
+    const sourceCategories: MenuCategory[] = isLimitedAdmin
+      ? limitedAdminMenuCategories
+      : menuCategories;
+
+    const commands: PaletteCommand[] = [];
+
+    sourceCategories.forEach((category) => {
+      const groupName = category.label || 'Navigation';
+
+      category.items.forEach((item: MenuItem) => {
+        if (!hasAccessToItem(item)) return;
+
+        if (item.submenu && item.submenu.length > 0) {
+          // Add each submenu item with a breadcrumb label
+          item.submenu.forEach((sub: SubMenuItem) => {
+            if (!hasAccessToItem(sub)) return;
+            commands.push({
+              id: `nav-${sub.to.replace(/\//g, '-')}`,
+              label: `${item.label} › ${sub.label}`,
+              icon: item.icon,
+              action: () => navigate(sub.to),
+              group: groupName,
+              keywords: [
+                ...(item.keywords || []),
+                ...(sub.keywords || []),
+                item.label.toLowerCase(),
+                sub.label.toLowerCase(),
+              ],
+            });
+          });
+        } else if (item.to) {
+          // Direct link
+          commands.push({
+            id: `nav-${item.to.replace(/\//g, '-')}`,
+            label: item.label,
+            icon: item.icon,
+            action: () => navigate(item.to!),
+            group: groupName,
+            keywords: [
+              ...(item.keywords || []),
+              item.label.toLowerCase(),
+            ],
+          });
+        }
+      });
+    });
+
+    return commands;
+  }, [isLimitedAdmin, hasAccessToItem, navigate]);
+
+  // ── Quick-action commands ──
+
+  const actionCommands = useMemo<PaletteCommand[]>(
+    () => [
+      {
+        id: 'action-refresh-config',
+        label: 'Refresh Configuration',
+        icon: RefreshCw,
+        action: async () => {
+          await refreshConfig();
+          toast.success('Configuration refreshed');
+        },
+        group: 'Actions',
+        keywords: ['refresh', 'reload', 'config'],
       },
-      group: 'Theme',
-    },
-    {
-      id: 'theme-system',
-      label: 'System Theme',
-      icon: Laptop,
-      action: async () => {
-        toast.info('Theme changes require admin permission');
+      {
+        id: 'action-logout',
+        label: 'Logout',
+        icon: LogOut,
+        action: () => {
+          logout();
+          navigate('/login');
+        },
+        group: 'Actions',
+        keywords: ['logout', 'signout', 'exit'],
       },
-      group: 'Theme',
-    },
-  ];
+    ],
+    [refreshConfig, logout, navigate]
+  );
 
-  const allCommands = [...navigationCommands, ...actionCommands, ...themeCommands];
+  // ── Theme commands ──
 
-  // Group commands by category
-  const groupedCommands = allCommands.reduce((acc, cmd) => {
-    if (!acc[cmd.group]) {
-      acc[cmd.group] = [];
-    }
-    acc[cmd.group].push(cmd);
-    return acc;
-  }, {} as Record<string, CommandItem[]>);
+  const themeCommands = useMemo<PaletteCommand[]>(
+    () => [
+      {
+        id: 'theme-light',
+        label: 'Switch to Light Mode',
+        icon: Sun,
+        action: () => toast.info('Theme changes require admin permission'),
+        group: 'Theme',
+        keywords: ['light', 'bright', 'theme'],
+      },
+      {
+        id: 'theme-dark',
+        label: 'Switch to Dark Mode',
+        icon: Moon,
+        action: () => toast.info('Theme changes require admin permission'),
+        group: 'Theme',
+        keywords: ['dark', 'night', 'theme'],
+      },
+      {
+        id: 'theme-system',
+        label: 'Use System Theme',
+        icon: Laptop,
+        action: () => toast.info('Theme changes require admin permission'),
+        group: 'Theme',
+        keywords: ['system', 'auto', 'default', 'theme'],
+      },
+    ],
+    []
+  );
 
-  const handleSelect = useCallback((commandId: string) => {
-    const command = allCommands.find((cmd) => cmd.id === commandId);
-    if (command) {
-      setOpen(false);
-      command.action();
-    }
+  // ── Merge all commands ──
+
+  const allCommands = useMemo(
+    () => [...navigationCommands, ...actionCommands, ...themeCommands],
+    [navigationCommands, actionCommands, themeCommands]
+  );
+
+  // Group by category, preserving insertion order
+  const groupedCommands = useMemo(() => {
+    const map = new Map<string, PaletteCommand[]>();
+    allCommands.forEach((cmd) => {
+      if (!map.has(cmd.group)) map.set(cmd.group, []);
+      map.get(cmd.group)!.push(cmd);
+    });
+    return map;
   }, [allCommands]);
 
+  const handleSelect = useCallback(
+    (commandId: string) => {
+      const command = allCommands.find((cmd) => cmd.id === commandId);
+      if (command) {
+        setOpen(false);
+        // Small delay so the dialog closes before navigation
+        setTimeout(() => command.action(), 100);
+      }
+    },
+    [allCommands]
+  );
+
   // Don't render if disabled
-  if (!commandPaletteEnabled) {
-    return null;
-  }
+  if (!commandPaletteEnabled) return null;
 
   return (
     <CommandDialog open={open} onOpenChange={setOpen}>
-      <CommandInput placeholder="Type a command or search..." />
+      <CommandInput placeholder="Search menus & actions… (⌘K)" />
       <CommandList>
         <CommandEmpty>No results found.</CommandEmpty>
-        
-        {Object.entries(groupedCommands).map(([group, commands], index) => (
+
+        {Array.from(groupedCommands.entries()).map(([group, commands], index) => (
           <React.Fragment key={group}>
             {index > 0 && <CommandSeparator />}
             <CommandGroup heading={group}>
@@ -220,7 +240,7 @@ const CommandPalette: React.FC = () => {
                     onSelect={() => handleSelect(cmd.id)}
                     keywords={cmd.keywords}
                   >
-                    <Icon className="mr-2 h-4 w-4" />
+                    <Icon className="mr-2 h-4 w-4 shrink-0" />
                     <span>{cmd.label}</span>
                   </CommandItem>
                 );

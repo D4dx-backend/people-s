@@ -41,7 +41,7 @@ export default function DebugPermissions() {
   return (
     <div className="container mx-auto p-6 space-y-6">
       <div className="flex items-center justify-between">
-        <h1 className="text-xl font-bold">Permission Debug</h1>
+        <h1 className="text-lg font-bold">Permission Debug</h1>
         <Button onClick={handleRefresh} disabled={isLoading}>
           <RefreshCw className={`mr-2 h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
           Refresh Permissions

@@ -264,9 +264,9 @@ export default function Brochures() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-2xl font-bold">Brochures</h1>
+          <h1 className="text-lg font-bold">Brochures</h1>
           <p className="text-muted-foreground">Manage downloadable documents and brochures</p>
         </div>
         {canCreate && (

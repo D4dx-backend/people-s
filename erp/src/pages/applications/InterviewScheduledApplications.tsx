@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { ShortlistModal } from "@/components/modals/ShortlistModal";
 import { ReportsModal } from "@/components/modals/ReportsModal";
-import { Download, Eye, FileText, Loader2, CalendarIcon, Grid, List, History, Clock, Filter } from "lucide-react";
+import { Eye, FileText, Loader2, CalendarIcon, Grid, List, History, Clock, Filter } from "lucide-react";
 import { useRBAC } from "@/hooks/useRBAC";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -10,7 +10,9 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { ApplicationDetailModal } from "@/components/modals/ApplicationDetailModal";
 import { GenericFilters } from "@/components/filters/GenericFilters";
 import { useApplicationFilters } from "@/hooks/useApplicationFilters";
-import { useApplicationExport } from "@/hooks/useApplicationExport";
+import { useExport } from '@/hooks/useExport';
+import ExportButton from '@/components/common/ExportButton';
+import { applicationExportColumns } from '@/utils/exportColumns';
 import { toast } from "@/hooks/use-toast";
 import { Pagination, PaginationContent, PaginationItem, PaginationLink, PaginationNext, PaginationPrevious } from "@/components/ui/pagination";
 import { applications, interviews } from "@/lib/api";
@@ -37,7 +39,13 @@ export default function InterviewScheduledApplications() {
   const { hasAnyPermission } = useRBAC();
   
   const filterHook = useApplicationFilters('interview_scheduled');
-  const { exportApplications, exporting } = useApplicationExport();
+  const { exportCSV, exportPDF, printData, exporting } = useExport({
+    apiCall: (params) => applications.export(params),
+    filenamePrefix: 'applications',
+    pdfTitle: 'Interview Scheduled Applications Report',
+    pdfColumns: applicationExportColumns,
+    getFilterParams: () => filterHook.getExportParams(),
+  });
   
   const [applicationList, setApplicationList] = useState<Application[]>([]);
   const [selectedApp, setSelectedApp] = useState<Application | null>(null);
@@ -152,9 +160,6 @@ export default function InterviewScheduledApplications() {
     }
   };
 
-  const handleExport = () => {
-    exportApplications(filterHook.getExportParams(), 'interview_scheduled_applications');
-  };
 
   const loadApplications = async () => {
     try {
@@ -233,15 +238,18 @@ export default function InterviewScheduledApplications() {
         }}
       />
       
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-2xl font-bold">Interview Scheduled Applications</h1>
+          <h1 className="text-lg font-bold">Interview Scheduled Applications</h1>
           <p className="text-muted-foreground mt-1">Applications with scheduled interviews</p>
         </div>
         <div className="flex items-center gap-2">
-          <Button variant="outline" onClick={handleExport} disabled={exporting}>
-            <Download className="mr-2 h-4 w-4" />{exporting ? "Exporting..." : "Export Report"}
-          </Button>
+          <ExportButton
+            onExportCSV={() => exportCSV()}
+            onExportPDF={() => exportPDF()}
+            onPrint={() => printData()}
+            exporting={exporting}
+          />
           <div className="flex items-center border rounded-lg p-1">
             <Button variant={viewMode === 'cards' ? 'default' : 'ghost'} size="sm" onClick={() => setViewMode('cards')}>
               <Grid className="h-4 w-4" />
@@ -369,6 +377,7 @@ export default function InterviewScheduledApplications() {
               ))}
             </div>
           ) : (
+            <div className="overflow-x-auto">
             <Table>
               <TableHeader>
                 <TableRow>
@@ -435,6 +444,7 @@ export default function InterviewScheduledApplications() {
                 ))}
               </TableBody>
             </Table>
+            </div>
           );
           })()}
 

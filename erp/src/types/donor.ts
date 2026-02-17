@@ -6,7 +6,7 @@ export interface Donor {
   email: string;
   phone: string;
   type: 'individual' | 'corporate' | 'foundation' | 'trust';
-  category: 'regular' | 'patron' | 'major' | 'recurring';
+  category: 'regular' | 'patron' | 'major' | 'corporate' | 'recurring';
   address: {
     street: string;
     city: string;
@@ -20,6 +20,16 @@ export interface Donor {
     frequency: 'monthly' | 'quarterly' | 'yearly' | 'one-time';
     anonymousGiving: boolean;
   };
+  donationPreferences?: {
+    frequency: 'one-time' | 'monthly' | 'quarterly' | 'half_yearly' | 'yearly' | 'custom';
+    customIntervalDays?: number;
+    preferredAmount?: number;
+    preferredMethod?: 'upi' | 'bank_transfer' | 'card' | 'cash' | 'cheque';
+    anonymousDonation?: boolean;
+  };
+  followUpStatus?: 'active' | 'pending_reminder' | 'overdue' | 'lapsed' | 'no_followup';
+  nextExpectedDonation?: string;
+  engagementScore?: number;
   taxInfo: {
     panNumber?: string;
     gstNumber?: string;
@@ -180,7 +190,6 @@ export interface DonorFormData {
   email: string;
   phone: string;
   type: 'individual' | 'corporate' | 'foundation' | 'trust';
-  category: 'regular' | 'patron' | 'major' | 'recurring';
   address: {
     street: string;
     city: string;
@@ -191,8 +200,14 @@ export interface DonorFormData {
   preferences: {
     programs: string[];
     communicationMethod: 'email' | 'phone' | 'sms' | 'whatsapp';
-    frequency: 'monthly' | 'quarterly' | 'yearly' | 'one-time';
     anonymousGiving: boolean;
+  };
+  donationPreferences: {
+    frequency: 'one-time' | 'monthly' | 'quarterly' | 'half_yearly' | 'yearly' | 'custom';
+    customIntervalDays?: number;
+    preferredAmount?: number;
+    preferredMethod: 'upi' | 'bank_transfer' | 'card' | 'cash' | 'cheque';
+    anonymousDonation: boolean;
   };
   taxInfo: {
     panNumber?: string;

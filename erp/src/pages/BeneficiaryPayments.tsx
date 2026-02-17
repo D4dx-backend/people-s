@@ -23,7 +23,9 @@ import { useRBAC } from "@/hooks/useRBAC";
 import { payments } from "@/lib/api";
 import { GenericFilters } from "@/components/filters/GenericFilters";
 import { usePaymentFilters } from "@/hooks/usePaymentFilters";
-import { usePaymentExport } from "@/hooks/usePaymentExport";
+import { useExport } from '@/hooks/useExport';
+import ExportButton from '@/components/common/ExportButton';
+import { paymentExportColumns } from '@/utils/exportColumns';
 import { Input } from "@/components/ui/input";
 
 interface PaymentSchedule {
@@ -77,7 +79,13 @@ const statusConfig = {
 export default function BeneficiaryPayments() {
   const { hasAnyPermission, hasPermission } = useRBAC();
   const filterHook = usePaymentFilters();
-  const { exportPayments, exporting } = usePaymentExport();
+  const { exportCSV, exportPDF, printData, exporting } = useExport({
+    apiCall: (params) => payments.export(params),
+    filenamePrefix: 'payments',
+    pdfTitle: 'Payments Report',
+    pdfColumns: paymentExportColumns,
+    getFilterParams: () => filterHook.getExportParams(),
+  });
   
   // Permission checks
   const canViewPayments = hasAnyPermission(['finances.read.all', 'finances.read.regional', 'super_admin', 'state_admin']);
@@ -652,7 +660,7 @@ export default function BeneficiaryPayments() {
     <div className="space-y-6">
       <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
         <div>
-          <h1 className="text-xl font-bold bg-gradient-to-r from-primary to-primary-glow bg-clip-text text-transparent">
+          <h1 className="text-lg font-bold bg-gradient-to-r from-primary to-primary-glow bg-clip-text text-transparent">
             Payment Management
           </h1>
           <p className="text-muted-foreground mt-1">
@@ -660,14 +668,12 @@ export default function BeneficiaryPayments() {
           </p>
         </div>
         <div className="flex items-center gap-2">
-          <Button 
-            variant="outline" 
-            onClick={() => exportPayments(filterHook.getExportParams(), `payments_${activeTab}`)} 
-            disabled={exporting}
-          >
-            <Download className="mr-2 h-4 w-4" />
-            {exporting ? "Exporting..." : "Export"}
-          </Button>
+          <ExportButton
+            onExportCSV={() => exportCSV()}
+            onExportPDF={() => exportPDF()}
+            onPrint={() => printData()}
+            exporting={exporting}
+          />
           {/* View Mode Toggle */}
           <div className="flex items-center border rounded-lg p-1">
             <Button
@@ -931,6 +937,7 @@ export default function BeneficiaryPayments() {
             /* Table View */
             <Card>
               <CardContent className="p-0">
+                <div className="overflow-x-auto">
                 <Table>
                   <TableHeader>
                     <TableRow>
@@ -1034,6 +1041,7 @@ export default function BeneficiaryPayments() {
                     })}
                   </TableBody>
                 </Table>
+                </div>
               </CardContent>
             </Card>
                 )}

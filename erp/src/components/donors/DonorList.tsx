@@ -15,7 +15,6 @@ import {
   Eye, 
   Mail, 
   Phone, 
-  Download,
   Filter,
   Search
 } from 'lucide-react';
@@ -23,6 +22,10 @@ import { useDonors, useDeleteDonor, useUpdateDonorStatus } from '@/hooks/useDono
 import { Donor, DonorFilters } from '@/types/donor';
 import { useRBAC } from '@/hooks/useRBAC';
 import { toast } from '@/hooks/use-toast';
+import { useExport } from '@/hooks/useExport';
+import ExportButton from '@/components/common/ExportButton';
+import { donorExportColumns } from '@/utils/exportColumns';
+import { donors as donorsApi } from '@/lib/api';
 
 interface DonorListProps {
   onEdit: (donor: Donor) => void;
@@ -37,7 +40,7 @@ export const DonorList: React.FC<DonorListProps> = ({
   selectedDonors,
   onSelectionChange,
 }) => {
-  const { hasPermission } = useRBAC();
+  const { hasPermission, hasAnyPermission } = useRBAC();
   const [filters, setFilters] = useState<DonorFilters>({
     search: '',
     type: '',
@@ -52,6 +55,19 @@ export const DonorList: React.FC<DonorListProps> = ({
   const { data, isLoading, error } = useDonors(filters);
   const deleteDonor = useDeleteDonor();
   const updateDonorStatus = useUpdateDonorStatus();
+
+  const { exportCSV, exportPDF, printData, exporting } = useExport({
+    apiCall: (params) => donorsApi.export(params),
+    filenamePrefix: 'donors',
+    pdfTitle: 'Donors Report',
+    pdfColumns: donorExportColumns,
+    getFilterParams: () => ({
+      search: filters.search || undefined,
+      type: filters.type || undefined,
+      category: filters.category || undefined,
+      status: filters.status || undefined,
+    }),
+  });
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('en-IN', {
@@ -248,7 +264,7 @@ export const DonorList: React.FC<DonorListProps> = ({
                 <Eye className="mr-2 h-4 w-4" />
                 View Details
               </DropdownMenuItem>
-              {hasPermission('donors.update') && (
+              {hasAnyPermission(['donors.update', 'donors.update.regional']) && (
                 <DropdownMenuItem onClick={() => onEdit(donor)}>
                   <Edit className="mr-2 h-4 w-4" />
                   Edit
@@ -262,7 +278,7 @@ export const DonorList: React.FC<DonorListProps> = ({
                 <Phone className="mr-2 h-4 w-4" />
                 Call
               </DropdownMenuItem>
-              {hasPermission('donors.update') && (
+              {hasAnyPermission(['donors.update', 'donors.update.regional']) && (
                 <>
                   {donor.status === 'active' ? (
                     <DropdownMenuItem 
@@ -281,15 +297,20 @@ export const DonorList: React.FC<DonorListProps> = ({
                   )}
                 </>
               )}
-              {hasPermission('donors.delete') && (
-                <DropdownMenuItem 
-                  onClick={() => handleDelete(donor)}
-                  className="text-red-600"
-                >
-                  <Trash2 className="mr-2 h-4 w-4" />
-                  Delete
-                </DropdownMenuItem>
-              )}
+              {hasAnyPermission(['donors.delete', 'donors.delete.regional']) && (() => {
+                const donationCount = donor.donationHistory?.donationCount || 0;
+                const hasDonations = donationCount > 0;
+                return (
+                  <DropdownMenuItem 
+                    onClick={() => !hasDonations && handleDelete(donor)}
+                    className={hasDonations ? "text-muted-foreground cursor-not-allowed opacity-50" : "text-red-600"}
+                    disabled={hasDonations}
+                  >
+                    <Trash2 className="mr-2 h-4 w-4" />
+                    {hasDonations ? `Can't delete (${donationCount} donations)` : 'Delete'}
+                  </DropdownMenuItem>
+                );
+              })()}
             </DropdownMenuContent>
           </DropdownMenu>
         );
@@ -347,76 +368,80 @@ export const DonorList: React.FC<DonorListProps> = ({
   return (
     <div className="space-y-4">
       {/* Filters */}
-      <div className="flex flex-wrap gap-4 p-4 bg-muted/50 rounded-lg">
-        <div className="flex-1 min-w-[200px]">
-          <div className="relative">
+      <div className="p-3 bg-muted/50 rounded-lg space-y-2">
+        <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-2 items-end">
+          <div className="col-span-2 relative">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
               placeholder="Search donors..."
               value={filters.search}
               onChange={(e) => handleFilterChange('search', e.target.value)}
-              className="pl-10"
+              className="pl-10 h-9"
+            />
+          </div>
+
+          <Select
+            value={filters.type || "all"}
+            onValueChange={(value) => handleFilterChange('type', value)}
+          >
+            <SelectTrigger className="h-9">
+              <SelectValue placeholder="Type" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Types</SelectItem>
+              <SelectItem value="individual">Individual</SelectItem>
+              <SelectItem value="corporate">Corporate</SelectItem>
+              <SelectItem value="foundation">Foundation</SelectItem>
+              <SelectItem value="trust">Trust</SelectItem>
+            </SelectContent>
+          </Select>
+
+          <Select
+            value={filters.category || "all"}
+            onValueChange={(value) => handleFilterChange('category', value)}
+          >
+            <SelectTrigger className="h-9">
+              <SelectValue placeholder="Category" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Categories</SelectItem>
+              <SelectItem value="regular">Regular</SelectItem>
+              <SelectItem value="patron">Patron</SelectItem>
+              <SelectItem value="major">Major</SelectItem>
+              <SelectItem value="recurring">Recurring</SelectItem>
+            </SelectContent>
+          </Select>
+
+          <Select
+            value={filters.status || "all"}
+            onValueChange={(value) => handleFilterChange('status', value)}
+          >
+            <SelectTrigger className="h-9">
+              <SelectValue placeholder="Status" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Status</SelectItem>
+              <SelectItem value="active">Active</SelectItem>
+              <SelectItem value="inactive">Inactive</SelectItem>
+              <SelectItem value="blocked">Blocked</SelectItem>
+              <SelectItem value="pending_verification">Pending</SelectItem>
+            </SelectContent>
+          </Select>
+
+          <div className="flex gap-1">
+            <Button variant="outline" size="sm" onClick={clearFilters} className="h-9">
+              <Filter className="mr-1 h-3.5 w-3.5" />
+              Clear
+            </Button>
+            <ExportButton
+              onExportCSV={() => exportCSV()}
+              onExportPDF={() => exportPDF()}
+              onPrint={() => printData()}
+              exporting={exporting}
+              size="sm"
             />
           </div>
         </div>
-        
-        <Select
-          value={filters.type || "all"}
-          onValueChange={(value) => handleFilterChange('type', value)}
-        >
-          <SelectTrigger className="w-[150px]">
-            <SelectValue placeholder="Type" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All Types</SelectItem>
-            <SelectItem value="individual">Individual</SelectItem>
-            <SelectItem value="corporate">Corporate</SelectItem>
-            <SelectItem value="foundation">Foundation</SelectItem>
-            <SelectItem value="trust">Trust</SelectItem>
-          </SelectContent>
-        </Select>
-
-        <Select
-          value={filters.category || "all"}
-          onValueChange={(value) => handleFilterChange('category', value)}
-        >
-          <SelectTrigger className="w-[150px]">
-            <SelectValue placeholder="Category" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All Categories</SelectItem>
-            <SelectItem value="regular">Regular</SelectItem>
-            <SelectItem value="patron">Patron</SelectItem>
-            <SelectItem value="major">Major</SelectItem>
-            <SelectItem value="recurring">Recurring</SelectItem>
-          </SelectContent>
-        </Select>
-
-        <Select
-          value={filters.status || "all"}
-          onValueChange={(value) => handleFilterChange('status', value)}
-        >
-          <SelectTrigger className="w-[150px]">
-            <SelectValue placeholder="Status" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All Status</SelectItem>
-            <SelectItem value="active">Active</SelectItem>
-            <SelectItem value="inactive">Inactive</SelectItem>
-            <SelectItem value="blocked">Blocked</SelectItem>
-            <SelectItem value="pending_verification">Pending</SelectItem>
-          </SelectContent>
-        </Select>
-
-        <Button variant="outline" onClick={clearFilters}>
-          <Filter className="mr-2 h-4 w-4" />
-          Clear
-        </Button>
-
-        <Button variant="outline">
-          <Download className="mr-2 h-4 w-4" />
-          Export
-        </Button>
       </div>
 
       {/* Data Table */}

@@ -144,6 +144,20 @@ router.put('/profile', authenticate, [
 ], authController.updateProfile);
 
 /**
+ * @route   POST /api/auth/change-password
+ * @desc    Change own password (self-service for all roles)
+ * @access  Private
+ */
+router.post('/change-password', authenticate, [
+  body('currentPassword')
+    .optional(),
+  body('newPassword')
+    .isLength({ min: 6 })
+    .withMessage('New password must be at least 6 characters'),
+  validateRequest
+], authController.changePassword);
+
+/**
  * @route   POST /api/auth/change-phone
  * @desc    Change phone number (requires OTP verification)
  * @access  Private

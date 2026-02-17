@@ -17,40 +17,138 @@ const activityLogSchema = new mongoose.Schema({
     enum: [
       // Authentication actions
       'login', 'logout', 'login_failed', 'password_reset', 'otp_requested', 'otp_verified',
+      'otp_request_failed', 'token_refresh', 'registration_completed', 'profile_accessed',
       
       // User management
       'user_created', 'user_updated', 'user_deleted', 'user_activated', 'user_deactivated',
+      'user_create_failed', 'user_update_failed', 'user_delete_failed',
       'role_assigned', 'role_removed', 'permissions_updated',
       
       // Beneficiary management
       'beneficiary_created', 'beneficiary_updated', 'beneficiary_deleted', 'beneficiary_approved', 'beneficiary_rejected',
-      'beneficiary_create_failed', 'beneficiary_update_failed',
+      'beneficiary_create_failed', 'beneficiary_update_failed', 'beneficiary_delete_failed',
       'interview_scheduled', 'interview_completed', 'interview_cancelled',
+      'interview_created', 'interview_updated', 'interview_deleted',
+      'interview_create_failed', 'interview_update_failed', 'interview_delete_failed',
       
       // Application management
       'application_created', 'application_updated', 'application_submitted', 'application_approved', 'application_rejected',
+      'application_deleted', 'application_create_failed', 'application_update_failed', 'application_delete_failed',
       
       // Project management
       'project_created', 'project_updated', 'project_deleted', 'project_activated', 'project_deactivated',
-      'project_create_failed', 'project_update_failed',
+      'project_create_failed', 'project_update_failed', 'project_delete_failed',
       
       // Scheme management
       'scheme_created', 'scheme_updated', 'scheme_deleted', 'scheme_activated', 'scheme_deactivated',
-      'scheme_create_failed', 'scheme_update_failed',
+      'scheme_create_failed', 'scheme_update_failed', 'scheme_delete_failed',
       
       // Payment management
       'payment_created', 'payment_updated', 'payment_approved', 'payment_rejected', 'payment_processed',
-      'payment_update_failed', 'payment_create_failed',
+      'payment_update_failed', 'payment_create_failed', 'payment_deleted', 'payment_delete_failed',
+      
+      // Donor management
+      'donor_created', 'donor_updated', 'donor_deleted',
+      'donor_create_failed', 'donor_update_failed', 'donor_delete_failed',
+      
+      // Donation management
+      'donation_created', 'donation_updated', 'donation_deleted',
+      'donation_create_failed', 'donation_update_failed', 'donation_delete_failed',
+      
+      // Location management
+      'location_created', 'location_updated', 'location_deleted',
+      'location_create_failed', 'location_update_failed', 'location_delete_failed',
+      
+      // Form management
+      'form_created', 'form_updated', 'form_deleted',
+      'form_create_failed', 'form_update_failed', 'form_delete_failed',
+      
+      // Banner management
+      'banner_created', 'banner_updated', 'banner_deleted',
+      'banner_create_failed', 'banner_update_failed', 'banner_delete_failed',
+      
+      // Brochure management
+      'brochure_created', 'brochure_updated', 'brochure_deleted',
+      'brochure_create_failed', 'brochure_update_failed', 'brochure_delete_failed',
+      
+      // Partner management
+      'partner_created', 'partner_updated', 'partner_deleted',
+      'partner_create_failed', 'partner_update_failed', 'partner_delete_failed',
+      
+      // News/Event management
+      'news_event_created', 'news_event_updated', 'news_event_deleted',
+      'news_event_create_failed', 'news_event_update_failed', 'news_event_delete_failed',
+      
+      // Notification management
+      'notification_created', 'notification_updated', 'notification_deleted',
+      'notification_create_failed', 'notification_update_failed', 'notification_delete_failed',
+      
+      // Budget management
+      'budget_created', 'budget_updated', 'budget_deleted',
+      'budget_create_failed', 'budget_update_failed', 'budget_delete_failed',
+      
+      // Master data management
+      'master_data_created', 'master_data_updated', 'master_data_deleted',
+      'master_data_create_failed', 'master_data_update_failed', 'master_data_delete_failed',
+      
+      // Recurring payment management
+      'recurring_payment_created', 'recurring_payment_updated', 'recurring_payment_deleted',
+      'recurring_payment_create_failed', 'recurring_payment_update_failed', 'recurring_payment_delete_failed',
+      
+      // Role management
+      'role_created', 'role_updated', 'role_deleted',
+      'role_create_failed', 'role_update_failed', 'role_delete_failed',
+      
+      // Permission management
+      'permission_created', 'permission_updated', 'permission_deleted',
+      'permission_create_failed', 'permission_update_failed', 'permission_delete_failed',
+      
+      // Settings/Config management
+      'settings_created', 'settings_updated', 'settings_deleted',
+      'settings_create_failed', 'settings_update_failed', 'settings_delete_failed',
+      'config_created', 'config_updated', 'config_deleted',
+      'config_create_failed', 'config_update_failed', 'config_delete_failed',
+      
+      // Upload management
+      'upload_created', 'upload_deleted',
+      'upload_create_failed', 'upload_delete_failed',
+      
+      // Website management
+      'website_created', 'website_updated', 'website_deleted',
+      'website_create_failed', 'website_update_failed', 'website_delete_failed',
+      
+      // Mobile management
+      'mobile_created', 'mobile_updated', 'mobile_deleted',
+      'mobile_create_failed', 'mobile_update_failed', 'mobile_delete_failed',
+      
+      // SMS management  
+      'sms_created', 'sms_updated', 'sms_deleted',
+      'sms_create_failed', 'sms_update_failed', 'sms_delete_failed',
+      
+      // Regional admin management
+      'regional_admin_created', 'regional_admin_updated', 'regional_admin_deleted',
+      'regional_admin_create_failed', 'regional_admin_update_failed', 'regional_admin_delete_failed',
       
       // Report generation
       'report_generated', 'report_downloaded', 'report_shared',
+      'report_created', 'report_updated', 'report_deleted',
+      'report_create_failed', 'report_update_failed', 'report_delete_failed',
+      
+      // Data operations
+      'data_export', 'data_exported', 'data_import', 'data_accessed',
+      'export_failed',
       
       // System actions
-      'system_backup', 'system_restore', 'data_export', 'data_import',
-      'settings_updated', 'configuration_changed', 'data_accessed',
+      'system_backup', 'system_restore', 'system_maintenance',
+      'settings_updated_legacy', 'configuration_changed',
+      'logging_error',
       
       // Security actions
-      'permission_denied', 'unauthorized_access', 'suspicious_activity'
+      'permission_denied', 'unauthorized_access', 'suspicious_activity',
+      
+      // Generic CRUD fallbacks
+      'created', 'updated', 'deleted',
+      'create_failed', 'update_failed', 'delete_failed'
     ]
   },
   
@@ -60,7 +158,11 @@ const activityLogSchema = new mongoose.Schema({
     required: true,
     enum: [
       'user', 'beneficiary', 'application', 'project', 'scheme', 
-      'payment', 'report', 'system', 'auth', 'role', 'permission'
+      'payment', 'report', 'system', 'auth', 'role', 'permission',
+      'donor', 'donation', 'notification', 'interview', 'location',
+      'form', 'banner', 'brochure', 'partner', 'news_event',
+      'budget', 'master_data', 'upload', 'mobile', 'config',
+      'recurring_payment', 'regional_admin', 'website', 'sms', 'settings'
     ]
   },
   
@@ -80,6 +182,13 @@ const activityLogSchema = new mongoose.Schema({
     type: mongoose.Schema.Types.Mixed,
     default: {}
   },
+
+  // Change tracking (before/after values for updates)
+  changes: [{
+    field: { type: String, required: true },
+    oldValue: { type: mongoose.Schema.Types.Mixed },
+    newValue: { type: mongoose.Schema.Types.Mixed }
+  }],
   
   // Request information
   ipAddress: {

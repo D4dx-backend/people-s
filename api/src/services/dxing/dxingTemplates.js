@@ -42,7 +42,18 @@ class DXingTemplates {
       
       document_required: `Dear ${variables.name}, additional documents are required for your application ${variables.applicationNumber}. Please upload: ${variables.documents}.`,
       
-      reminder: `Dear ${variables.name}, this is a reminder for ${variables.subject}. Please take necessary action before ${variables.deadline}.`
+      reminder: `Dear ${variables.name || 'User'}, this is a reminder for ${variables.subject}. Please take necessary action before ${variables.deadline}.`,
+      
+      // Donor-specific templates
+      donation_thank_you: `Dear ${variables.name || 'Donor'}, thank you for your generous donation of ₹${variables.amount || '0'} to People's Foundation${variables.projectName ? ` for ${variables.projectName}` : ''}. Your support makes a real difference! Receipt: ${variables.receiptNumber || 'Will be shared shortly'}.`,
+      
+      donation_reminder_7day: `Dear ${variables.name || 'Donor'}, your ${variables.frequency || 'scheduled'} donation${variables.amount ? ` of ₹${variables.amount}` : ''} is due on ${variables.dueDate || 'soon'}. We truly appreciate your continued support for People's Foundation. 🙏`,
+      
+      donation_reminder_due: `Dear ${variables.name || 'Donor'}, your ${variables.frequency || 'scheduled'} donation${variables.amount ? ` of ₹${variables.amount}` : ''} is due today. Thank you for supporting People's Foundation and making an impact! 🌟`,
+      
+      donation_lapsed: `Dear ${variables.name || 'Donor'}, it's been a while since your last donation${variables.lastDonationDate ? ` on ${variables.lastDonationDate}` : ''}. We miss your support! Your previous contribution${variables.amount ? ` of ₹${variables.amount}` : ''} made a real impact. Consider renewing your support today. 💚`,
+      
+      donation_anniversary: `Dear ${variables.name || 'Donor'}, it's been one year since your generous donation${variables.amount ? ` of ₹${variables.amount}` : ''} to People's Foundation. Your contribution has made a lasting impact! Consider renewing your support to continue making a difference. 🎉`
     };
     
     return templates[type] || variables.message || '';
@@ -62,7 +73,12 @@ class DXingTemplates {
       'payment_processed',
       'interview_scheduled',
       'document_required',
-      'reminder'
+      'reminder',
+      'donation_thank_you',
+      'donation_reminder_7day',
+      'donation_reminder_due',
+      'donation_lapsed',
+      'donation_anniversary'
     ];
   }
 

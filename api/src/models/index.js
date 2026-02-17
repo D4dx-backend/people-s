@@ -14,9 +14,12 @@ const Dashboard = require('./Dashboard');
 const FormConfiguration = require('./FormConfiguration');
 const Donor = require('./Donor');
 const Donation = require('./Donation');
+const DonorFollowUp = require('./DonorFollowUp');
 const ActivityLog = require('./ActivityLog');
 const MasterData = require('./MasterData');
 const RecurringPayment = require('./RecurringPayment');
+const LoginLog = require('./LoginLog');
+const ErrorLog = require('./ErrorLog');
 
 // Website Management Models
 const WebsiteSettings = require('./WebsiteSettings');
@@ -46,9 +49,12 @@ module.exports = {
   FormConfiguration,
   Donor,
   Donation,
+  DonorFollowUp,
   ActivityLog,
   MasterData,
   RecurringPayment,
+  LoginLog,
+  ErrorLog,
 
   WebsiteSettings,
   NewsEvent,

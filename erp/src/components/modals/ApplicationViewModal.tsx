@@ -282,6 +282,31 @@ Status: ${application?.status || 'N/A'}
             </div>
           </div>
 
+          {/* Eligibility Score Badge */}
+          {application?.eligibilityScore && application.eligibilityScore.maxPoints > 0 && (
+            <div className="flex items-center gap-3 p-3 rounded-lg bg-muted/50 border">
+              <div className={`text-lg font-bold px-3 py-1 rounded-md ${
+                application.eligibilityScore.percentage >= 70 ? 'bg-green-100 text-green-700' :
+                application.eligibilityScore.percentage >= 40 ? 'bg-yellow-100 text-yellow-700' :
+                'bg-red-100 text-red-700'
+              }`}>
+                {application.eligibilityScore.percentage}%
+              </div>
+              <div className="flex-1">
+                <p className="text-sm font-medium">Eligibility Score</p>
+                <p className="text-xs text-muted-foreground">
+                  {application.eligibilityScore.totalPoints} / {application.eligibilityScore.maxPoints} points
+                  {application.eligibilityScore.threshold > 0 && (
+                    <> · Threshold: {application.eligibilityScore.threshold}% {application.eligibilityScore.meetsThreshold ? '✓' : '✗'}</>
+                  )}
+                </p>
+              </div>
+              {application.eligibilityScore.autoRejected && (
+                <Badge variant="destructive" className="text-xs">Auto-Rejected</Badge>
+              )}
+            </div>
+          )}
+
           <Separator />
 
           {/* Applicant Details */}

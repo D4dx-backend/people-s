@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Eye, Edit, Trash2, CheckCircle, UserCheck, Download, Filter } from 'lucide-react';
+import { Plus, Eye, Edit, Trash2, CheckCircle, UserCheck, Filter } from 'lucide-react';
 import { Button } from '../components/ui/button';
 import { Badge } from '../components/ui/badge';
 import { Card, CardContent } from '../components/ui/card';
@@ -8,7 +8,9 @@ import { BeneficiaryModal } from '../components/modals/BeneficiaryModal';
 import { DeleteBeneficiaryModal } from '../components/modals/DeleteBeneficiaryModal';
 import { GenericFilters } from '../components/filters/GenericFilters';
 import { useBeneficiaryFilters } from '../hooks/useBeneficiaryFilters';
-import { useApplicationExport } from '../hooks/useApplicationExport';
+import { useExport } from '@/hooks/useExport';
+import ExportButton from '@/components/common/ExportButton';
+import { beneficiaryExportColumns } from '@/utils/exportColumns';
 import { beneficiaries as beneficiariesApi } from '../lib/api';
 import { useToast } from '@/hooks/use-toast';
 import { useRBAC } from '@/hooks/useRBAC';
@@ -59,7 +61,13 @@ const Beneficiaries: React.FC = () => {
   const { toast } = useToast();
   const { hasAnyPermission, hasPermission } = useRBAC();
   const filterHook = useBeneficiaryFilters();
-  const { exportApplications, exporting } = useApplicationExport();
+  const { exportCSV, exportPDF, printData, exporting } = useExport({
+    apiCall: (params) => beneficiariesApi.export(params),
+    filenamePrefix: 'beneficiaries',
+    pdfTitle: 'Beneficiaries Report',
+    pdfColumns: beneficiaryExportColumns,
+    getFilterParams: () => filterHook.getExportParams(),
+  });
   
   const canViewBeneficiaries = hasAnyPermission(['beneficiaries.read.all', 'beneficiaries.read.regional', 'beneficiaries.read.own']);
   const canCreateBeneficiaries = hasPermission('beneficiaries.create');
@@ -205,12 +213,6 @@ const Beneficiaries: React.FC = () => {
     }
   };
 
-  const handleExport = () => {
-    const exportParams = filterHook.getExportParams();
-    exportParams.includeApprovedInterviews = true;
-    exportApplications(exportParams, 'beneficiaries');
-  };
-
   const getStatusBadge = (status: string) => {
     const variants = {
       active: 'bg-green-100 text-green-800',
@@ -237,7 +239,7 @@ const Beneficiaries: React.FC = () => {
 
       <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
         <div>
-          <h1 className="text-xl font-bold">Beneficiaries</h1>
+          <h1 className="text-lg font-bold">Beneficiaries</h1>
           <p className="text-muted-foreground mt-1">Manage and track beneficiaries</p>
         </div>
         <div className="flex gap-2">
@@ -267,10 +269,12 @@ const Beneficiaries: React.FC = () => {
               Add Beneficiary
             </Button>
           )}
-          <Button variant="outline" onClick={handleExport} disabled={exporting}>
-            <Download className="mr-2 h-4 w-4" />
-            {exporting ? "Exporting..." : "Export"}
-          </Button>
+          <ExportButton
+            onExportCSV={() => exportCSV()}
+            onExportPDF={() => exportPDF()}
+            onPrint={() => printData()}
+            exporting={exporting}
+          />
         </div>
       </div>
 

@@ -2,6 +2,8 @@ const { Application, Scheme, User, FormConfiguration, Beneficiary, Location } = 
 const ResponseHelper = require('../utils/responseHelper');
 const mongoose = require('mongoose');
 const notificationService = require('../services/notificationService');
+const { getApplicationStagesFromScheme } = require('./applicationController');
+const { calculateApplicationScore } = require('../utils/scoringEngine');
 
 class BeneficiaryApplicationController {
   /**
@@ -45,6 +47,7 @@ class BeneficiaryApplicationController {
           applicationSettings.requiresInterview applicationSettings.allowMultipleApplications
           statistics.totalApplications statistics.approvedApplications statistics.totalBeneficiaries
           hasFormConfiguration
+          renewalSettings
         `)
         .sort({ priority: -1, createdAt: -1 });
 
@@ -62,11 +65,20 @@ class BeneficiaryApplicationController {
             status: { $in: ['approved', 'completed'] }
           });
 
-          // Check if user has already applied
+          // Check if user has already applied or has a draft
           const existingApplication = await Application.findOne({
             scheme: scheme._id,
             applicant: req.user._id,
             status: { $nin: ['rejected', 'cancelled'] }
+          });
+
+          // Check for draft specifically (beneficiary-based lookup)
+          const draftApplication = await Application.findOne({
+            scheme: scheme._id,
+            status: 'draft'
+          }).populate('beneficiary', 'phone').then(app => {
+            if (app && app.beneficiary?.phone === req.user.phone) return app;
+            return null;
           });
 
           // Check if scheme has a valid form configuration in database
@@ -140,7 +152,9 @@ class BeneficiaryApplicationController {
               : 0,
             
             // Application status
-            hasApplied: !!existingApplication,
+            hasApplied: !!(existingApplication && existingApplication.status !== 'draft'),
+            hasDraft: !!draftApplication,
+            draftApplicationId: draftApplication?._id,
             existingApplicationId: existingApplication?._id,
             existingApplicationStatus: existingApplication?.status,
             
@@ -229,7 +243,7 @@ class BeneficiaryApplicationController {
       const formConfig = await FormConfiguration.findOne({ 
         scheme: scheme._id,
         enabled: true
-      }).select('title description pages submissionSettings isPublished');
+      }).select('title description pages submissionSettings isPublished scoringConfig');
 
       console.log('📋 Form config found:', !!formConfig);
       if (formConfig) {
@@ -331,6 +345,9 @@ class BeneficiaryApplicationController {
           existingApplicationId: existingApplication?._id,
           existingApplicationStatus: existingApplication?.status,
           
+          // Renewal settings
+          renewalSettings: scheme.renewalSettings || { isRenewable: false },
+
           // Form configuration
           formConfig: finalFormConfig
         }
@@ -418,10 +435,96 @@ class BeneficiaryApplicationController {
       const existingApplication = await Application.findOne({
         scheme: schemeId,
         beneficiary: beneficiary._id,
-        status: { $nin: ['rejected'] }
+        status: { $nin: ['rejected', 'cancelled'] }
       });
 
       if (existingApplication) {
+        if (existingApplication.status === 'draft') {
+          // Convert draft to submitted application
+          console.log('📝 Converting draft to submitted application:', existingApplication.applicationNumber);
+          
+          const rawAmount = formData.requestedAmount || formData.field_12;
+          const parsedAmount = (typeof rawAmount === 'number' || (typeof rawAmount === 'string' && !isNaN(Number(rawAmount))))
+            ? Number(rawAmount) : null;
+          const requestedAmount = parsedAmount || scheme.benefits?.amount || 0;
+
+          existingApplication.formData = formData;
+          existingApplication.requestedAmount = requestedAmount;
+          existingApplication.documents = documents || [];
+          existingApplication.status = 'pending';
+          existingApplication.draftMetadata = undefined;
+          
+          // Get application stages from scheme
+          const applicationStages = getApplicationStagesFromScheme(scheme);
+          existingApplication.applicationStages = applicationStages.map(stage => ({
+            ...stage,
+            status: 'pending',
+            completedAt: null,
+            completedBy: null,
+            notes: null,
+            comments: {
+              unitAdmin: { comment: null, commentedBy: null, commentedAt: null },
+              areaAdmin: { comment: null, commentedBy: null, commentedAt: null },
+              districtAdmin: { comment: null, commentedBy: null, commentedAt: null }
+            },
+            requiredDocuments: (stage.requiredDocuments || []).map(doc => ({
+              name: doc.name,
+              description: doc.description,
+              isRequired: doc.isRequired,
+              uploadedFile: null,
+              uploadedBy: null,
+              uploadedAt: null
+            }))
+          }));
+          existingApplication.currentStage = applicationStages[0]?.name || 'Application Received';
+
+          // Calculate eligibility score if form has scoring enabled
+          try {
+            const formConfig = await FormConfiguration.findOne({ 
+              scheme: schemeId, 
+              enabled: true,
+              'scoringConfig.enabled': true 
+            });
+            if (formConfig) {
+              const scoreResult = calculateApplicationScore(formData, formConfig);
+              existingApplication.eligibilityScore = scoreResult;
+              if (scoreResult.autoRejected) {
+                existingApplication.status = 'rejected';
+                existingApplication.reviewComments = `Auto-rejected: Eligibility score ${scoreResult.percentage}% is below the minimum threshold of ${scoreResult.threshold}%`;
+                existingApplication.reviewedAt = new Date();
+              }
+            }
+          } catch (scoringError) {
+            console.error('⚠️ Scoring calculation failed (non-blocking):', scoringError.message);
+          }
+
+          await existingApplication.save();
+
+          await existingApplication.populate([
+            { path: 'scheme', select: 'name category benefits' },
+            { path: 'beneficiary', select: 'name phone' }
+          ]);
+
+          notificationService
+            .notifyApplicationSubmitted(existingApplication, { createdBy: userId })
+            .catch(err => console.error('❌ Application submitted notification failed:', err));
+
+          return ResponseHelper.success(res, {
+            application: {
+              _id: existingApplication._id,
+              applicationId: existingApplication.applicationNumber,
+              applicationNumber: existingApplication.applicationNumber,
+              scheme: existingApplication.scheme,
+              status: existingApplication.status,
+              requestedAmount: existingApplication.requestedAmount,
+              submittedAt: existingApplication.createdAt,
+              convertedFromDraft: true
+            }
+          }, existingApplication.eligibilityScore?.autoRejected 
+            ? 'Application submitted but auto-rejected due to low eligibility score'
+            : 'Application submitted successfully');
+        }
+        
         return ResponseHelper.error(res, 'You have already applied for this scheme', 400);
       }
 
@@ -441,6 +544,9 @@ class BeneficiaryApplicationController {
       console.log('📝 Generated application number:', applicationNumber);
       console.log('📝 Form data received:', formData);
 
+      // Get application stages from scheme configuration
+      const applicationStages = getApplicationStagesFromScheme(scheme);
+
       // Create application with all required fields INCLUDING formData
       const application = new Application({
         applicationNumber: applicationNumber,
@@ -455,7 +561,28 @@ class BeneficiaryApplicationController {
         area: beneficiary.area,
         unit: beneficiary.unit,
         createdBy: userId,
-        documents: documents || []
+        documents: documents || [],
+        applicationStages: applicationStages.map(stage => ({
+          ...stage,
+          status: 'pending',
+          completedAt: null,
+          completedBy: null,
+          notes: null,
+          comments: {
+            unitAdmin: { comment: null, commentedBy: null, commentedAt: null },
+            areaAdmin: { comment: null, commentedBy: null, commentedAt: null },
+            districtAdmin: { comment: null, commentedBy: null, commentedAt: null }
+          },
+          requiredDocuments: (stage.requiredDocuments || []).map(doc => ({
+            name: doc.name,
+            description: doc.description,
+            isRequired: doc.isRequired,
+            uploadedFile: null,
+            uploadedBy: null,
+            uploadedAt: null
+          }))
+        })),
+        currentStage: applicationStages[0]?.name || 'Application Received'
       });
 
       console.log('📝 Application object before save:', {
@@ -466,6 +593,39 @@ class BeneficiaryApplicationController {
         requestedAmount: application.requestedAmount,
         formDataKeys: Object.keys(formData || {})
       });
+
+      // Calculate eligibility score if form has scoring enabled
+      try {
+        const formConfig = await FormConfiguration.findOne({ 
+          scheme: schemeId, 
+          enabled: true,
+          'scoringConfig.enabled': true 
+        });
+
+        if (formConfig) {
+          console.log('📊 Calculating eligibility score...');
+          const scoreResult = calculateApplicationScore(formData, formConfig);
+          application.eligibilityScore = scoreResult;
+          console.log('📊 Score calculated:', {
+            totalPoints: scoreResult.totalPoints,
+            maxPoints: scoreResult.maxPoints,
+            percentage: scoreResult.percentage,
+            meetsThreshold: scoreResult.meetsThreshold,
+            autoRejected: scoreResult.autoRejected
+          });
+
+          // Auto-reject if below threshold and auto-reject is enabled
+          if (scoreResult.autoRejected) {
+            application.status = 'rejected';
+            application.reviewComments = `Auto-rejected: Eligibility score ${scoreResult.percentage}% is below the minimum threshold of ${scoreResult.threshold}%`;
+            application.reviewedAt = new Date();
+            console.log('⚠️ Application auto-rejected due to low eligibility score');
+          }
+        }
+      } catch (scoringError) {
+        console.error('⚠️ Scoring calculation failed (non-blocking):', scoringError.message);
+        // Don't block application submission if scoring fails
+      }
 
       await application.save();
 
@@ -493,9 +653,16 @@ class BeneficiaryApplicationController {
           scheme: application.scheme,
           status: application.status,
           requestedAmount: application.requestedAmount,
-          submittedAt: application.createdAt
+          submittedAt: application.createdAt,
+          eligibilityScore: application.eligibilityScore?.totalPoints > 0 ? {
+            percentage: application.eligibilityScore.percentage,
+            meetsThreshold: application.eligibilityScore.meetsThreshold,
+            autoRejected: application.eligibilityScore.autoRejected
+          } : undefined
         }
-      }, 'Application submitted successfully');
+      }, application.eligibilityScore?.autoRejected 
+        ? 'Application submitted but auto-rejected due to low eligibility score'
+        : 'Application submitted successfully');
 
     } catch (error) {
       console.error('❌ Submit Application Error:', error);
@@ -739,7 +906,7 @@ class BeneficiaryApplicationController {
       }
 
       const stats = await Application.aggregate([
-        { $match: { beneficiary: beneficiary._id } },
+        { $match: { beneficiary: beneficiary._id, status: { $ne: 'draft' } } },
         {
           $group: {
             _id: '$status',
@@ -773,6 +940,591 @@ class BeneficiaryApplicationController {
 
     } catch (error) {
       console.error('❌ Get Application Stats Error:', error);
+      return ResponseHelper.error(res, error.message, 500);
+    }
+  }
+
+  /**
+   * Get applications due for renewal for the logged-in beneficiary
+   * GET /api/beneficiary/applications/renewal-due
+   */
+  async getRenewalDueApplications(req, res) {
+    try {
+      const beneficiary = await Beneficiary.findOne({ phone: req.user.phone });
+      if (!beneficiary) {
+        return ResponseHelper.success(res, { applications: [] }, 'No renewal-due applications');
+      }
+
+      const applications = await Application.find({
+        beneficiary: beneficiary._id,
+        renewalStatus: { $in: ['due_for_renewal', 'active'] },
+        expiryDate: { $ne: null }
+      })
+        .populate('scheme', 'name code category renewalSettings')
+        .populate('project', 'name')
+        .sort({ expiryDate: 1 });
+
+      // Add computed fields
+      const now = new Date();
+      const enrichedApplications = applications.map(app => {
+        const appObj = app.toObject();
+        appObj.daysUntilExpiry = app.expiryDate
+          ? Math.ceil((app.expiryDate - now) / (1000 * 60 * 60 * 24))
+          : null;
+        appObj.isExpiringSoon = appObj.daysUntilExpiry !== null && appObj.daysUntilExpiry <= 7;
+        return appObj;
+      });
+
+      return ResponseHelper.success(res, {
+        applications: enrichedApplications,
+        total: enrichedApplications.length
+      }, 'Renewal-due applications retrieved');
+    } catch (error) {
+      console.error('❌ Get Renewal Due Applications Error:', error);
+      return ResponseHelper.error(res, error.message, 500);
+    }
+  }
+
+  /**
+   * Get renewal form with pre-filled data from parent application
+   * GET /api/beneficiary/applications/:id/renewal-form
+   */
+  async getRenewalForm(req, res) {
+    try {
+      const { id } = req.params;
+
+      const beneficiary = await Beneficiary.findOne({ phone: req.user.phone });
+      if (!beneficiary) {
+        return ResponseHelper.error(res, 'Beneficiary not found', 404);
+      }
+
+      // Find the application
+      const application = await Application.findOne({
+        _id: id,
+        beneficiary: beneficiary._id
+      }).populate('scheme', 'name code renewalSettings');
+
+      if (!application) {
+        return ResponseHelper.error(res, 'Application not found', 404);
+      }
+
+      // Verify scheme supports renewals
+      const scheme = await Scheme.findById(application.scheme._id || application.scheme);
+      if (!scheme?.renewalSettings?.isRenewable) {
+        return ResponseHelper.error(res, 'This scheme does not support renewals', 400);
+      }
+
+      // Check renewal status
+      if (!['active', 'due_for_renewal'].includes(application.renewalStatus)) {
+        return ResponseHelper.error(res, `Application cannot be renewed. Current renewal status: ${application.renewalStatus}`, 400);
+      }
+
+      // Check max renewals limit
+      if (scheme.renewalSettings.maxRenewals > 0) {
+        const renewalCount = await Application.countDocuments({
+          parentApplication: application._id,
+          isRenewal: true
+        });
+        if (renewalCount >= scheme.renewalSettings.maxRenewals) {
+          return ResponseHelper.error(res, `Maximum renewals (${scheme.renewalSettings.maxRenewals}) reached for this application`, 400);
+        }
+      }
+
+      // Get renewal form configuration (separate form for renewals)
+      let formConfig = await FormConfiguration.findOne({
+        scheme: scheme._id,
+        isRenewalForm: true
+      });
+
+      // If no renewal form, fall back to original form
+      if (!formConfig) {
+        formConfig = await FormConfiguration.findOne({
+          scheme: scheme._id,
+          isRenewalForm: { $ne: true }
+        });
+      }
+
+      if (!formConfig) {
+        return ResponseHelper.error(res, 'No form configuration found for renewal', 404);
+      }
+
+      return ResponseHelper.success(res, {
+        formConfiguration: formConfig,
+        prefillData: application.formData || {},
+        parentApplication: {
+          _id: application._id,
+          applicationNumber: application.applicationNumber,
+          status: application.status,
+          renewalStatus: application.renewalStatus,
+          expiryDate: application.expiryDate,
+          renewalNumber: application.renewalNumber,
+          approvedAmount: application.approvedAmount,
+          requestedAmount: application.requestedAmount
+        },
+        scheme: {
+          _id: scheme._id,
+          name: scheme.name,
+          code: scheme.code,
+          renewalSettings: scheme.renewalSettings
+        }
+      }, 'Renewal form retrieved successfully');
+    } catch (error) {
+      console.error('❌ Get Renewal Form Error:', error);
+      return ResponseHelper.error(res, error.message, 500);
+    }
+  }
+
+  /**
+   * Submit a renewal application
+   * POST /api/beneficiary/applications/:id/renew
+   */
+  async submitRenewal(req, res) {
+    try {
+      const { id } = req.params;
+      const { formData, documents } = req.body;
+
+      if (!formData || typeof formData !== 'object') {
+        return ResponseHelper.error(res, 'Form data is required', 400);
+      }
+
+      const beneficiary = await Beneficiary.findOne({ phone: req.user.phone });
+      if (!beneficiary) {
+        return ResponseHelper.error(res, 'Beneficiary not found', 404);
+      }
+
+      // Find the parent application
+      const parentApplication = await Application.findOne({
+        _id: id,
+        beneficiary: beneficiary._id
+      }).populate('scheme');
+
+      if (!parentApplication) {
+        return ResponseHelper.error(res, 'Application not found', 404);
+      }
+
+      // Verify scheme supports renewals
+      const scheme = await Scheme.findById(parentApplication.scheme._id || parentApplication.scheme);
+      if (!scheme?.renewalSettings?.isRenewable) {
+        return ResponseHelper.error(res, 'This scheme does not support renewals', 400);
+      }
+
+      // Check renewal status
+      if (!['active', 'due_for_renewal'].includes(parentApplication.renewalStatus)) {
+        return ResponseHelper.error(res, `Application cannot be renewed. Current renewal status: ${parentApplication.renewalStatus}`, 400);
+      }
+
+      // Check max renewals
+      if (scheme.renewalSettings.maxRenewals > 0) {
+        const renewalCount = await Application.countDocuments({
+          parentApplication: parentApplication._id,
+          isRenewal: true
+        });
+        if (renewalCount >= scheme.renewalSettings.maxRenewals) {
+          return ResponseHelper.error(res, `Maximum renewals (${scheme.renewalSettings.maxRenewals}) reached`, 400);
+        }
+      }
+
+      // Check if there's already a pending renewal
+      const existingRenewal = await Application.findOne({
+        parentApplication: parentApplication._id,
+        isRenewal: true,
+        status: { $nin: ['rejected', 'cancelled'] }
+      });
+      if (existingRenewal) {
+        return ResponseHelper.error(res, 'A renewal application is already in progress', 400);
+      }
+
+      // Generate application number
+      const applicationCount = await Application.countDocuments();
+      const year = new Date().getFullYear();
+      const applicationNumber = `APP${year}${String(applicationCount + 1).padStart(6, '0')}`;
+
+      // Calculate new renewal number
+      const renewalNumber = (parentApplication.renewalNumber || 0) + 1;
+
+      // Determine initial status based on requiresReapproval
+      const requiresReapproval = scheme.renewalSettings.requiresReapproval !== false;
+      const initialStatus = requiresReapproval ? 'pending' : 'approved';
+
+      // Get application stages from scheme (if requires reapproval)
+      const applicationStages = requiresReapproval ? getApplicationStagesFromScheme(scheme) : [];
+
+      // Extract amount from form data
+      const rawAmount = formData.requestedAmount || formData.field_12;
+      const parsedAmount = (typeof rawAmount === 'number' || (typeof rawAmount === 'string' && !isNaN(Number(rawAmount))))
+        ? Number(rawAmount)
+        : null;
+      const requestedAmount = parsedAmount || parentApplication.requestedAmount || scheme.benefits?.amount || 0;
+
+      // Create renewal application
+      const renewalApplication = new Application({
+        applicationNumber,
+        beneficiary: beneficiary._id,
+        scheme: scheme._id,
+        project: parentApplication.project,
+        requestedAmount,
+        formData,
+        documents: documents || [],
+        status: initialStatus,
+        isRenewal: true,
+        parentApplication: parentApplication._id,
+        renewalNumber,
+        state: beneficiary.state,
+        district: beneficiary.district,
+        area: beneficiary.area,
+        unit: beneficiary.unit,
+        applicationStages,
+        currentStage: requiresReapproval ? 'Application Received' : 'Completed',
+        createdBy: req.user._id,
+        updatedBy: req.user._id
+      });
+
+      // If auto-approved, set approval details and renewal expiry
+      if (!requiresReapproval) {
+        renewalApplication.approvedAmount = requestedAmount;
+        renewalApplication.approvedAt = new Date();
+        renewalApplication.approvalComments = 'Auto-approved renewal';
+
+        // Set renewal expiry for the new application
+        const approvedDate = renewalApplication.approvedAt;
+        const expiryDate = new Date(approvedDate);
+        expiryDate.setDate(expiryDate.getDate() + (scheme.renewalSettings.renewalPeriodDays || 365));
+        renewalApplication.expiryDate = expiryDate;
+
+        const renewalDueDate = new Date(expiryDate);
+        renewalDueDate.setDate(renewalDueDate.getDate() - (scheme.renewalSettings.autoNotifyBeforeDays || 30));
+        renewalApplication.renewalDueDate = renewalDueDate;
+        renewalApplication.renewalStatus = 'active';
+      } else {
+        renewalApplication.renewalStatus = 'not_applicable'; // Will be set when approved
+      }
+
+      await renewalApplication.save();
+
+      // Mark parent application as renewed
+      parentApplication.renewalStatus = 'renewed';
+      await parentApplication.save();
+
+      console.log(`✅ Renewal application ${applicationNumber} created (renewal #${renewalNumber}) for parent ${parentApplication.applicationNumber}`);
+
+      return ResponseHelper.success(res, {
+        application: {
+          _id: renewalApplication._id,
+          applicationNumber: renewalApplication.applicationNumber,
+          status: renewalApplication.status,
+          isRenewal: true,
+          renewalNumber,
+          parentApplicationNumber: parentApplication.applicationNumber,
+          autoApproved: !requiresReapproval
+        }
+      }, `Renewal application submitted successfully${!requiresReapproval ? ' (auto-approved)' : ''}`);
+    } catch (error) {
+      console.error('❌ Submit Renewal Error:', error);
+      return ResponseHelper.error(res, error.message, 500);
+    }
+  }
+
+  /**
+   * Save a new draft or update existing draft
+   * POST /api/beneficiary/applications/draft
+   */
+  async saveDraft(req, res) {
+    try {
+      const { schemeId, formData, documents, currentPage } = req.body;
+      const userId = req.user._id;
+
+      if (!schemeId) {
+        return ResponseHelper.error(res, 'Scheme ID is required', 400);
+      }
+
+      if (!mongoose.Types.ObjectId.isValid(schemeId)) {
+        return ResponseHelper.error(res, 'Invalid scheme ID', 400);
+      }
+
+      // Check if scheme exists and is active
+      const scheme = await Scheme.findById(schemeId);
+      if (!scheme) {
+        return ResponseHelper.error(res, 'Scheme not found', 404);
+      }
+
+      if (scheme.status !== 'active') {
+        return ResponseHelper.error(res, 'Scheme is not currently accepting applications', 400);
+      }
+
+      // Get user's profile location data
+      const user = await User.findById(userId).select('profile');
+      if (!user?.profile?.location?.district || !user?.profile?.location?.area || !user?.profile?.location?.unit) {
+        return ResponseHelper.error(res, 'Please complete your profile with location information before applying', 400);
+      }
+
+      // Find or create beneficiary record
+      let beneficiary = await Beneficiary.findOne({ phone: req.user.phone });
+      if (!beneficiary) {
+        const district = await Location.findById(user.profile.location.district);
+        if (!district || !district.parent) {
+          return ResponseHelper.error(res, 'Invalid location data. Please update your profile.', 400);
+        }
+        beneficiary = new Beneficiary({
+          name: req.user.name,
+          phone: req.user.phone,
+          state: district.parent,
+          district: user.profile.location.district,
+          area: user.profile.location.area,
+          unit: user.profile.location.unit,
+          status: 'active',
+          isVerified: true,
+          createdBy: userId
+        });
+        await beneficiary.save();
+      }
+
+      // Check for existing draft for this scheme
+      let existingDraft = await Application.findOne({
+        scheme: schemeId,
+        beneficiary: beneficiary._id,
+        status: 'draft'
+      });
+
+      if (existingDraft) {
+        // Update existing draft
+        existingDraft.formData = formData || existingDraft.formData;
+        existingDraft.documents = documents || existingDraft.documents;
+        existingDraft.draftMetadata = {
+          lastSavedAt: new Date(),
+          currentPage: currentPage || 0,
+          completedPages: existingDraft.draftMetadata?.completedPages || [],
+          autoSaved: req.body.autoSave || false
+        };
+
+        // Update requestedAmount if present in formData
+        if (formData) {
+          const rawAmount = formData.requestedAmount || formData.field_12;
+          const parsedAmount = (typeof rawAmount === 'number' || (typeof rawAmount === 'string' && !isNaN(Number(rawAmount))))
+            ? Number(rawAmount) : null;
+          if (parsedAmount) existingDraft.requestedAmount = parsedAmount;
+        }
+
+        await existingDraft.save();
+
+        return ResponseHelper.success(res, {
+          draft: {
+            _id: existingDraft._id,
+            applicationNumber: existingDraft.applicationNumber,
+            lastSavedAt: existingDraft.draftMetadata.lastSavedAt
+          }
+        }, 'Draft updated successfully');
+      }
+
+      // Check for existing non-draft application
+      const existingApp = await Application.findOne({
+        scheme: schemeId,
+        beneficiary: beneficiary._id,
+        status: { $nin: ['rejected', 'cancelled', 'draft'] }
+      });
+
+      if (existingApp) {
+        return ResponseHelper.error(res, 'You have already applied for this scheme', 400);
+      }
+
+      // Generate application number
+      const applicationCount = await Application.countDocuments();
+      const year = new Date().getFullYear();
+      const applicationNumber = `APP${year}${String(applicationCount + 1).padStart(6, '0')}`;
+
+      // Create new draft
+      const draft = new Application({
+        applicationNumber,
+        beneficiary: beneficiary._id,
+        scheme: schemeId,
+        project: scheme.project,
+        requestedAmount: 0,
+        formData: formData || {},
+        status: 'draft',
+        state: beneficiary.state,
+        district: beneficiary.district,
+        area: beneficiary.area,
+        unit: beneficiary.unit,
+        createdBy: userId,
+        documents: documents || [],
+        draftMetadata: {
+          lastSavedAt: new Date(),
+          currentPage: currentPage || 0,
+          completedPages: [],
+          autoSaved: req.body.autoSave || false
+        }
+      });
+
+      await draft.save();
+
+      // Add to beneficiary's applications array
+      beneficiary.applications.push(draft._id);
+      await beneficiary.save();
+
+      console.log('📝 Draft saved:', applicationNumber);
+
+      return ResponseHelper.success(res, {
+        draft: {
+          _id: draft._id,
+          applicationNumber: draft.applicationNumber,
+          lastSavedAt: draft.draftMetadata.lastSavedAt
+        }
+      }, 'Draft saved successfully', 201);
+
+    } catch (error) {
+      console.error('❌ Save Draft Error:', error);
+      return ResponseHelper.error(res, error.message, 500);
+    }
+  }
+
+  /**
+   * Update an existing draft
+   * PUT /api/beneficiary/applications/draft/:id
+   */
+  async updateDraft(req, res) {
+    try {
+      const { id } = req.params;
+      const { formData, documents, currentPage, autoSave } = req.body;
+
+      if (!mongoose.Types.ObjectId.isValid(id)) {
+        return ResponseHelper.error(res, 'Invalid draft ID', 400);
+      }
+
+      // Find beneficiary
+      const beneficiary = await Beneficiary.findOne({ phone: req.user.phone });
+      if (!beneficiary) {
+        return ResponseHelper.error(res, 'Beneficiary record not found', 404);
+      }
+
+      const draft = await Application.findOne({
+        _id: id,
+        beneficiary: beneficiary._id,
+        status: 'draft'
+      });
+
+      if (!draft) {
+        return ResponseHelper.error(res, 'Draft not found', 404);
+      }
+
+      // Update draft fields
+      if (formData) draft.formData = formData;
+      if (documents) draft.documents = documents;
+      
+      // Update requestedAmount if present in formData
+      if (formData) {
+        const rawAmount = formData.requestedAmount || formData.field_12;
+        const parsedAmount = (typeof rawAmount === 'number' || (typeof rawAmount === 'string' && !isNaN(Number(rawAmount))))
+          ? Number(rawAmount) : null;
+        if (parsedAmount) draft.requestedAmount = parsedAmount;
+      }
+
+      draft.draftMetadata = {
+        lastSavedAt: new Date(),
+        currentPage: currentPage !== undefined ? currentPage : (draft.draftMetadata?.currentPage || 0),
+        completedPages: draft.draftMetadata?.completedPages || [],
+        autoSaved: autoSave || false
+      };
+
+      await draft.save();
+
+      return ResponseHelper.success(res, {
+        draft: {
+          _id: draft._id,
+          applicationNumber: draft.applicationNumber,
+          lastSavedAt: draft.draftMetadata.lastSavedAt
+        }
+      }, 'Draft updated successfully');
+
+    } catch (error) {
+      console.error('❌ Update Draft Error:', error);
+      return ResponseHelper.error(res, error.message, 500);
+    }
+  }
+
+  /**
+   * Get draft for a specific scheme
+   * GET /api/beneficiary/applications/draft/scheme/:schemeId
+   */
+  async getDraftForScheme(req, res) {
+    try {
+      const { schemeId } = req.params;
+
+      if (!mongoose.Types.ObjectId.isValid(schemeId)) {
+        return ResponseHelper.error(res, 'Invalid scheme ID', 400);
+      }
+
+      // Find beneficiary
+      const beneficiary = await Beneficiary.findOne({ phone: req.user.phone });
+      if (!beneficiary) {
+        return ResponseHelper.success(res, { draft: null }, 'No draft found');
+      }
+
+      const draft = await Application.findOne({
+        scheme: schemeId,
+        beneficiary: beneficiary._id,
+        status: 'draft'
+      }).populate('scheme', 'name category');
+
+      if (!draft) {
+        return ResponseHelper.success(res, { draft: null }, 'No draft found');
+      }
+
+      return ResponseHelper.success(res, {
+        draft: {
+          _id: draft._id,
+          applicationNumber: draft.applicationNumber,
+          formData: draft.formData,
+          documents: draft.documents,
+          draftMetadata: draft.draftMetadata,
+          scheme: draft.scheme,
+          createdAt: draft.createdAt,
+          updatedAt: draft.updatedAt
+        }
+      }, 'Draft retrieved successfully');
+
+    } catch (error) {
+      console.error('❌ Get Draft Error:', error);
+      return ResponseHelper.error(res, error.message, 500);
+    }
+  }
+
+  /**
+   * Delete a draft
+   * DELETE /api/beneficiary/applications/draft/:id
+   */
+  async deleteDraft(req, res) {
+    try {
+      const { id } = req.params;
+
+      if (!mongoose.Types.ObjectId.isValid(id)) {
+        return ResponseHelper.error(res, 'Invalid draft ID', 400);
+      }
+
+      // Find beneficiary
+      const beneficiary = await Beneficiary.findOne({ phone: req.user.phone });
+      if (!beneficiary) {
+        return ResponseHelper.error(res, 'Beneficiary record not found', 404);
+      }
+
+      const draft = await Application.findOneAndDelete({
+        _id: id,
+        beneficiary: beneficiary._id,
+        status: 'draft'
+      });
+
+      if (!draft) {
+        return ResponseHelper.error(res, 'Draft not found or already submitted', 404);
+      }
+
+      // Remove from beneficiary's applications array
+      beneficiary.applications = beneficiary.applications.filter(
+        appId => appId.toString() !== id
+      );
+      await beneficiary.save();
+
+      return ResponseHelper.success(res, null, 'Draft deleted successfully');
+
+    } catch (error) {
+      console.error('❌ Delete Draft Error:', error);
       return ResponseHelper.error(res, error.message, 500);
     }
   }

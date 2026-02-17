@@ -1,14 +1,13 @@
 const { Notification, User, Beneficiary } = require('../models');
 const dxingSmsService = require('./dxingSmsService');
 const dxingWhatsappService = require('./dxingWhatsappService');
-// const emailService = require('./emailService'); // Disabled for development
+const firebaseService = require('./firebaseService');
 const config = require('../config/environment');
 
 class NotificationService {
   constructor() {
     this.dxingService = dxingSmsService;
     this.dxingWhatsappService = dxingWhatsappService;
-    // this.emailService = emailService; // Disabled for development
   }
 
   /**
@@ -63,8 +62,12 @@ class NotificationService {
         case 'email':
           sendResult = await this.sendEmail(recipientData, title, message, variables);
           break;
+        case 'push':
+          sendResult = await this.sendPushNotification(recipientData, title, message, variables);
+          break;
         case 'in_app':
-          sendResult = await this.createInAppNotification(recipientData, title, message, relatedEntities);
+          // In-app: the DB record IS the notification — already saved above
+          sendResult = { success: true, messageId: notification._id.toString(), provider: 'Database' };
           break;
         default:
           throw new Error(`Unsupported notification type: ${type}`);
@@ -146,6 +149,14 @@ class NotificationService {
         case 'push':
           sendResults = await this.sendBulkPushNotification(preparedRecipients, title, message, variables);
           break;
+        case 'in_app':
+          // In-app: the DB record IS the notification, mark all as sent
+          sendResults = preparedRecipients.map(() => ({
+            success: true,
+            messageId: notification._id.toString(),
+            provider: 'Database'
+          }));
+          break;
         default:
           throw new Error(`Bulk ${type} notifications not supported`);
       }
@@ -178,8 +189,6 @@ class NotificationService {
 
   /**
    * Send targeted notifications based on criteria
-   * @param {Object} targetingData - Targeting criteria
-   * @returns {Promise<Object>} Targeting result
    */
   async sendTargetedNotification(targetingData) {
     try {
@@ -193,7 +202,6 @@ class NotificationService {
         variables = {}
       } = targetingData;
 
-      // Find recipients based on targeting criteria
       const recipients = await this.findTargetedRecipients(targeting);
 
       if (recipients.length === 0) {
@@ -203,7 +211,6 @@ class NotificationService {
         };
       }
 
-      // Send bulk notification
       return await this.sendBulkNotification({
         type,
         recipients,
@@ -213,6 +220,7 @@ class NotificationService {
         priority,
         targeting,
         variables,
+        relatedEntities: targetingData.relatedEntities,
         createdBy: targetingData.createdBy
       });
     } catch (error) {
@@ -221,21 +229,16 @@ class NotificationService {
     }
   }
 
-  /**
-   * Send DXing SMS notification
-   * @param {Object} recipient - Recipient data
-   * @param {string} message - SMS message
-   * @param {Object} variables - Template variables
-   * @param {string} templateId - Template ID
-   * @returns {Promise<Object>} SMS result
-   */
+  // =====================
+  // PROVIDER SEND METHODS
+  // =====================
+
   async sendDXingSMS(recipient, message, variables = {}, templateId = null) {
     try {
       if (!recipient.phone) {
         throw new Error('Phone number is required for DXing SMS');
       }
 
-      // Use template if provided, otherwise use message
       const smsMessage = templateId 
         ? this.dxingService.createTemplate(templateId, variables)
         : message;
@@ -253,18 +256,10 @@ class NotificationService {
         error: result.error
       };
     } catch (error) {
-      return {
-        success: false,
-        error: error.message,
-        provider: 'DXing'
-      };
+      return { success: false, error: error.message, provider: 'DXing' };
     }
   }
 
-  /**
-   * Send DXing WhatsApp notification (requires DXING_WHATSAPP_* env)
-   * @returns {Promise<Object>} WhatsApp result
-   */
   async sendDXingWhatsApp(recipient, message, variables = {}, templateId = null) {
     try {
       if (!recipient.phone) {
@@ -285,34 +280,18 @@ class NotificationService {
         error: result.error
       };
     } catch (error) {
-      return {
-        success: false,
-        error: error.message,
-        provider: 'DXing'
-      };
+      return { success: false, error: error.message, provider: 'DXing' };
     }
   }
 
-  /**
-   * Bulk WhatsApp (sequential; DXing bulk APIs vary by account)
-   */
   async sendBulkWhatsApp(recipients, message, variables = {}, templateId = null) {
     const results = [];
     for (const recipient of recipients) {
-      // eslint-disable-next-line no-await-in-loop
       results.push(await this.sendDXingWhatsApp(recipient, message, { ...variables, name: recipient.name }, templateId));
     }
     return results;
   }
 
-  /**
-   * Send bulk SMS notifications
-   * @param {Array} recipients - Recipients array
-   * @param {string} message - SMS message
-   * @param {Object} variables - Template variables
-   * @param {string} templateId - Template ID
-   * @returns {Promise<Array>} SMS results
-   */
   async sendBulkSMS(recipients, message, variables = {}, templateId = null) {
     try {
       const smsRecipients = recipients
@@ -326,164 +305,71 @@ class NotificationService {
         }));
 
       if (smsRecipients.length === 0) {
-        return recipients.map(() => ({
-          success: false,
-          error: 'No valid phone numbers found'
-        }));
+        return recipients.map(() => ({ success: false, error: 'No valid phone numbers found' }));
       }
 
       const bulkResult = await dxingSmsService.sendBulkSMS(smsRecipients);
 
-      // Return individual results (simplified - in production, track each message)
-      return recipients.map((recipient, index) => ({
+      return recipients.map((recipient) => ({
         success: recipient.phone ? bulkResult.success : false,
         messageId: bulkResult.batchId,
         provider: 'DXing',
         error: recipient.phone ? bulkResult.error : 'No phone number'
       }));
     } catch (error) {
-      return recipients.map(() => ({
-        success: false,
-        error: error.message,
-        provider: 'DXing'
-      }));
+      return recipients.map(() => ({ success: false, error: error.message, provider: 'DXing' }));
     }
   }
 
-  /**
-   * Send email notification
-   * @param {Object} recipient - Recipient data
-   * @param {string} subject - Email subject
-   * @param {string} message - Email message
-   * @param {Object} variables - Template variables
-   * @returns {Promise<Object>} Email result
-   */
-  async sendEmail(recipient, subject, message, variables = {}) {
-    try {
-      if (!recipient.email) {
-        throw new Error('Email address is required');
-      }
+  async sendEmail() {
+    return { success: false, error: 'Email notifications are disabled', provider: 'SMTP' };
+  }
 
-      // This would integrate with your email service
-      // For now, return a mock result
-      return {
-        success: true,
-        messageId: `email_${Date.now()}`,
-        provider: 'SMTP'
-      };
-    } catch (error) {
-      return {
-        success: false,
-        error: error.message,
-        provider: 'SMTP'
-      };
-    }
+  async sendBulkEmail(recipients) {
+    return recipients.map(() => ({ success: false, error: 'Email notifications are disabled', provider: 'SMTP' }));
   }
 
   /**
-   * Send bulk email notifications
-   * @param {Array} recipients - Recipients array
-   * @param {string} subject - Email subject
-   * @param {string} message - Email message
-   * @param {Object} variables - Template variables
-   * @returns {Promise<Array>} Email results
+   * Send push notification via Firebase
    */
-  async sendBulkEmail(recipients, subject, message, variables = {}) {
-    // Implementation for bulk email sending
-    return recipients.map(recipient => ({
-      success: !!recipient.email,
-      messageId: recipient.email ? `email_${Date.now()}` : null,
-      provider: 'SMTP',
-      error: recipient.email ? null : 'No email address'
-    }));
-  }
-
-  /**
-   * Send push notification
-   * @param {Object} recipient - Recipient data
-   * @param {string} title - Notification title
-   * @param {string} message - Notification message
-   * @param {Object} variables - Template variables
-   * @returns {Promise<Object>} Push result
-   */
-  async sendPushNotification(recipient, title, message, variables = {}) {
+  async sendPushNotification(recipient, title, message, data = {}) {
     try {
       if (!recipient.fcmToken) {
-        throw new Error('FCM token is required for push notifications');
+        // Try to get tokens from all user devices
+        if (recipient.user) {
+          const user = await User.findById(recipient.user).select('devices');
+          if (user && user.devices && user.devices.length > 0) {
+            const tokens = user.devices.map(d => d.fcmToken).filter(Boolean);
+            if (tokens.length > 0) {
+              return await firebaseService.sendPushToMultiple(tokens, title, message, data);
+            }
+          }
+        }
+        return { success: false, error: 'No FCM token available', provider: 'Firebase' };
       }
 
-      // This would integrate with Firebase Cloud Messaging
-      // For now, return a mock result
-      return {
-        success: true,
-        messageId: `push_${Date.now()}`,
-        provider: 'Firebase'
-      };
+      return await firebaseService.sendPushToDevice(recipient.fcmToken, title, message, data);
     } catch (error) {
-      return {
-        success: false,
-        error: error.message,
-        provider: 'Firebase'
-      };
+      return { success: false, error: error.message, provider: 'Firebase' };
     }
   }
 
-  /**
-   * Send bulk push notifications
-   * @param {Array} recipients - Recipients array
-   * @param {string} title - Notification title
-   * @param {string} message - Notification message
-   * @param {Object} variables - Template variables
-   * @returns {Promise<Array>} Push results
-   */
-  async sendBulkPushNotification(recipients, title, message, variables = {}) {
-    // Implementation for bulk push notifications
-    return recipients.map(recipient => ({
-      success: !!recipient.fcmToken,
-      messageId: recipient.fcmToken ? `push_${Date.now()}` : null,
-      provider: 'Firebase',
-      error: recipient.fcmToken ? null : 'No FCM token'
-    }));
-  }
-
-  /**
-   * Create in-app notification
-   * @param {Object} recipient - Recipient data
-   * @param {string} title - Notification title
-   * @param {string} message - Notification message
-   * @param {Object} relatedEntities - Related entities
-   * @returns {Promise<Object>} In-app result
-   */
-  async createInAppNotification(recipient, title, message, relatedEntities = {}) {
-    try {
-      // In-app notifications are stored in database and retrieved by client
-      return {
-        success: true,
-        messageId: `inapp_${Date.now()}`,
-        provider: 'Database'
-      };
-    } catch (error) {
-      return {
-        success: false,
-        error: error.message,
-        provider: 'Database'
-      };
+  async sendBulkPushNotification(recipients, title, message, data = {}) {
+    const results = [];
+    for (const recipient of recipients) {
+      const result = await this.sendPushNotification(recipient, title, message, data);
+      results.push(result);
     }
+    return results;
   }
 
-  /**
-   * Prepare recipient data for notification
-   * @param {Object} recipient - Raw recipient data
-   * @param {string} type - Notification type
-   * @returns {Promise<Object>} Prepared recipient
-   */
+  // ==============
+  // HELPER METHODS
+  // ==============
+
   async prepareRecipient(recipient, type) {
-    let recipientData = {
-      status: 'pending',
-      attempts: 0
-    };
+    let recipientData = { status: 'pending', attempts: 0 };
 
-    // If recipient is a user ID, fetch user data
     if (typeof recipient === 'string' && recipient.match(/^[0-9a-fA-F]{24}$/)) {
       const user = await User.findById(recipient);
       if (user) {
@@ -491,50 +377,33 @@ class NotificationService {
         recipientData.phone = user.phone;
         recipientData.email = user.email;
         recipientData.name = user.name;
-        
-        // Get FCM token from user's devices
         if (user.devices && user.devices.length > 0) {
           recipientData.fcmToken = user.devices[0].fcmToken;
         }
       }
     } else if (typeof recipient === 'object') {
-      // Direct recipient data
       Object.assign(recipientData, recipient);
     }
 
     return recipientData;
   }
 
-  /**
-   * Find recipients based on targeting criteria
-   * @param {Object} targeting - Targeting criteria
-   * @returns {Promise<Array>} Recipients array
-   */
   async findTargetedRecipients(targeting) {
     try {
       let query = { isActive: true };
 
-      // Filter by user roles
       if (targeting.userRoles && targeting.userRoles.length > 0) {
         query.role = { $in: targeting.userRoles };
       }
-
-      // Filter by regions
       if (targeting.regions && targeting.regions.length > 0) {
         query['adminScope.regions'] = { $in: targeting.regions };
       }
-
-      // Filter by projects
       if (targeting.projects && targeting.projects.length > 0) {
         query['adminScope.projects'] = { $in: targeting.projects };
       }
-
-      // Filter by schemes
       if (targeting.schemes && targeting.schemes.length > 0) {
         query['adminScope.schemes'] = { $in: targeting.schemes };
       }
-
-      // Apply custom filters
       if (targeting.customFilters) {
         Object.assign(query, targeting.customFilters);
       }
@@ -554,637 +423,119 @@ class NotificationService {
     }
   }
 
-  /**
-   * Get notification templates
-   * @param {string} category - Template category
-   * @returns {Object} Templates
-   */
   getTemplates(category = null) {
     const templates = {
       application_status: {
-        submitted: {
-          sms: 'application_submitted',
-          email: 'Application Submitted Successfully',
-          push: 'Application Submitted'
-        },
-        approved: {
-          sms: 'application_approved',
-          email: 'Application Approved',
-          push: 'Great News! Application Approved'
-        },
-        rejected: {
-          sms: 'application_rejected',
-          email: 'Application Status Update',
-          push: 'Application Status Update'
-        }
+        submitted: { sms: 'application_submitted', push: 'Application Submitted' },
+        approved: { sms: 'application_approved', push: 'Great News! Application Approved' },
+        rejected: { sms: 'application_rejected', push: 'Application Status Update' }
       },
       payment: {
-        processed: {
-          sms: 'payment_processed',
-          email: 'Payment Processed Successfully',
-          push: 'Payment Processed'
-        }
+        processed: { sms: 'payment_processed', push: 'Payment Processed' }
       },
       reminder: {
-        document_required: {
-          sms: 'document_required',
-          email: 'Documents Required',
-          push: 'Action Required: Upload Documents'
-        },
-        interview_scheduled: {
-          sms: 'interview_scheduled',
-          email: 'Interview Scheduled',
-          push: 'Interview Scheduled'
-        }
+        document_required: { sms: 'document_required', push: 'Action Required: Upload Documents' },
+        interview_scheduled: { sms: 'interview_scheduled', push: 'Interview Scheduled' }
+      },
+      donation: {
+        thank_you: { sms: 'donation_thank_you', whatsapp: 'donation_thank_you', push: 'Thank You for Your Donation!' },
+        reminder_7day: { sms: 'donation_reminder_7day', whatsapp: 'donation_reminder_7day', push: 'Donation Reminder' },
+        reminder_due: { sms: 'donation_reminder_due', whatsapp: 'donation_reminder_due', push: 'Donation Due Today' },
+        lapsed: { sms: 'donation_lapsed', whatsapp: 'donation_lapsed', push: 'We Miss Your Support!' },
+        anniversary: { sms: 'donation_anniversary', whatsapp: 'donation_anniversary', push: 'Donation Anniversary' }
       }
     };
-
     return category ? templates[category] : templates;
   }
 
-  /**
-   * Get user notifications
-   * @param {string} userId - User ID
-   * @param {Object} filters - Filters
-   * @returns {Promise<Array>} Notifications
-   */
+  // ============================
+  // NOTIFICATION QUERY ENDPOINTS
+  // ============================
+
   async getUserNotifications(userId, filters = {}) {
     try {
-      const {
-        type = null,
-        unreadOnly = false,
-        limit = 50,
-        offset = 0
-      } = filters;
+      const { type = null, category = null, unreadOnly = false, limit = 50, offset = 0 } = filters;
 
-      return await Notification.getByUser(userId, type, unreadOnly)
+      let query = { 'recipients.user': userId };
+      if (type) query.type = type;
+      if (category) query.category = category;
+      if (unreadOnly) {
+        query.recipients = { $elemMatch: { user: userId, status: { $ne: 'read' } } };
+      }
+
+      return await Notification.find(query)
+        .sort({ createdAt: -1 })
         .limit(limit)
-        .skip(offset);
+        .skip(offset)
+        .populate('createdBy', 'name')
+        .populate('relatedEntities.application', 'applicationNumber status')
+        .populate('relatedEntities.project', 'name')
+        .populate('relatedEntities.scheme', 'name');
     } catch (error) {
       console.error('❌ Get User Notifications Error:', error);
       throw error;
     }
   }
 
-  /**
-   * Domain helpers (Application lifecycle)
-   */
-  async notifyApplicationSubmitted(application, { createdBy } = {}) {
-    const title = 'New application received';
-    const schemeName = application.scheme?.name || 'a scheme';
-    const beneficiaryName = application.beneficiary?.name || 'A beneficiary';
-    const applicationNumber = application.applicationNumber || application._id;
-    const message = `New application ${applicationNumber} received from ${beneficiaryName} for ${schemeName}.`;
-
-    const jobs = [];
-
-    // WhatsApp to area coordinator (independent)
-    if (application.area) {
-      jobs.push(this.sendTargetedNotification({
-        type: 'whatsapp',
-        title,
-        message,
-        category: 'application_status',
-        priority: 'high',
-        targeting: {
-          userRoles: ['area_admin'],
-          customFilters: { 'adminScope.area': application.area }
-        },
-        createdBy
-      }).catch(err => console.error('WhatsApp to area_admin failed:', err)));
+  async getUnreadCount(userId) {
+    try {
+      return await Notification.countDocuments({
+        type: 'in_app',
+        recipients: {
+          $elemMatch: {
+            user: userId,
+            status: { $in: ['pending', 'sent', 'delivered'] }
+          }
+        }
+      });
+    } catch (error) {
+      console.error('❌ Get Unread Count Error:', error);
+      return 0;
     }
-
-    // In-app to area coordinator (independent)
-    if (application.area) {
-      jobs.push(this.sendTargetedNotification({
-        type: 'system',
-        title,
-        message,
-        category: 'application_status',
-        priority: 'high',
-        targeting: {
-          userRoles: ['area_admin'],
-          customFilters: { 'adminScope.area': application.area }
-        },
-        relatedEntities: {
-          application: application._id,
-          scheme: application.scheme?._id,
-          project: application.project
-        },
-        createdBy
-      }).catch(err => console.error('In-app to area_admin failed:', err)));
-    }
-
-    // WhatsApp to unit administrator (independent)
-    if (application.unit) {
-      jobs.push(this.sendTargetedNotification({
-        type: 'whatsapp',
-        title,
-        message,
-        category: 'application_status',
-        priority: 'high',
-        targeting: {
-          userRoles: ['unit_admin'],
-          customFilters: { 'adminScope.unit': application.unit }
-        },
-        createdBy
-      }).catch(err => console.error('WhatsApp to unit_admin failed:', err)));
-    }
-
-    // In-app to unit administrator (independent)
-    if (application.unit) {
-      jobs.push(this.sendTargetedNotification({
-        type: 'system',
-        title,
-        message,
-        category: 'application_status',
-        priority: 'high',
-        targeting: {
-          userRoles: ['unit_admin'],
-          customFilters: { 'adminScope.unit': application.unit }
-        },
-        relatedEntities: {
-          application: application._id,
-          scheme: application.scheme?._id,
-          project: application.project
-        },
-        createdBy
-      }).catch(err => console.error('In-app to unit_admin failed:', err)));
-    }
-
-    await Promise.allSettled(jobs);
-    return { success: true };
   }
 
-  async notifyApplicationDecisionToBeneficiary(application, decision, { createdBy } = {}) {
-    const schemeName = application.scheme?.name || 'your scheme';
-    const applicationNumber = application.applicationNumber || application._id;
-    const beneficiaryName = application.beneficiary?.name || 'Beneficiary';
-
-    const title = 'Application status update';
-    const msgBeneficiary = decision === 'approved'
-      ? `Your application ${applicationNumber} for ${schemeName} has been approved.`
-      : `Your application ${applicationNumber} for ${schemeName} has been rejected.`;
-    
-    const msgAdmin = decision === 'approved'
-      ? `Application ${applicationNumber} from ${beneficiaryName} for ${schemeName} has been approved.`
-      : `Application ${applicationNumber} from ${beneficiaryName} for ${schemeName} has been rejected.`;
-
-    const jobs = [];
-
-    // WhatsApp to beneficiary (independent)
-    jobs.push(this.sendNotification({
-      type: 'whatsapp',
-      recipient: {
-        beneficiary: application.beneficiary?._id,
-        phone: application.beneficiary?.phone
-      },
-      title,
-      message: msgBeneficiary,
-      category: 'application_status',
-      priority: 'high',
-      relatedEntities: {
-        application: application._id,
-        scheme: application.scheme?._id,
-        project: application.project
-      },
-      createdBy
-    }).catch(err => console.error('WhatsApp to beneficiary failed:', err)));
-
-    // In-app to beneficiary (independent)
-    jobs.push(this.sendNotification({
-      type: 'system',
-      recipient: {
-        beneficiary: application.beneficiary?._id,
-        phone: application.beneficiary?.phone
-      },
-      title,
-      message: msgBeneficiary,
-      category: 'application_status',
-      priority: 'high',
-      relatedEntities: {
-        application: application._id,
-        scheme: application.scheme?._id,
-        project: application.project
-      },
-      createdBy
-    }).catch(err => console.error('In-app to beneficiary failed:', err)));
-
-    // WhatsApp to unit administrator (independent)
-    if (application.unit) {
-      jobs.push(this.sendTargetedNotification({
-        type: 'whatsapp',
-        title,
-        message: msgAdmin,
-        category: 'application_status',
-        priority: 'high',
-        targeting: {
-          userRoles: ['unit_admin'],
-          customFilters: { 'adminScope.unit': application.unit }
-        },
-        createdBy
-      }).catch(err => console.error('WhatsApp to unit_admin failed:', err)));
-    }
-
-    // In-app to unit administrator (independent)
-    if (application.unit) {
-      jobs.push(this.sendTargetedNotification({
-        type: 'system',
-        title,
-        message: msgAdmin,
-        category: 'application_status',
-        priority: 'high',
-        targeting: {
-          userRoles: ['unit_admin'],
-          customFilters: { 'adminScope.unit': application.unit }
-        },
-        relatedEntities: {
-          application: application._id,
-          scheme: application.scheme?._id,
-          project: application.project
-        },
-        createdBy
-      }).catch(err => console.error('In-app to unit_admin failed:', err)));
-    }
-
-    // WhatsApp to area coordinator (independent)
-    if (application.area) {
-      jobs.push(this.sendTargetedNotification({
-        type: 'whatsapp',
-        title,
-        message: msgAdmin,
-        category: 'application_status',
-        priority: 'high',
-        targeting: {
-          userRoles: ['area_admin'],
-          customFilters: { 'adminScope.area': application.area }
-        },
-        createdBy
-      }).catch(err => console.error('WhatsApp to area_admin failed:', err)));
-    }
-
-    // In-app to area coordinator (independent)
-    if (application.area) {
-      jobs.push(this.sendTargetedNotification({
-        type: 'system',
-        title,
-        message: msgAdmin,
-        category: 'application_status',
-        priority: 'high',
-        targeting: {
-          userRoles: ['area_admin'],
-          customFilters: { 'adminScope.area': application.area }
-        },
-        relatedEntities: {
-          application: application._id,
-          scheme: application.scheme?._id,
-          project: application.project
-        },
-        createdBy
-      }).catch(err => console.error('In-app to area_admin failed:', err)));
-    }
-
-    await Promise.allSettled(jobs);
-    return { success: true };
-  }
-
-  async notifyInterviewScheduled(application, interview, { createdBy } = {}) {
-    const schemeName = application.scheme?.name || 'your scheme';
-    const applicationNumber = application.applicationNumber || application._id;
-
-    const dateStr = interview?.scheduledDate
-      ? new Date(interview.scheduledDate).toLocaleDateString('en-IN')
-      : '';
-    const timeStr = interview?.scheduledTime ? ` ${interview.scheduledTime}` : '';
-
-    const title = 'Interview scheduled';
-    const msgBeneficiary = `Your interview is scheduled for application ${applicationNumber} (${schemeName}) on ${dateStr}${timeStr}.`;
-    const msgAdmin = `Interview scheduled for application ${applicationNumber} (${schemeName}) on ${dateStr}${timeStr}.`;
-
-    const jobs = [];
-
-    // WhatsApp to beneficiary (independent)
-    jobs.push(this.sendNotification({
-      type: 'whatsapp',
-      recipient: {
-        beneficiary: application.beneficiary?._id,
-        phone: application.beneficiary?.phone
-      },
-      title,
-      message: msgBeneficiary,
-      category: 'reminder',
-      priority: 'high',
-      relatedEntities: {
-        application: application._id,
-        scheme: application.scheme?._id,
-        project: application.project
-      },
-      createdBy
-    }).catch(err => console.error('WhatsApp to beneficiary failed:', err)));
-
-    // In-app to beneficiary (independent)
-    jobs.push(this.sendNotification({
-      type: 'system',
-      recipient: {
-        beneficiary: application.beneficiary?._id,
-        phone: application.beneficiary?.phone
-      },
-      title,
-      message: msgBeneficiary,
-      category: 'reminder',
-      priority: 'high',
-      relatedEntities: {
-        application: application._id,
-        scheme: application.scheme?._id,
-        project: application.project
-      },
-      createdBy
-    }).catch(err => console.error('In-app to beneficiary failed:', err)));
-
-    // WhatsApp to unit administrator (independent)
-    if (application.unit) {
-      jobs.push(this.sendTargetedNotification({
-        type: 'whatsapp',
-        title,
-        message: msgAdmin,
-        category: 'reminder',
-        priority: 'high',
-        targeting: {
-          userRoles: ['unit_admin'],
-          customFilters: { 'adminScope.unit': application.unit }
-        },
-        createdBy
-      }).catch(err => console.error('WhatsApp to unit_admin failed:', err)));
-    }
-
-    // In-app to unit administrator (independent)
-    if (application.unit) {
-      jobs.push(this.sendTargetedNotification({
-        type: 'system',
-        title,
-        message: msgAdmin,
-        category: 'reminder',
-        priority: 'high',
-        targeting: {
-          userRoles: ['unit_admin'],
-          customFilters: { 'adminScope.unit': application.unit }
-        },
-        relatedEntities: {
-          application: application._id,
-          scheme: application.scheme?._id,
-          project: application.project
-        },
-        createdBy
-      }).catch(err => console.error('In-app to unit_admin failed:', err)));
-    }
-
-    // WhatsApp to area coordinator (independent)
-    if (application.area) {
-      jobs.push(this.sendTargetedNotification({
-        type: 'whatsapp',
-        title,
-        message: msgAdmin,
-        category: 'reminder',
-        priority: 'high',
-        targeting: {
-          userRoles: ['area_admin'],
-          customFilters: { 'adminScope.area': application.area }
-        },
-        createdBy
-      }).catch(err => console.error('WhatsApp to area_admin failed:', err)));
-    }
-
-    // In-app to area coordinator (independent)
-    if (application.area) {
-      jobs.push(this.sendTargetedNotification({
-        type: 'system',
-        title,
-        message: msgAdmin,
-        category: 'reminder',
-        priority: 'high',
-        targeting: {
-          userRoles: ['area_admin'],
-          customFilters: { 'adminScope.area': application.area }
-        },
-        relatedEntities: {
-          application: application._id,
-          scheme: application.scheme?._id,
-          project: application.project
-        },
-        createdBy
-      }).catch(err => console.error('In-app to area_admin failed:', err)));
-    }
-
-    await Promise.allSettled(jobs);
-    return { success: true };
-  }
-
-  async notifyInterviewRescheduled(application, interview, { createdBy } = {}) {
-    const schemeName = application.scheme?.name || 'your scheme';
-    const applicationNumber = application.applicationNumber || application._id;
-
-    const dateStr = interview?.scheduledDate
-      ? new Date(interview.scheduledDate).toLocaleDateString('en-IN')
-      : '';
-    const timeStr = interview?.scheduledTime ? ` ${interview.scheduledTime}` : '';
-
-    const title = 'Interview rescheduled';
-    const msgBeneficiary = `Your interview for application ${applicationNumber} (${schemeName}) has been rescheduled to ${dateStr}${timeStr}.`;
-    const msgAdmin = `Interview rescheduled for application ${applicationNumber} (${schemeName}) to ${dateStr}${timeStr}.`;
-
-    const jobs = [];
-
-    // WhatsApp to beneficiary (independent)
-    jobs.push(this.sendNotification({
-      type: 'whatsapp',
-      recipient: {
-        beneficiary: application.beneficiary?._id,
-        phone: application.beneficiary?.phone
-      },
-      title,
-      message: msgBeneficiary,
-      category: 'reminder',
-      priority: 'high',
-      relatedEntities: {
-        application: application._id,
-        scheme: application.scheme?._id,
-        project: application.project
-      },
-      createdBy
-    }).catch(err => console.error('WhatsApp to beneficiary failed:', err)));
-
-    // In-app to beneficiary (independent)
-    jobs.push(this.sendNotification({
-      type: 'system',
-      recipient: {
-        beneficiary: application.beneficiary?._id,
-        phone: application.beneficiary?.phone
-      },
-      title,
-      message: msgBeneficiary,
-      category: 'reminder',
-      priority: 'high',
-      relatedEntities: {
-        application: application._id,
-        scheme: application.scheme?._id,
-        project: application.project
-      },
-      createdBy
-    }).catch(err => console.error('In-app to beneficiary failed:', err)));
-
-    // WhatsApp to unit administrator (independent)
-    if (application.unit) {
-      jobs.push(this.sendTargetedNotification({
-        type: 'whatsapp',
-        title,
-        message: msgAdmin,
-        category: 'reminder',
-        priority: 'high',
-        targeting: {
-          userRoles: ['unit_admin'],
-          customFilters: { 'adminScope.unit': application.unit }
-        },
-        createdBy
-      }).catch(err => console.error('WhatsApp to unit_admin failed:', err)));
-    }
-
-    // In-app to unit administrator (independent)
-    if (application.unit) {
-      jobs.push(this.sendTargetedNotification({
-        type: 'system',
-        title,
-        message: msgAdmin,
-        category: 'reminder',
-        priority: 'high',
-        targeting: {
-          userRoles: ['unit_admin'],
-          customFilters: { 'adminScope.unit': application.unit }
-        },
-        relatedEntities: {
-          application: application._id,
-          scheme: application.scheme?._id,
-          project: application.project
-        },
-        createdBy
-      }).catch(err => console.error('In-app to unit_admin failed:', err)));
-    }
-
-    // WhatsApp to area coordinator (independent)
-    if (application.area) {
-      jobs.push(this.sendTargetedNotification({
-        type: 'whatsapp',
-        title,
-        message: msgAdmin,
-        category: 'reminder',
-        priority: 'high',
-        targeting: {
-          userRoles: ['area_admin'],
-          customFilters: { 'adminScope.area': application.area }
-        },
-        createdBy
-      }).catch(err => console.error('WhatsApp to area_admin failed:', err)));
-    }
-
-    // In-app to area coordinator (independent)
-    if (application.area) {
-      jobs.push(this.sendTargetedNotification({
-        type: 'system',
-        title,
-        message: msgAdmin,
-        category: 'reminder',
-        priority: 'high',
-        targeting: {
-          userRoles: ['area_admin'],
-          customFilters: { 'adminScope.area': application.area }
-        },
-        relatedEntities: {
-          application: application._id,
-          scheme: application.scheme?._id,
-          project: application.project
-        },
-        createdBy
-      }).catch(err => console.error('In-app to area_admin failed:', err)));
-    }
-
-    await Promise.allSettled(jobs);
-    return { success: true };
-  }
-
-  async notifyAreaReviewRequired(application, { createdBy } = {}) {
-    const title = 'Application requires review';
-    const schemeName = application.scheme?.name || 'a scheme';
-    const beneficiaryName = application.beneficiary?.name || 'A beneficiary';
-    const applicationNumber = application.applicationNumber || application._id;
-    const message = `Application ${applicationNumber} from ${beneficiaryName} for ${schemeName} requires your review.`;
-
-    const jobs = [];
-
-    // WhatsApp to area coordinator (independent)
-    if (application.area) {
-      jobs.push(this.sendTargetedNotification({
-        type: 'whatsapp',
-        title,
-        message,
-        category: 'application_status',
-        priority: 'high',
-        targeting: {
-          userRoles: ['area_admin'],
-          customFilters: { 'adminScope.area': application.area }
-        },
-        createdBy
-      }).catch(err => console.error('WhatsApp to area_admin failed:', err)));
-    }
-
-    // In-app to area coordinator (independent)
-    if (application.area) {
-      jobs.push(this.sendTargetedNotification({
-        type: 'system',
-        title,
-        message,
-        category: 'application_status',
-        priority: 'high',
-        targeting: {
-          userRoles: ['area_admin'],
-          customFilters: { 'adminScope.area': application.area }
-        },
-        relatedEntities: {
-          application: application._id,
-          scheme: application.scheme?._id,
-          project: application.project
-        },
-        createdBy
-      }).catch(err => console.error('In-app to area_admin failed:', err)));
-    }
-
-    await Promise.allSettled(jobs);
-    return { success: true };
-  }
-
-  /**
-   * Mark notification as read
-   * @param {string} notificationId - Notification ID
-   * @param {string} userId - User ID
-   * @returns {Promise<Object>} Mark result
-   */
   async markAsRead(notificationId, userId) {
     try {
       await Notification.markAsRead(notificationId, userId);
-      
-      return {
-        success: true,
-        message: 'Notification marked as read'
-      };
+      return { success: true, message: 'Notification marked as read' };
     } catch (error) {
       console.error('❌ Mark As Read Error:', error);
       throw error;
     }
   }
 
-  /**
-   * Get notification statistics
-   * @param {Object} filters - Filters
-   * @returns {Promise<Object>} Statistics
-   */
+  async markAllAsRead(userId) {
+    try {
+      await Notification.updateMany(
+        { 'recipients.user': userId, 'recipients.status': { $ne: 'read' } },
+        {
+          $set: {
+            'recipients.$[elem].status': 'read',
+            'recipients.$[elem].readAt': new Date()
+          }
+        },
+        { arrayFilters: [{ 'elem.user': userId, 'elem.status': { $ne: 'read' } }] }
+      );
+      return { success: true, message: 'All notifications marked as read' };
+    } catch (error) {
+      console.error('❌ Mark All As Read Error:', error);
+      throw error;
+    }
+  }
+
+  async deleteNotification(notificationId, userId) {
+    try {
+      await Notification.updateOne(
+        { _id: notificationId, 'recipients.user': userId },
+        { $pull: { recipients: { user: userId } } }
+      );
+      return { success: true, message: 'Notification deleted' };
+    } catch (error) {
+      console.error('❌ Delete Notification Error:', error);
+      throw error;
+    }
+  }
+
   async getNotificationStatistics(filters = {}) {
     try {
       const stats = await Notification.aggregate([
@@ -1199,15 +550,335 @@ class NotificationService {
           }
         }
       ]);
-
-      return {
-        success: true,
-        statistics: stats
-      };
+      return { success: true, statistics: stats };
     } catch (error) {
       console.error('❌ Get Notification Statistics Error:', error);
       throw error;
     }
+  }
+
+  // ============================================
+  // DOMAIN NOTIFICATION HELPERS — Multi-channel
+  // Each event sends: WhatsApp + Push + In-App
+  // Recipients: unit_admin + area_admin + district_admin (+ beneficiary where applicable)
+  // ============================================
+
+  /**
+   * Helper: Send WhatsApp + Push + In-App to targeted admins
+   */
+  _notifyAdminRole({ role, filterField, filterValue, title, message, category, priority, relatedEntities, pushData, createdBy }) {
+    if (!filterValue) return [];
+
+    const targeting = {
+      userRoles: [role],
+      customFilters: { [filterField]: filterValue }
+    };
+
+    return [
+      this.sendTargetedNotification({
+        type: 'whatsapp', title, message, category, priority, targeting, createdBy
+      }).catch(err => console.error(`WhatsApp to ${role} failed:`, err)),
+
+      this.sendTargetedNotification({
+        type: 'push', title, message, category, priority, targeting,
+        variables: pushData || {}, createdBy
+      }).catch(err => console.error(`Push to ${role} failed:`, err)),
+
+      this.sendTargetedNotification({
+        type: 'in_app', title, message, category, priority, targeting,
+        relatedEntities, createdBy
+      }).catch(err => console.error(`In-app to ${role} failed:`, err))
+    ];
+  }
+
+  /**
+   * Helper: Send WhatsApp + Push + In-App to a specific recipient (e.g. beneficiary)
+   */
+  _notifyRecipient({ recipient, title, message, category, priority, relatedEntities, pushData, createdBy }) {
+    return [
+      this.sendNotification({
+        type: 'whatsapp', recipient, title, message, category, priority, relatedEntities, createdBy
+      }).catch(err => console.error('WhatsApp to recipient failed:', err)),
+
+      this.sendNotification({
+        type: 'push', recipient, title, message, category, priority, relatedEntities,
+        variables: pushData || {}, createdBy
+      }).catch(err => console.error('Push to recipient failed:', err)),
+
+      this.sendNotification({
+        type: 'in_app', recipient, title, message, category, priority, relatedEntities, createdBy
+      }).catch(err => console.error('In-app to recipient failed:', err))
+    ];
+  }
+
+  // --- Application Submitted ---
+  async notifyApplicationSubmitted(application, { createdBy } = {}) {
+    const title = 'New application received';
+    const schemeName = application.scheme?.name || 'a scheme';
+    const beneficiaryName = application.beneficiary?.name || 'A beneficiary';
+    const applicationNumber = application.applicationNumber || application._id;
+    const message = `New application ${applicationNumber} received from ${beneficiaryName} for ${schemeName}.`;
+
+    const relatedEntities = {
+      application: application._id,
+      scheme: application.scheme?._id,
+      project: application.project
+    };
+    const pushData = { applicationId: String(application._id), type: 'application_submitted' };
+
+    const jobs = [
+      ...this._notifyAdminRole({
+        role: 'unit_admin', filterField: 'adminScope.unit', filterValue: application.unit,
+        title, message, category: 'application_status', priority: 'high',
+        relatedEntities, pushData, createdBy
+      }),
+      ...this._notifyAdminRole({
+        role: 'area_admin', filterField: 'adminScope.area', filterValue: application.area,
+        title, message, category: 'application_status', priority: 'high',
+        relatedEntities, pushData, createdBy
+      }),
+      ...this._notifyAdminRole({
+        role: 'district_admin', filterField: 'adminScope.district', filterValue: application.district,
+        title, message, category: 'application_status', priority: 'high',
+        relatedEntities, pushData, createdBy
+      })
+    ];
+
+    await Promise.allSettled(jobs);
+    return { success: true };
+  }
+
+  // --- Application Decision (approved/rejected) ---
+  async notifyApplicationDecisionToBeneficiary(application, decision, { createdBy } = {}) {
+    const schemeName = application.scheme?.name || 'your scheme';
+    const applicationNumber = application.applicationNumber || application._id;
+    const beneficiaryName = application.beneficiary?.name || 'Beneficiary';
+
+    const title = 'Application status update';
+    const msgBeneficiary = decision === 'approved'
+      ? `Your application ${applicationNumber} for ${schemeName} has been approved.`
+      : `Your application ${applicationNumber} for ${schemeName} has been rejected.`;
+    const msgAdmin = decision === 'approved'
+      ? `Application ${applicationNumber} from ${beneficiaryName} for ${schemeName} has been approved.`
+      : `Application ${applicationNumber} from ${beneficiaryName} for ${schemeName} has been rejected.`;
+
+    const relatedEntities = {
+      application: application._id,
+      scheme: application.scheme?._id,
+      project: application.project
+    };
+    const pushData = { applicationId: String(application._id), type: 'application_decision', decision };
+
+    const jobs = [
+      ...this._notifyRecipient({
+        recipient: {
+          beneficiary: application.beneficiary?._id,
+          phone: application.beneficiary?.phone,
+          user: application.beneficiary?.userId || application.beneficiary?._id
+        },
+        title, message: msgBeneficiary, category: 'application_status', priority: 'high',
+        relatedEntities, pushData, createdBy
+      }),
+      ...this._notifyAdminRole({
+        role: 'unit_admin', filterField: 'adminScope.unit', filterValue: application.unit,
+        title, message: msgAdmin, category: 'application_status', priority: 'high',
+        relatedEntities, pushData, createdBy
+      }),
+      ...this._notifyAdminRole({
+        role: 'area_admin', filterField: 'adminScope.area', filterValue: application.area,
+        title, message: msgAdmin, category: 'application_status', priority: 'high',
+        relatedEntities, pushData, createdBy
+      }),
+      ...this._notifyAdminRole({
+        role: 'district_admin', filterField: 'adminScope.district', filterValue: application.district,
+        title, message: msgAdmin, category: 'application_status', priority: 'high',
+        relatedEntities, pushData, createdBy
+      })
+    ];
+
+    await Promise.allSettled(jobs);
+    return { success: true };
+  }
+
+  // --- Interview Scheduled ---
+  async notifyInterviewScheduled(application, interview, { createdBy } = {}) {
+    const schemeName = application.scheme?.name || 'your scheme';
+    const applicationNumber = application.applicationNumber || application._id;
+    const dateStr = interview?.scheduledDate
+      ? new Date(interview.scheduledDate).toLocaleDateString('en-IN') : '';
+    const timeStr = interview?.scheduledTime ? ` ${interview.scheduledTime}` : '';
+
+    const title = 'Interview scheduled';
+    const msgBeneficiary = `Your interview is scheduled for application ${applicationNumber} (${schemeName}) on ${dateStr}${timeStr}.`;
+    const msgAdmin = `Interview scheduled for application ${applicationNumber} (${schemeName}) on ${dateStr}${timeStr}.`;
+
+    const relatedEntities = {
+      application: application._id,
+      scheme: application.scheme?._id,
+      project: application.project
+    };
+    const pushData = { applicationId: String(application._id), type: 'interview_scheduled' };
+
+    const jobs = [
+      ...this._notifyRecipient({
+        recipient: {
+          beneficiary: application.beneficiary?._id,
+          phone: application.beneficiary?.phone,
+          user: application.beneficiary?.userId || application.beneficiary?._id
+        },
+        title, message: msgBeneficiary, category: 'reminder', priority: 'high',
+        relatedEntities, pushData, createdBy
+      }),
+      ...this._notifyAdminRole({
+        role: 'unit_admin', filterField: 'adminScope.unit', filterValue: application.unit,
+        title, message: msgAdmin, category: 'reminder', priority: 'high',
+        relatedEntities, pushData, createdBy
+      }),
+      ...this._notifyAdminRole({
+        role: 'area_admin', filterField: 'adminScope.area', filterValue: application.area,
+        title, message: msgAdmin, category: 'reminder', priority: 'high',
+        relatedEntities, pushData, createdBy
+      }),
+      ...this._notifyAdminRole({
+        role: 'district_admin', filterField: 'adminScope.district', filterValue: application.district,
+        title, message: msgAdmin, category: 'reminder', priority: 'high',
+        relatedEntities, pushData, createdBy
+      })
+    ];
+
+    await Promise.allSettled(jobs);
+    return { success: true };
+  }
+
+  // --- Interview Rescheduled ---
+  async notifyInterviewRescheduled(application, interview, { createdBy } = {}) {
+    const schemeName = application.scheme?.name || 'your scheme';
+    const applicationNumber = application.applicationNumber || application._id;
+    const dateStr = interview?.scheduledDate
+      ? new Date(interview.scheduledDate).toLocaleDateString('en-IN') : '';
+    const timeStr = interview?.scheduledTime ? ` ${interview.scheduledTime}` : '';
+
+    const title = 'Interview rescheduled';
+    const msgBeneficiary = `Your interview for application ${applicationNumber} (${schemeName}) has been rescheduled to ${dateStr}${timeStr}.`;
+    const msgAdmin = `Interview rescheduled for application ${applicationNumber} (${schemeName}) to ${dateStr}${timeStr}.`;
+
+    const relatedEntities = {
+      application: application._id,
+      scheme: application.scheme?._id,
+      project: application.project
+    };
+    const pushData = { applicationId: String(application._id), type: 'interview_rescheduled' };
+
+    const jobs = [
+      ...this._notifyRecipient({
+        recipient: {
+          beneficiary: application.beneficiary?._id,
+          phone: application.beneficiary?.phone,
+          user: application.beneficiary?.userId || application.beneficiary?._id
+        },
+        title, message: msgBeneficiary, category: 'reminder', priority: 'high',
+        relatedEntities, pushData, createdBy
+      }),
+      ...this._notifyAdminRole({
+        role: 'unit_admin', filterField: 'adminScope.unit', filterValue: application.unit,
+        title, message: msgAdmin, category: 'reminder', priority: 'high',
+        relatedEntities, pushData, createdBy
+      }),
+      ...this._notifyAdminRole({
+        role: 'area_admin', filterField: 'adminScope.area', filterValue: application.area,
+        title, message: msgAdmin, category: 'reminder', priority: 'high',
+        relatedEntities, pushData, createdBy
+      }),
+      ...this._notifyAdminRole({
+        role: 'district_admin', filterField: 'adminScope.district', filterValue: application.district,
+        title, message: msgAdmin, category: 'reminder', priority: 'high',
+        relatedEntities, pushData, createdBy
+      })
+    ];
+
+    await Promise.allSettled(jobs);
+    return { success: true };
+  }
+
+  // --- Area/District Review Required ---
+  async notifyAreaReviewRequired(application, { createdBy } = {}) {
+    const title = 'Application requires review';
+    const schemeName = application.scheme?.name || 'a scheme';
+    const beneficiaryName = application.beneficiary?.name || 'A beneficiary';
+    const applicationNumber = application.applicationNumber || application._id;
+    const message = `Application ${applicationNumber} from ${beneficiaryName} for ${schemeName} requires your review.`;
+
+    const relatedEntities = {
+      application: application._id,
+      scheme: application.scheme?._id,
+      project: application.project
+    };
+    const pushData = { applicationId: String(application._id), type: 'review_required' };
+
+    const jobs = [
+      ...this._notifyAdminRole({
+        role: 'area_admin', filterField: 'adminScope.area', filterValue: application.area,
+        title, message, category: 'application_status', priority: 'high',
+        relatedEntities, pushData, createdBy
+      }),
+      ...this._notifyAdminRole({
+        role: 'district_admin', filterField: 'adminScope.district', filterValue: application.district,
+        title, message, category: 'application_status', priority: 'high',
+        relatedEntities, pushData, createdBy
+      })
+    ];
+
+    await Promise.allSettled(jobs);
+    return { success: true };
+  }
+
+  // --- Stage Reverted ---
+  async notifyStageReverted(application, revertedToStage, { revertedBy, reason } = {}) {
+    const title = 'Application stage reverted';
+    const schemeName = application.scheme?.name || 'a scheme';
+    const beneficiaryName = application.beneficiary?.name || 'A beneficiary';
+    const applicationNumber = application.applicationNumber || application._id;
+    const stageName = revertedToStage || 'a previous stage';
+
+    const msgBeneficiary = `Your application ${applicationNumber} for ${schemeName} has been reverted to "${stageName}". Reason: ${reason || 'Not specified'}.`;
+    const msgAdmin = `Application ${applicationNumber} from ${beneficiaryName} for ${schemeName} has been reverted to "${stageName}". Reason: ${reason || 'Not specified'}.`;
+
+    const relatedEntities = {
+      application: application._id,
+      scheme: application.scheme?._id,
+      project: application.project
+    };
+    const pushData = { applicationId: String(application._id), type: 'stage_reverted', stage: stageName };
+
+    const jobs = [
+      ...this._notifyRecipient({
+        recipient: {
+          beneficiary: application.beneficiary?._id,
+          phone: application.beneficiary?.phone,
+          user: application.beneficiary?.userId || application.beneficiary?._id
+        },
+        title, message: msgBeneficiary, category: 'application_status', priority: 'high',
+        relatedEntities, pushData, createdBy: revertedBy
+      }),
+      ...this._notifyAdminRole({
+        role: 'unit_admin', filterField: 'adminScope.unit', filterValue: application.unit,
+        title, message: msgAdmin, category: 'application_status', priority: 'high',
+        relatedEntities, pushData, createdBy: revertedBy
+      }),
+      ...this._notifyAdminRole({
+        role: 'area_admin', filterField: 'adminScope.area', filterValue: application.area,
+        title, message: msgAdmin, category: 'application_status', priority: 'high',
+        relatedEntities, pushData, createdBy: revertedBy
+      }),
+      ...this._notifyAdminRole({
+        role: 'district_admin', filterField: 'adminScope.district', filterValue: application.district,
+        title, message: msgAdmin, category: 'application_status', priority: 'high',
+        relatedEntities, pushData, createdBy: revertedBy
+      })
+    ];
+
+    await Promise.allSettled(jobs);
+    return { success: true };
   }
 }
 

@@ -21,7 +21,7 @@ export default function QuickDonation() {
       <div className="space-y-6">
         {/* Header */}
         <div>
-          <h1 className="text-xl font-bold">Quick Donation</h1>
+          <h1 className="text-lg font-bold">Quick Donation</h1>
           <p className="text-muted-foreground mt-1">
             Capture minimal donor information for quick donation processing
           </p>

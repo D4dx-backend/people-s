@@ -1,11 +1,15 @@
 import { useState } from "react";
-import { History, Calendar, IndianRupee, Filter, Download } from "lucide-react";
+import { History, Calendar, IndianRupee, Filter } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { useDonationHistory } from "@/hooks/useDonations";
+import { useExport } from "@/hooks/useExport";
+import ExportButton from "@/components/common/ExportButton";
+import { donationExportColumns } from "@/utils/exportColumns";
+import { donations as donationsApi } from "@/lib/api";
 
 export default function DonationHistory() {
   const [filters, setFilters] = useState({
@@ -20,6 +24,20 @@ export default function DonationHistory() {
 
   // Use donation history hook for paginated data
   const { data: donationHistory, isLoading } = useDonationHistory(filters);
+
+  const { exportCSV, exportPDF, printData, exporting } = useExport({
+    apiCall: (params) => donationsApi.export(params),
+    filenamePrefix: 'donations',
+    pdfTitle: 'Donation History Report',
+    pdfColumns: donationExportColumns,
+    getFilterParams: () => ({
+      search: filters.search || undefined,
+      method: filters.method !== 'all' ? filters.method : undefined,
+      purpose: filters.purpose !== 'all' ? filters.purpose : undefined,
+      dateFrom: filters.dateFrom || undefined,
+      dateTo: filters.dateTo || undefined,
+    }),
+  });
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('en-IN', {
@@ -56,17 +74,19 @@ export default function DonationHistory() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-3xl font-bold">Donation History</h1>
+          <h1 className="text-lg font-bold">Donation History</h1>
           <p className="text-muted-foreground mt-1">
             Complete history of all donations (anonymous and identified)
           </p>
         </div>
-        <Button variant="outline">
-          <Download className="mr-2 h-4 w-4" />
-          Export History
-        </Button>
+        <ExportButton
+          onExportCSV={() => exportCSV()}
+          onExportPDF={() => exportPDF()}
+          onPrint={() => printData()}
+          exporting={exporting}
+        />
       </div>
 
       {/* Filters */}

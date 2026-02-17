@@ -29,18 +29,35 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Plus, Trash2, Settings, Users, CheckSquare } from "lucide-react";
+import { Plus, Trash2, Settings, Users, CheckSquare, MessageSquare, FileUp } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { schemes, type Scheme } from "@/lib/api";
 
 // Form schema for status stages
+const commentRoleSchema = z.object({
+  enabled: z.boolean().default(false),
+  required: z.boolean().default(false)
+});
+
+const requiredDocumentSchema = z.object({
+  name: z.string().min(1, "Document name is required").max(200, "Name must be less than 200 characters"),
+  description: z.string().max(500, "Description must be less than 500 characters").optional(),
+  isRequired: z.boolean().default(true)
+});
+
 const stagesSchema = z.object({
   statusStages: z.array(z.object({
     name: z.string().min(1, "Stage name is required").max(100, "Name must be less than 100 characters"),
     description: z.string().max(500, "Description must be less than 500 characters").optional(),
     order: z.number().min(1, "Order must be at least 1"),
     isRequired: z.boolean().default(true),
-    allowedRoles: z.array(z.string()).min(1, "At least one role must be selected")
+    allowedRoles: z.array(z.string()).min(1, "At least one role must be selected"),
+    commentConfig: z.object({
+      unitAdmin: commentRoleSchema.default({ enabled: false, required: false }),
+      areaAdmin: commentRoleSchema.default({ enabled: false, required: false }),
+      districtAdmin: commentRoleSchema.default({ enabled: false, required: false })
+    }).default({}),
+    requiredDocuments: z.array(requiredDocumentSchema).default([])
   })).min(1, "At least one stage is required")
 });
 
@@ -75,7 +92,13 @@ export function StagesConfigModal({ open, onOpenChange, scheme, onSuccess }: Sta
           description: "Initial application submission and registration",
           order: 1,
           isRequired: true,
-          allowedRoles: ['super_admin', 'state_admin', 'district_admin', 'area_admin', 'unit_admin']
+          allowedRoles: ['super_admin', 'state_admin', 'district_admin', 'area_admin', 'unit_admin'],
+          commentConfig: {
+            unitAdmin: { enabled: false, required: false },
+            areaAdmin: { enabled: false, required: false },
+            districtAdmin: { enabled: false, required: false }
+          },
+          requiredDocuments: []
         }
       ]
     }
@@ -90,12 +113,31 @@ export function StagesConfigModal({ open, onOpenChange, scheme, onSuccess }: Sta
   useEffect(() => {
     if (scheme && scheme.statusStages && scheme.statusStages.length > 0) {
       form.reset({
-        statusStages: scheme.statusStages.map(stage => ({
+        statusStages: scheme.statusStages.map((stage: any) => ({
           name: stage.name,
           description: stage.description || "",
           order: stage.order,
           isRequired: stage.isRequired !== false,
-          allowedRoles: stage.allowedRoles || ['super_admin']
+          allowedRoles: stage.allowedRoles || ['super_admin'],
+          commentConfig: {
+            unitAdmin: {
+              enabled: stage.commentConfig?.unitAdmin?.enabled || false,
+              required: stage.commentConfig?.unitAdmin?.required || false
+            },
+            areaAdmin: {
+              enabled: stage.commentConfig?.areaAdmin?.enabled || false,
+              required: stage.commentConfig?.areaAdmin?.required || false
+            },
+            districtAdmin: {
+              enabled: stage.commentConfig?.districtAdmin?.enabled || false,
+              required: stage.commentConfig?.districtAdmin?.required || false
+            }
+          },
+          requiredDocuments: (stage.requiredDocuments || []).map((doc: any) => ({
+            name: doc.name,
+            description: doc.description || "",
+            isRequired: doc.isRequired !== false
+          }))
         }))
       });
     } else if (scheme) {
@@ -228,7 +270,13 @@ export function StagesConfigModal({ open, onOpenChange, scheme, onSuccess }: Sta
       description: "Tick when this task is completed",
       order: maxOrder + 1,
       isRequired: true,
-      allowedRoles: ['super_admin']
+      allowedRoles: ['super_admin'],
+      commentConfig: {
+        unitAdmin: { enabled: false, required: false },
+        areaAdmin: { enabled: false, required: false },
+        districtAdmin: { enabled: false, required: false }
+      },
+      requiredDocuments: []
     });
   };
 
@@ -452,7 +500,175 @@ export function StagesConfigModal({ open, onOpenChange, scheme, onSuccess }: Sta
                             )}
                           />
 
+                          {/* Comment Configuration */}
+                          <div className="rounded-lg border p-4 space-y-4">
+                            <div className="flex items-center gap-2 mb-2">
+                              <MessageSquare className="h-4 w-4 text-primary" />
+                              <h4 className="font-medium text-sm">Comment Configuration</h4>
+                            </div>
+                            <p className="text-xs text-muted-foreground mb-3">
+                              Configure which admin roles need to add a comment at this stage
+                            </p>
 
+                            {/* Unit Admin Comment */}
+                            <div className="flex flex-row items-center justify-between rounded-md border p-3 bg-muted/10">
+                              <div className="space-y-0.5">
+                                <p className="text-sm font-medium">Unit Admin Comment</p>
+                              </div>
+                              <div className="flex items-center gap-4">
+                                <div className="flex items-center gap-2">
+                                  <span className="text-xs text-muted-foreground">Enable</span>
+                                  <Switch
+                                    checked={form.watch(`statusStages.${index}.commentConfig.unitAdmin.enabled`)}
+                                    onCheckedChange={(val) => {
+                                      form.setValue(`statusStages.${index}.commentConfig.unitAdmin.enabled`, val);
+                                      if (!val) form.setValue(`statusStages.${index}.commentConfig.unitAdmin.required`, false);
+                                    }}
+                                  />
+                                </div>
+                                {form.watch(`statusStages.${index}.commentConfig.unitAdmin.enabled`) && (
+                                  <div className="flex items-center gap-2">
+                                    <span className="text-xs text-muted-foreground">Required</span>
+                                    <Switch
+                                      checked={form.watch(`statusStages.${index}.commentConfig.unitAdmin.required`)}
+                                      onCheckedChange={(val) => form.setValue(`statusStages.${index}.commentConfig.unitAdmin.required`, val)}
+                                    />
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+
+                            {/* Area Admin Comment */}
+                            <div className="flex flex-row items-center justify-between rounded-md border p-3 bg-muted/10">
+                              <div className="space-y-0.5">
+                                <p className="text-sm font-medium">Area Admin Comment</p>
+                              </div>
+                              <div className="flex items-center gap-4">
+                                <div className="flex items-center gap-2">
+                                  <span className="text-xs text-muted-foreground">Enable</span>
+                                  <Switch
+                                    checked={form.watch(`statusStages.${index}.commentConfig.areaAdmin.enabled`)}
+                                    onCheckedChange={(val) => {
+                                      form.setValue(`statusStages.${index}.commentConfig.areaAdmin.enabled`, val);
+                                      if (!val) form.setValue(`statusStages.${index}.commentConfig.areaAdmin.required`, false);
+                                    }}
+                                  />
+                                </div>
+                                {form.watch(`statusStages.${index}.commentConfig.areaAdmin.enabled`) && (
+                                  <div className="flex items-center gap-2">
+                                    <span className="text-xs text-muted-foreground">Required</span>
+                                    <Switch
+                                      checked={form.watch(`statusStages.${index}.commentConfig.areaAdmin.required`)}
+                                      onCheckedChange={(val) => form.setValue(`statusStages.${index}.commentConfig.areaAdmin.required`, val)}
+                                    />
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+
+                            {/* District Admin Comment */}
+                            <div className="flex flex-row items-center justify-between rounded-md border p-3 bg-muted/10">
+                              <div className="space-y-0.5">
+                                <p className="text-sm font-medium">District Admin Comment</p>
+                              </div>
+                              <div className="flex items-center gap-4">
+                                <div className="flex items-center gap-2">
+                                  <span className="text-xs text-muted-foreground">Enable</span>
+                                  <Switch
+                                    checked={form.watch(`statusStages.${index}.commentConfig.districtAdmin.enabled`)}
+                                    onCheckedChange={(val) => {
+                                      form.setValue(`statusStages.${index}.commentConfig.districtAdmin.enabled`, val);
+                                      if (!val) form.setValue(`statusStages.${index}.commentConfig.districtAdmin.required`, false);
+                                    }}
+                                  />
+                                </div>
+                                {form.watch(`statusStages.${index}.commentConfig.districtAdmin.enabled`) && (
+                                  <div className="flex items-center gap-2">
+                                    <span className="text-xs text-muted-foreground">Required</span>
+                                    <Switch
+                                      checked={form.watch(`statusStages.${index}.commentConfig.districtAdmin.required`)}
+                                      onCheckedChange={(val) => form.setValue(`statusStages.${index}.commentConfig.districtAdmin.required`, val)}
+                                    />
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Required Documents */}
+                          <div className="rounded-lg border p-4 space-y-4">
+                            <div className="flex items-center justify-between">
+                              <div className="flex items-center gap-2">
+                                <FileUp className="h-4 w-4 text-primary" />
+                                <h4 className="font-medium text-sm">Required Documents</h4>
+                              </div>
+                              <Button
+                                type="button"
+                                variant="outline"
+                                size="sm"
+                                onClick={() => {
+                                  const currentDocs = form.getValues(`statusStages.${index}.requiredDocuments`) || [];
+                                  form.setValue(`statusStages.${index}.requiredDocuments`, [
+                                    ...currentDocs,
+                                    { name: "", description: "", isRequired: true }
+                                  ]);
+                                }}
+                              >
+                                <Plus className="mr-1 h-3 w-3" />
+                                Add Document
+                              </Button>
+                            </div>
+                            <p className="text-xs text-muted-foreground">
+                              Define documents that must be uploaded at this stage
+                            </p>
+
+                            {(form.watch(`statusStages.${index}.requiredDocuments`) || []).map((_, docIdx) => (
+                              <div key={docIdx} className="flex items-start gap-3 p-3 rounded-md border bg-muted/10">
+                                <div className="flex-1 space-y-2">
+                                  <Input
+                                    placeholder="Document name (e.g., Aadhaar Card)"
+                                    value={form.watch(`statusStages.${index}.requiredDocuments.${docIdx}.name`)}
+                                    onChange={(e) => form.setValue(`statusStages.${index}.requiredDocuments.${docIdx}.name`, e.target.value)}
+                                  />
+                                  <Input
+                                    placeholder="Description (optional)"
+                                    value={form.watch(`statusStages.${index}.requiredDocuments.${docIdx}.description`) || ""}
+                                    onChange={(e) => form.setValue(`statusStages.${index}.requiredDocuments.${docIdx}.description`, e.target.value)}
+                                  />
+                                </div>
+                                <div className="flex items-center gap-2 pt-2">
+                                  <div className="flex items-center gap-1">
+                                    <span className="text-xs text-muted-foreground">Required</span>
+                                    <Switch
+                                      checked={form.watch(`statusStages.${index}.requiredDocuments.${docIdx}.isRequired`)}
+                                      onCheckedChange={(val) => form.setValue(`statusStages.${index}.requiredDocuments.${docIdx}.isRequired`, val)}
+                                    />
+                                  </div>
+                                  <Button
+                                    type="button"
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => {
+                                      const currentDocs = form.getValues(`statusStages.${index}.requiredDocuments`) || [];
+                                      form.setValue(
+                                        `statusStages.${index}.requiredDocuments`,
+                                        currentDocs.filter((_, i) => i !== docIdx)
+                                      );
+                                    }}
+                                    className="text-destructive hover:bg-destructive hover:text-destructive-foreground"
+                                  >
+                                    <Trash2 className="h-3 w-3" />
+                                  </Button>
+                                </div>
+                              </div>
+                            ))}
+
+                            {(form.watch(`statusStages.${index}.requiredDocuments`) || []).length === 0 && (
+                              <p className="text-xs text-muted-foreground text-center py-2">
+                                No documents configured for this stage
+                              </p>
+                            )}
+                          </div>
                         </div>
                       </AccordionContent>
                     </AccordionItem>

@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Plus, MapPin, Edit, Trash2, Loader2, Search, Filter, X, Download } from "lucide-react";
+import { Plus, MapPin, Edit, Trash2, Loader2, Search, Filter, X } from "lucide-react";
 import { locations, type Location } from "@/lib/api";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
@@ -11,6 +11,9 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { AdvancedPagination } from "@/components/ui/pagination";
 import { useRBAC } from "@/hooks/useRBAC";
+import { useExport } from "@/hooks/useExport";
+import ExportButton from "@/components/common/ExportButton";
+import { locationExportColumns } from "@/utils/exportColumns";
 
 export default function Areas() {
   const { toast } = useToast();
@@ -18,6 +21,18 @@ export default function Areas() {
   
   const canViewLocations = hasPermission('settings.read');
   const canUpdateLocations = hasPermission('settings.update');
+
+  const { exportCSV, exportPDF, printData, exporting } = useExport({
+    apiCall: (params) => locations.export(params),
+    filenamePrefix: 'areas',
+    pdfTitle: 'Areas Report',
+    pdfColumns: locationExportColumns,
+    getFilterParams: () => ({
+      type: 'area',
+      search: search || undefined,
+      parent: selectedDistrict || undefined,
+    }),
+  });
   
   const [loading, setLoading] = useState(true);
   const [loadingDistricts, setLoadingDistricts] = useState(false);
@@ -207,59 +222,18 @@ export default function Areas() {
         itemName={selectedLocation?.name}
       />
 
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-xl font-bold">Areas</h1>
+          <h1 className="text-lg font-bold">Areas</h1>
           <p className="text-muted-foreground mt-1">Manage area master data</p>
         </div>
         <div className="flex gap-2">
-          <Button 
-            variant="outline" 
-            onClick={async () => {
-              try {
-                const params: any = { type: 'area' };
-                if (selectedDistrict) params.parent = selectedDistrict;
-                if (search) params.search = search;
-                
-                const response = await locations.getAll({ ...params, limit: 1000 });
-                if (response.success) {
-                  const data = Array.isArray(response.data?.locations) ? response.data.locations : [];
-                  const csv = [
-                    ['Name', 'Code', 'District', 'Status', 'Contact Person', 'Phone'].join(','),
-                    ...data.map((area: Location) => [
-                      area.name,
-                      area.code,
-                      area.parent?.name || '',
-                      area.isActive ? 'Active' : 'Inactive',
-                      area.contactPerson?.name || '',
-                      area.contactPerson?.phone || ''
-                    ].join(','))
-                  ].join('\n');
-                  
-                  const blob = new Blob([csv], { type: 'text/csv' });
-                  const url = window.URL.createObjectURL(blob);
-                  const a = document.createElement('a');
-                  a.href = url;
-                  a.download = `areas-${new Date().toISOString().split('T')[0]}.csv`;
-                  a.click();
-                  
-                  toast({
-                    title: "Success",
-                    description: "Areas exported successfully",
-                  });
-                }
-              } catch (error) {
-                toast({
-                  title: "Error",
-                  description: "Failed to export areas",
-                  variant: "destructive",
-                });
-              }
-            }}
-          >
-            <Download className="mr-2 h-4 w-4" />
-            Export
-          </Button>
+          <ExportButton
+            onExportCSV={() => exportCSV()}
+            onExportPDF={() => exportPDF()}
+            onPrint={() => printData()}
+            exporting={exporting}
+          />
           {canUpdateLocations && (
             <Button className="bg-gradient-primary shadow-glow" onClick={() => setShowModal(true)}>
               <Plus className="mr-2 h-4 w-4" />
@@ -285,7 +259,7 @@ export default function Areas() {
               onValueChange={handleDistrictFilter}
               disabled={loadingDistricts}
             >
-              <SelectTrigger className="w-[200px]">
+              <SelectTrigger className="w-full sm:w-[200px]">
                 <SelectValue placeholder={loadingDistricts ? "Loading..." : districtList.length === 0 ? "No districts" : "Filter by District"} />
               </SelectTrigger>
               <SelectContent>
@@ -346,7 +320,7 @@ export default function Areas() {
                 {areaList.map((area) => (
                   <div
                     key={area.id}
-                    className="flex items-center justify-between border rounded-lg p-4 hover:shadow-elegant transition-shadow"
+                    className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between border rounded-lg p-4 hover:shadow-elegant transition-shadow"
                   >
                     <div className="flex items-center gap-4">
                       <div className="h-12 w-12 rounded-full bg-gradient-secondary flex items-center justify-center">

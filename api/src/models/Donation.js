@@ -199,8 +199,13 @@ const donationSchema = new mongoose.Schema({
     },
     frequency: {
       type: String,
-      enum: ['one-time', 'monthly', 'quarterly', 'yearly'],
+      enum: ['one-time', 'monthly', 'quarterly', 'half_yearly', 'yearly', 'custom'],
       default: 'one-time'
+    },
+    customIntervalDays: {
+      type: Number,
+      min: 1,
+      default: null
     },
     nextDonationDate: Date,
     endDate: Date,
@@ -305,6 +310,18 @@ const donationSchema = new mongoose.Schema({
     deliveredAt: Date
   }],
   
+  // Follow-up tracking
+  followUp: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'DonorFollowUp',
+    default: null
+  },
+  recurringParent: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Donation',
+    default: null
+  },
+
   // Audit Trail
   createdBy: {
     type: mongoose.Schema.Types.ObjectId,

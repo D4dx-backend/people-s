@@ -7,10 +7,20 @@ const {
   updateApplication,
   reviewApplication,
   approveApplication,
-  deleteApplication
+  deleteApplication,
+  revertApplicationStage,
+  updateApplicationStage,
+  addStageComment,
+  uploadStageDocument,
+  getRenewalDueApplications,
+  getRenewalHistory
 } = require('../controllers/applicationController');
 const { authenticate, authorize } = require('../middleware/auth');
 const { syncApplicationStages } = require('../middleware/syncStages');
+const { uploadSingle } = require('../middleware/upload');
+const { createExportHandler } = require('../middleware/exportHandler');
+const exportConfigs = require('../config/exportConfigs');
+const Application = require('../models/Application');
 
 const router = express.Router();
 
@@ -76,6 +86,27 @@ const approveApplicationValidation = [
 ];
 
 // Routes
+
+// Export applications as CSV or JSON
+router.get('/export',
+  authenticate,
+  authorize('super_admin', 'state_admin', 'district_admin', 'area_admin', 'unit_admin'),
+  createExportHandler(Application, exportConfigs.application)
+);
+
+// Renewal management routes (must come before /:id routes)
+router.get('/renewal-due',
+  authenticate,
+  authorize('super_admin', 'state_admin', 'district_admin', 'area_admin', 'unit_admin'),
+  getRenewalDueApplications
+);
+
+router.get('/:id/renewal-history',
+  authenticate,
+  authorize('super_admin', 'state_admin', 'district_admin', 'area_admin', 'unit_admin'),
+  getRenewalHistory
+);
+
 router.get('/', 
   authenticate, 
   authorize('super_admin', 'state_admin', 'district_admin', 'area_admin', 'unit_admin'), 
@@ -132,89 +163,33 @@ router.delete('/:id',
   deleteApplication
 );
 
-// Update application stage status (for area coordinators)
+// Update application stage status (now includes district_admin, unit_admin)
 router.patch('/:id/stages/:stageId', 
   authenticate, 
-  authorize('super_admin', 'state_admin', 'area_admin'), 
-  async (req, res) => {
-    try {
-      const { id, stageId } = req.params;
-      const { status, notes } = req.body;
+  authorize('super_admin', 'state_admin', 'district_admin', 'area_admin', 'unit_admin'), 
+  updateApplicationStage
+);
 
-      const Application = require('../models/Application');
-      
-      // Find the application
-      const application = await Application.findById(id);
-      
-      if (!application) {
-        return res.status(404).json({
-          success: false,
-          message: 'Application not found'
-        });
-      }
+// Add comment to a stage
+router.patch('/:id/stages/:stageId/comment', 
+  authenticate, 
+  authorize('super_admin', 'state_admin', 'district_admin', 'area_admin', 'unit_admin'), 
+  addStageComment
+);
 
-      // Find the stage to update
-      const stageIndex = application.applicationStages.findIndex(
-        stage => stage._id.toString() === stageId
-      );
+// Upload document for a stage
+router.post('/:id/stages/:stageId/documents/:docIndex', 
+  authenticate, 
+  authorize('super_admin', 'state_admin', 'district_admin', 'area_admin', 'unit_admin'), 
+  uploadSingle('document'),
+  uploadStageDocument
+);
 
-      if (stageIndex === -1) {
-        return res.status(404).json({
-          success: false,
-          message: 'Stage not found'
-        });
-      }
-
-      // Update the stage
-      application.applicationStages[stageIndex].status = status;
-      application.applicationStages[stageIndex].notes = notes;
-      
-      if (status === 'completed') {
-        application.applicationStages[stageIndex].completedAt = new Date();
-        application.applicationStages[stageIndex].completedBy = req.user._id;
-      }
-
-      // Add to stage history
-      if (!application.stageHistory) {
-        application.stageHistory = [];
-      }
-      
-      application.stageHistory.push({
-        stageName: application.applicationStages[stageIndex].name,
-        status: status,
-        timestamp: new Date(),
-        updatedBy: req.user._id,
-        notes: notes
-      });
-
-      // Update current stage if needed
-      const completedStages = application.applicationStages.filter(s => s.status === 'completed').length;
-      const nextPendingStage = application.applicationStages.find(s => s.status === 'pending');
-      if (nextPendingStage) {
-        application.currentStage = nextPendingStage.name;
-      }
-
-      await application.save();
-
-      // Populate user data for response
-      await application.populate('applicationStages.completedBy', 'name role');
-      await application.populate('stageHistory.updatedBy', 'name role');
-
-      res.json({
-        success: true,
-        message: 'Stage updated successfully',
-        data: {
-          application
-        }
-      });
-    } catch (error) {
-      console.error('Error updating stage:', error);
-      res.status(500).json({
-        success: false,
-        message: error.message || 'Failed to update stage'
-      });
-    }
-  }
+// Revert application to a previous stage
+router.patch('/:id/revert', 
+  authenticate, 
+  authorize('super_admin', 'state_admin', 'district_admin', 'area_admin'), 
+  revertApplicationStage
 );
 
 // Get applications pending committee approval
@@ -347,6 +322,27 @@ router.patch('/:id/committee-decision',
         // Non-recurring with timeline
         application.distributionTimeline = distributionTimeline;
         application.approvedAmount = distributionTimeline.reduce((sum, phase) => sum + (phase.amount || 0), 0);
+      }
+
+      // Set renewal expiry if scheme supports renewals (committee approval path)
+      if (decision === 'approved') {
+        const Scheme = require('../models/Scheme');
+        const scheme = await Scheme.findById(application.scheme);
+        if (scheme?.renewalSettings?.isRenewable) {
+          const approvedDate = new Date();
+          application.approvedAt = approvedDate;
+          const expiryDate = new Date(approvedDate);
+          expiryDate.setDate(expiryDate.getDate() + (scheme.renewalSettings.renewalPeriodDays || 365));
+          application.expiryDate = expiryDate;
+
+          const renewalDueDate = new Date(expiryDate);
+          renewalDueDate.setDate(renewalDueDate.getDate() - (scheme.renewalSettings.autoNotifyBeforeDays || 30));
+          application.renewalDueDate = renewalDueDate;
+
+          application.renewalStatus = 'active';
+          application.renewalNotificationSent = false;
+          console.log(`📅 Committee approval - Renewal set: expires ${expiryDate.toISOString()}`);
+        }
       }
 
       await application.save();

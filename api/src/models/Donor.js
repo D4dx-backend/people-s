@@ -28,7 +28,7 @@ const donorSchema = new mongoose.Schema({
   },
   category: {
     type: String,
-    enum: ['regular', 'patron', 'major', 'corporate'],
+    enum: ['regular', 'patron', 'major', 'corporate', 'recurring'],
     default: 'regular'
   },
   address: {
@@ -53,8 +53,13 @@ const donorSchema = new mongoose.Schema({
   donationPreferences: {
     frequency: {
       type: String,
-      enum: ['one-time', 'monthly', 'quarterly', 'yearly'],
+      enum: ['one-time', 'monthly', 'quarterly', 'half_yearly', 'yearly', 'custom'],
       default: 'one-time'
+    },
+    customIntervalDays: {
+      type: Number,
+      min: 1,
+      default: null
     },
     preferredAmount: {
       type: Number,
@@ -113,6 +118,23 @@ const donorSchema = new mongoose.Schema({
     currentYearDonations: { type: Number, default: 0 },
     lastYearDonations: { type: Number, default: 0 }
   },
+  // Follow-up status (denormalized for quick queries)
+  followUpStatus: {
+    type: String,
+    enum: ['active', 'pending_reminder', 'overdue', 'lapsed', 'no_followup'],
+    default: 'no_followup'
+  },
+  nextExpectedDonation: {
+    type: Date,
+    default: null
+  },
+  engagementScore: {
+    type: Number,
+    min: 0,
+    max: 100,
+    default: 0
+  },
+
   // Engagement tracking
   engagement: {
     lastContact: Date,
@@ -153,6 +175,8 @@ donorSchema.index({ email: 1 });
 donorSchema.index({ phone: 1 });
 donorSchema.index({ 'donationStats.totalDonated': -1 });
 donorSchema.index({ 'donationStats.lastDonation': -1 });
+donorSchema.index({ followUpStatus: 1 });
+donorSchema.index({ nextExpectedDonation: 1 });
 donorSchema.index({ status: 1 });
 donorSchema.index({ type: 1 });
 donorSchema.index({ category: 1 });
@@ -183,9 +207,13 @@ donorSchema.virtual('donationFrequencyText').get(function() {
   return frequencies[this.donationPreferences?.frequency] || 'One-time';
 });
 
-// Pre-save middleware to update category based on donation amount
+// Pre-save middleware to update category based on donation amount and preferences
 donorSchema.pre('save', function(next) {
-  if (this.donationStats.totalDonated >= 1000000) {
+  // If donor has a recurring frequency set, mark as recurring
+  const freq = this.donationPreferences?.frequency;
+  if (freq && freq !== 'one-time') {
+    this.category = 'recurring';
+  } else if (this.donationStats.totalDonated >= 1000000) {
     this.category = 'major';
   } else if (this.donationStats.totalDonated >= 100000) {
     this.category = 'patron';

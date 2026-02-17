@@ -239,7 +239,7 @@ export default function ApplicationTracking() {
             </Button>
             <img src={logo} alt="Logo" className="h-8 w-8 rounded-full" />
             <div>
-              <h1 className="text-sm font-bold">Application Tracking</h1>
+              <h1 className="text-lg font-bold">Application Tracking</h1>
               <p className="text-xs text-muted-foreground hidden sm:block">+91 {phoneNumber}</p>
             </div>
           </div>

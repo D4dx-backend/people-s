@@ -13,6 +13,9 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { projects as projectsApi, type Project } from "@/lib/api";
 import { toast } from "@/hooks/use-toast";
 import { useRBAC } from "@/hooks/useRBAC";
+import { useExport } from "@/hooks/useExport";
+import ExportButton from "@/components/common/ExportButton";
+import { projectExportColumns } from "@/utils/exportColumns";
 
 // Project category images mapping
 const categoryImages: Record<string, string> = {
@@ -48,6 +51,13 @@ export default function Projects() {
   const [projectList, setProjectList] = useState<Project[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  const { exportCSV, exportPDF, printData, exporting } = useExport({
+    apiCall: (params) => projectsApi.export(params),
+    filenamePrefix: 'projects',
+    pdfTitle: 'Projects Report',
+    pdfColumns: projectExportColumns,
+  });
 
   // Check permissions
   const canViewProjects = hasAnyPermission(['projects.read.all', 'projects.read.assigned']);
@@ -195,15 +205,23 @@ export default function Projects() {
         project={selectedProject}
         onSuccess={handleSave}
       />
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-3xl font-bold">Projects</h1>
+          <h1 className="text-lg font-bold">Projects</h1>
           <p className="text-muted-foreground mt-1">Manage and track all NGO projects</p>
         </div>
-        <Button className="bg-gradient-primary shadow-glow" onClick={() => setShowCreateModal(true)}>
-          <Plus className="mr-2 h-4 w-4" />
-          New Project
-        </Button>
+        <div className="flex gap-2">
+          <ExportButton
+            onExportCSV={() => exportCSV()}
+            onExportPDF={() => exportPDF()}
+            onPrint={() => printData()}
+            exporting={exporting}
+          />
+          <Button className="bg-gradient-primary shadow-glow" onClick={() => setShowCreateModal(true)}>
+            <Plus className="mr-2 h-4 w-4" />
+            New Project
+          </Button>
+        </div>
       </div>
 
       {loading ? (
@@ -318,7 +336,7 @@ export default function Projects() {
                         </div>
                       </div>
 
-                      <div className="flex gap-2">
+                      <div className="flex flex-wrap gap-2">
                         <Button variant="outline" size="sm" onClick={() => handleViewDetails(project)}>View Details</Button>
                         <Button variant="outline" size="sm" onClick={() => handleEdit(project)}>Edit</Button>
                         <Button variant="outline" size="sm" onClick={() => handleStatusUpdates(project)}>

@@ -22,9 +22,9 @@ export default function AnonymousDonation() {
       />
 
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-3xl font-bold">Anonymous Donation</h1>
+          <h1 className="text-lg font-bold">Anonymous Donation</h1>
           <p className="text-muted-foreground mt-1">
             Record anonymous donations without donor details
           </p>

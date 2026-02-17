@@ -136,9 +136,9 @@ export default function Budget() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-xl font-bold">Budget Management</h1>
+          <h1 className="text-lg font-bold">Budget Management</h1>
           <p className="text-muted-foreground mt-1">
             Track and manage financial resources across projects and schemes
           </p>

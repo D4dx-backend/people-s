@@ -73,6 +73,37 @@ const fieldSchema = new mongoose.Schema({
       enum: ['show', 'hide', 'require', 'optional'],
       default: 'show'
     }
+  },
+  // Scoring configuration for eligibility calculation
+  scoring: {
+    enabled: {
+      type: Boolean,
+      default: false
+    },
+    maxPoints: {
+      type: Number,
+      min: 0,
+      default: 0
+    },
+    scoringRules: [{
+      condition: {
+        type: String,
+        enum: ['equals', 'not_equals', 'greater_than', 'less_than', 'between', 'contains', 'is_not_empty', 'is_uploaded', 'before', 'after', 'includes'],
+        required: true
+      },
+      value: {
+        type: String,
+        default: ''
+      },
+      value2: {
+        type: String // For 'between' condition (second boundary)
+      },
+      points: {
+        type: Number,
+        required: true,
+        min: 0
+      }
+    }]
   }
 }, { _id: false });
 
@@ -111,8 +142,20 @@ const formConfigurationSchema = new mongoose.Schema({
   scheme: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Scheme',
-    required: [true, 'Scheme reference is required'],
-    unique: true // One form configuration per scheme
+    required: [true, 'Scheme reference is required']
+  },
+
+  // Renewal Form Flag
+  isRenewalForm: {
+    type: Boolean,
+    default: false
+  },
+
+  // Parent Form Configuration (for renewal forms linked to the original)
+  parentFormConfiguration: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'FormConfiguration',
+    default: null
   },
   
   // Basic Form Information
@@ -200,6 +243,28 @@ const formConfigurationSchema = new mongoose.Schema({
     }
   },
   
+  // Scoring Configuration (form-level settings)
+  scoringConfig: {
+    enabled: {
+      type: Boolean,
+      default: false
+    },
+    minimumThreshold: {
+      type: Number,
+      min: 0,
+      max: 100,
+      default: 0
+    },
+    autoRejectBelowThreshold: {
+      type: Boolean,
+      default: false
+    },
+    showScoreToAdmin: {
+      type: Boolean,
+      default: true
+    }
+  },
+
   // Version Control
   version: {
     type: Number,
@@ -232,7 +297,7 @@ const formConfigurationSchema = new mongoose.Schema({
 });
 
 // Indexes
-formConfigurationSchema.index({ scheme: 1 });
+formConfigurationSchema.index({ scheme: 1, isRenewalForm: 1 }, { unique: true });
 formConfigurationSchema.index({ enabled: 1 });
 formConfigurationSchema.index({ isPublished: 1 });
 formConfigurationSchema.index({ createdBy: 1 });
@@ -247,6 +312,14 @@ formConfigurationSchema.virtual('totalFields').get(function() {
 formConfigurationSchema.virtual('requiredFields').get(function() {
   return this.pages.reduce((total, page) => 
     total + page.fields.filter(field => field.required).length, 0);
+});
+
+// Virtual for total max scoring points
+formConfigurationSchema.virtual('totalMaxPoints').get(function() {
+  if (!this.scoringConfig?.enabled) return 0;
+  return this.pages.reduce((total, page) => 
+    total + page.fields.reduce((fieldTotal, field) => 
+      fieldTotal + (field.scoring?.enabled ? (field.scoring.maxPoints || 0) : 0), 0), 0);
 });
 
 // Virtual for form URL
@@ -435,10 +508,16 @@ formConfigurationSchema.pre('save', function(next) {
 formConfigurationSchema.post('save', async function(doc) {
   try {
     const Scheme = mongoose.model('Scheme');
-    await Scheme.findByIdAndUpdate(doc.scheme, {
-      hasFormConfiguration: true,
-      formConfigurationUpdated: new Date()
-    });
+    if (doc.isRenewalForm) {
+      await Scheme.findByIdAndUpdate(doc.scheme, {
+        'renewalSettings.renewalFormConfigured': true
+      });
+    } else {
+      await Scheme.findByIdAndUpdate(doc.scheme, {
+        hasFormConfiguration: true,
+        formConfigurationUpdated: new Date()
+      });
+    }
   } catch (error) {
     console.error('Error updating scheme form status:', error);
   }

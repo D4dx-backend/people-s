@@ -329,6 +329,22 @@ class ApiClient {
     return this.request('/auth/me');
   }
 
+  async updateProfile(data: any): Promise<ApiResponse<{ user: User }>> {
+    return this.request('/auth/profile', {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async changePassword(currentPassword: string | null, newPassword: string): Promise<ApiResponse<null>> {
+    const body: any = { newPassword };
+    if (currentPassword) body.currentPassword = currentPassword;
+    return this.request('/auth/change-password', {
+      method: 'POST',
+      body: JSON.stringify(body),
+    });
+  }
+
   async logout(): Promise<void> {
     try {
       await this.request('/auth/logout', { method: 'POST' });
@@ -646,11 +662,27 @@ class ApiClient {
 // Export singleton instance
 export const apiClient = new ApiClient(API_BASE_URL);
 
+// Helper to build export URL with query params
+function buildExportUrl(basePath: string, params?: Record<string, unknown>): string {
+  const searchParams = new URLSearchParams();
+  if (params) {
+    Object.entries(params).forEach(([key, value]) => {
+      if (value !== undefined && value !== null && value !== '') {
+        searchParams.append(key, String(value));
+      }
+    });
+  }
+  const qs = searchParams.toString();
+  return `${basePath}${qs ? `?${qs}` : ''}`;
+}
+
 // Export convenience methods
 export const auth = {
   requestOTP: (phone: string, purpose?: string) => apiClient.requestOTP(phone, purpose),
   verifyOTP: (phone: string, otp: string, purpose?: string) => apiClient.verifyOTP(phone, otp, purpose),
   getProfile: () => apiClient.getProfile(),
+  updateProfile: (data: any) => apiClient.updateProfile(data),
+  changePassword: (currentPassword: string | null, newPassword: string) => apiClient.changePassword(currentPassword, newPassword),
   logout: () => apiClient.logout(),
   isAuthenticated: () => apiClient.isAuthenticated(),
   getCurrentUser: () => apiClient.getCurrentUser(),
@@ -663,6 +695,7 @@ export const projects = {
   update: (id: string, data: Partial<Project>) => apiClient.updateProject(id, data),
   delete: (id: string) => apiClient.deleteProject(id),
   getStats: () => apiClient.getProjectStats(),
+  export: (params?: any) => extendedApiClient.request(buildExportUrl('/projects/export', params)),
 };
 
 export const schemes = {
@@ -679,6 +712,16 @@ export const schemes = {
     method: 'PATCH',
     body: JSON.stringify(data),
   }),
+  // Renewal form config
+  getRenewalFormConfig: (schemeId: string) => extendedApiClient.request(`/form-configurations/schemes/${schemeId}/renewal-form-config`),
+  updateRenewalFormConfig: (schemeId: string, config: any) => extendedApiClient.request(`/form-configurations/schemes/${schemeId}/renewal-form-config`, {
+    method: 'PUT',
+    body: JSON.stringify(config),
+  }),
+  deleteRenewalFormConfig: (schemeId: string) => extendedApiClient.request(`/form-configurations/schemes/${schemeId}/renewal-form-config`, {
+    method: 'DELETE',
+  }),
+  export: (params?: any) => extendedApiClient.request(buildExportUrl('/schemes/export', params)),
 };
 
 export const users = {
@@ -692,6 +735,7 @@ export const users = {
   toggleStatus: (id: string, isActive: boolean) => apiClient.toggleUserStatus(id, isActive),
   resetPassword: (id: string, newPassword: string) => apiClient.resetUserPassword(id, newPassword),
   assignRole: (id: string, role: string, adminScope?: any) => apiClient.assignRole(id, role, adminScope),
+  export: (params?: any) => extendedApiClient.request(buildExportUrl('/users/export', params)),
 };
 
 // Location Types
@@ -1007,6 +1051,7 @@ export const locations = {
   delete: (id: string) => extendedApiClient.deleteLocation(id),
   getStats: () => extendedApiClient.getLocationStats(),
   getByType: (type: string, params?: any) => extendedApiClient.getLocationsByType(type, params),
+  export: (params?: any) => extendedApiClient.request(buildExportUrl('/locations/export', params)),
 };
 
 export const beneficiaries = {
@@ -1048,6 +1093,48 @@ export const applications = {
       method: 'PATCH',
       body: JSON.stringify(data),
     }),
+  revert: (id: string, data: { targetStageId: string; reason: string }) =>
+    extendedApiClient.request(`/applications/${id}/revert`, {
+      method: 'PATCH',
+      body: JSON.stringify(data),
+    }),
+  addStageComment: (id: string, stageId: string, data: { comment: string; role?: string }) =>
+    extendedApiClient.request(`/applications/${id}/stages/${stageId}/comment`, {
+      method: 'PATCH',
+      body: JSON.stringify(data),
+    }),
+  uploadStageDocument: async (id: string, stageId: string, docIndex: number, file: File) => {
+    const formData = new FormData();
+    formData.append('document', file);
+    const token = localStorage.getItem('token');
+    const baseUrl = import.meta.env.VITE_API_URL || '/api/v1';
+    const response = await fetch(`${baseUrl}/applications/${id}/stages/${stageId}/documents/${docIndex}`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+      },
+      body: formData,
+    });
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.message || 'Failed to upload document');
+    }
+    return response.json();
+  },
+  // Renewal endpoints
+  getRenewalDue: (params?: any) => {
+    const searchParams = new URLSearchParams();
+    if (params) {
+      Object.entries(params).forEach(([key, value]) => {
+        if (value !== undefined && value !== null && value !== '') {
+          searchParams.append(key, (value as string).toString());
+        }
+      });
+    }
+    return extendedApiClient.request(`/applications/renewal-due${searchParams.toString() ? `?${searchParams.toString()}` : ''}`);
+  },
+  getRenewalHistory: (id: string) => extendedApiClient.request(`/applications/${id}/renewal-history`),
+  export: (params?: any) => extendedApiClient.request(buildExportUrl('/applications/export', params)),
 };
 
 export const budget = {
@@ -1147,6 +1234,7 @@ export const donors = {
   bulkUpdateStatus: (donorIds: string[], status: string) => extendedApiClient.request('/donors/bulk/status', { method: 'PATCH', body: JSON.stringify({ donorIds, status }) }),
   bulkAssignTags: (donorIds: string[], tags: string[]) => extendedApiClient.request('/donors/bulk/tags', { method: 'PATCH', body: JSON.stringify({ donorIds, tags }) }),
   sendCommunication: (data: any) => extendedApiClient.request('/donors/communicate', { method: 'POST', body: JSON.stringify(data) }),
+  export: (params?: any) => extendedApiClient.request(buildExportUrl('/donors/export', params)),
 };
 
 export const donations = {
@@ -1193,6 +1281,7 @@ export const donations = {
     const queryString = searchParams.toString();
     return extendedApiClient.request(`/donations/donor/${donorId}${queryString ? `?${queryString}` : ''}`);
   },
+  export: (params?: any) => extendedApiClient.request(buildExportUrl('/donations/export', params)),
 };
 
 
@@ -1345,6 +1434,7 @@ export const rbac = {
   initializeRBAC: () => extendedApiClient.request('/rbac/initialize', { method: 'POST' }),
   getStats: () => extendedApiClient.request('/rbac/stats'),
   cleanupExpired: () => extendedApiClient.request('/rbac/cleanup', { method: 'POST' }),
+  exportRoles: (params?: any) => extendedApiClient.request(buildExportUrl('/rbac/roles/export', params)),
 };
 
 // Master Data Types
@@ -1682,7 +1772,8 @@ export const website = {
   }),
   deletePartner: (id: string) => apiClient.request(`/partners/${id}`, {
     method: 'DELETE'
-  })
+  }),
+  exportPartners: (params?: any) => apiClient.request(buildExportUrl('/partners/export', params)),
 };
 
 // Banners API
@@ -1725,6 +1816,20 @@ export const config = {
   delete: (id: string) => apiClient.request(`/config/${id}`, {
     method: 'DELETE'
   })
+};
+
+// Speech-to-Text API
+export const speech = {
+  transcribe: (audio: string, options?: { encoding?: string; sampleRateHertz?: number; languageCode?: string }) =>
+    apiClient.request<{ text: string; confidence: number; languageCode: string }>('/speech/transcribe', {
+      method: 'POST',
+      body: JSON.stringify({
+        audio,
+        encoding: options?.encoding || 'WEBM_OPUS',
+        sampleRateHertz: options?.sampleRateHertz || 48000,
+        languageCode: options?.languageCode || 'ml-IN'
+      })
+    })
 };
 
 // Export api as alias for apiClient for backward compatibility

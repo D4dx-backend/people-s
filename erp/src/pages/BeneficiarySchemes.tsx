@@ -4,7 +4,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
-import { ArrowLeft, Search, FileText, Calendar, IndianRupee, Users, Clock, Loader2 } from "lucide-react";
+import { ArrowLeft, Search, FileText, Calendar, IndianRupee, Users, Clock, Loader2, CheckCircle, AlertCircle } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { beneficiaryApi } from "@/services/beneficiaryApi";
 import logo from "@/assets/logo.png";
@@ -103,6 +103,12 @@ export default function BeneficiarySchemes() {
   };
 
   const handleApplyScheme = (scheme: Scheme) => {
+    if ((scheme as any).hasDraft) {
+      // Has a draft - navigate to continue it
+      navigate(`/beneficiary/apply/${scheme._id}?draftId=${(scheme as any).draftApplicationId}`, { state: { scheme } });
+      return;
+    }
+
     if (scheme.hasApplied) {
       // If already applied, navigate to application details instead
       toast({
@@ -163,7 +169,7 @@ export default function BeneficiarySchemes() {
             </Button>
             <img src={logo} alt="Logo" className="h-8 w-8 rounded-full" />
             <div>
-              <h1 className="text-sm font-bold">Available Schemes</h1>
+              <h1 className="text-lg font-bold">Available Schemes</h1>
               <p className="text-xs text-muted-foreground hidden sm:block">+91 {phoneNumber}</p>
             </div>
           </div>
@@ -250,7 +256,18 @@ export default function BeneficiarySchemes() {
 
               <CardContent className="space-y-4">
                 {/* Application Status */}
-                {scheme.hasApplied && (
+                {(scheme as any).hasDraft && (
+                  <div className="bg-amber-50 border border-amber-200 rounded-md p-3">
+                    <div className="flex items-center gap-2">
+                      <AlertCircle className="h-4 w-4 text-amber-600" />
+                      <span className="text-sm font-medium text-amber-800">Draft Saved</span>
+                    </div>
+                    <p className="text-xs text-amber-600 mt-1">
+                      You have a saved draft. Click "Continue Draft" to resume.
+                    </p>
+                  </div>
+                )}
+                {scheme.hasApplied && !(scheme as any).hasDraft && (
                   <div className="bg-blue-50 border border-blue-200 rounded-md p-3">
                     <div className="flex items-center gap-2">
                       <CheckCircle className="h-4 w-4 text-blue-600" />
@@ -314,17 +331,19 @@ export default function BeneficiarySchemes() {
 
                 {/* Apply Button */}
                 <Button
-                  className="w-full"
+                  className={`w-full ${(scheme as any).hasDraft ? 'bg-amber-600 hover:bg-amber-700' : ''}`}
                   onClick={() => handleApplyScheme(scheme)}
-                  disabled={scheme.hasApplied || !scheme.hasFormConfiguration}
-                  variant={scheme.hasApplied ? "outline" : "default"}
+                  disabled={scheme.hasApplied && !(scheme as any).hasDraft || !scheme.hasFormConfiguration}
+                  variant={scheme.hasApplied && !(scheme as any).hasDraft ? "outline" : "default"}
                 >
                   <FileText className="mr-2 h-4 w-4" />
-                  {scheme.hasApplied 
-                    ? "View Application" 
-                    : !scheme.hasFormConfiguration 
-                      ? "Form Not Available" 
-                      : "Apply Now"
+                  {(scheme as any).hasDraft
+                    ? "Continue Draft"
+                    : scheme.hasApplied 
+                      ? "Already Applied" 
+                      : !scheme.hasFormConfiguration 
+                        ? "Form Not Available" 
+                        : "Apply Now"
                   }
                 </Button>
               </CardContent>

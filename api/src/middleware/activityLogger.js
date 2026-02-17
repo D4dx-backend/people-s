@@ -38,7 +38,9 @@ async function logRequestActivity(req, res, responseData, duration, options) {
     // Skip logging for certain endpoints
     const skipEndpoints = options.skipEndpoints || [
       '/api/ping',
-      '/api/activity-logs' // Avoid recursive logging
+      '/api/activity-logs', // Avoid recursive logging
+      '/api/login-logs',
+      '/api/error-logs'
     ];
 
     if (skipEndpoints.some(endpoint => req.originalUrl.startsWith(endpoint))) {
@@ -191,10 +193,11 @@ function determineAction(req, res, responseData) {
  */
 function getResourceAction(baseAction, path) {
   if (path.includes('/users')) return `user_${baseAction}`;
-  if (path.includes('/beneficiaries')) return `beneficiary_${baseAction}`;
+  if (path.includes('/beneficiaries') || path.includes('/beneficiary')) return `beneficiary_${baseAction}`;
   if (path.includes('/applications')) return `application_${baseAction}`;
   if (path.includes('/projects')) return `project_${baseAction}`;
   if (path.includes('/schemes')) return `scheme_${baseAction}`;
+  if (path.includes('/recurring-payments')) return `recurring_payment_${baseAction}`;
   if (path.includes('/payments')) return `payment_${baseAction}`;
   if (path.includes('/reports')) return `report_${baseAction}`;
   if (path.includes('/roles')) return `role_${baseAction}`;
@@ -203,8 +206,21 @@ function getResourceAction(baseAction, path) {
   if (path.includes('/donations')) return `donation_${baseAction}`;
   if (path.includes('/interviews')) return `interview_${baseAction}`;
   if (path.includes('/locations')) return `location_${baseAction}`;
-  if (path.includes('/forms')) return `form_${baseAction}`;
+  if (path.includes('/form')) return `form_${baseAction}`;
   if (path.includes('/settings')) return `settings_${baseAction}`;
+  if (path.includes('/banners')) return `banner_${baseAction}`;
+  if (path.includes('/brochures')) return `brochure_${baseAction}`;
+  if (path.includes('/partners')) return `partner_${baseAction}`;
+  if (path.includes('/news-events')) return `news_event_${baseAction}`;
+  if (path.includes('/notifications')) return `notification_${baseAction}`;
+  if (path.includes('/budget')) return `budget_${baseAction}`;
+  if (path.includes('/master-data')) return `master_data_${baseAction}`;
+  if (path.includes('/upload')) return `upload_${baseAction}`;
+  if (path.includes('/mobile')) return `mobile_${baseAction}`;
+  if (path.includes('/config')) return `config_${baseAction}`;
+  if (path.includes('/website')) return `website_${baseAction}`;
+  if (path.includes('/sms')) return `sms_${baseAction}`;
+  if (path.includes('/regional-admin')) return `regional_admin_${baseAction}`;
   
   return baseAction;
 }
@@ -217,17 +233,37 @@ function determineResource(req) {
 
   if (path.includes('/auth')) return 'auth';
   if (path.includes('/users')) return 'user';
-  if (path.includes('/beneficiaries')) return 'beneficiary';
+  if (path.includes('/beneficiaries') || path.includes('/beneficiary')) return 'beneficiary';
   if (path.includes('/applications')) return 'application';
   if (path.includes('/projects')) return 'project';
   if (path.includes('/schemes')) return 'scheme';
+  if (path.includes('/recurring-payments')) return 'recurring_payment';
   if (path.includes('/payments')) return 'payment';
   if (path.includes('/reports')) return 'report';
   if (path.includes('/roles')) return 'role';
   if (path.includes('/permissions')) return 'permission';
+  if (path.includes('/donors')) return 'donor';
+  if (path.includes('/donations')) return 'donation';
+  if (path.includes('/interviews')) return 'interview';
+  if (path.includes('/locations')) return 'location';
+  if (path.includes('/form')) return 'form';
+  if (path.includes('/banners')) return 'banner';
+  if (path.includes('/brochures')) return 'brochure';
+  if (path.includes('/partners')) return 'partner';
+  if (path.includes('/news-events')) return 'news_event';
+  if (path.includes('/notifications')) return 'notification';
+  if (path.includes('/budget')) return 'budget';
+  if (path.includes('/master-data')) return 'master_data';
+  if (path.includes('/upload')) return 'upload';
+  if (path.includes('/mobile')) return 'mobile';
+  if (path.includes('/config')) return 'config';
+  if (path.includes('/website')) return 'website';
+  if (path.includes('/sms')) return 'sms';
+  if (path.includes('/regional-admin')) return 'regional_admin';
+  if (path.includes('/settings')) return 'settings';
   if (path.includes('/system')) return 'system';
 
-  return 'system'; // Use 'system' instead of 'unknown' for unmapped resources
+  return 'system';
 }
 
 /**

@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Calendar, Clock, MapPin, Users, FileText, CheckCircle, XCircle, CalendarCheck, Loader2, AlertCircle, Link as LinkIcon, Edit, Download, Grid, List, Filter } from "lucide-react";
+import { Calendar, Clock, MapPin, Users, FileText, CheckCircle, XCircle, CalendarCheck, Loader2, AlertCircle, Link as LinkIcon, Edit, Grid, List, Filter } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -8,7 +8,9 @@ import { ReportsModal } from "@/components/modals/ReportsModal";
 import { ApplicationViewModal } from "@/components/modals/ApplicationViewModal";
 import { GenericFilters } from "@/components/filters/GenericFilters";
 import { useInterviewFilters } from "@/hooks/useInterviewFilters";
-import { useApplicationExport } from "@/hooks/useApplicationExport";
+import { useExport } from '@/hooks/useExport';
+import ExportButton from '@/components/common/ExportButton';
+import { applicationExportColumns } from '@/utils/exportColumns';
 import { toast } from "@/hooks/use-toast";
 import { useRBAC } from "@/hooks/useRBAC";
 import { interviews, applications } from "@/lib/api";
@@ -44,7 +46,13 @@ interface Interview {
 export default function UpcomingInterviews() {
   const { hasAnyPermission } = useRBAC();
   const filterHook = useInterviewFilters();
-  const { exportApplications, exporting } = useApplicationExport();
+  const { exportCSV, exportPDF, printData, exporting } = useExport({
+    apiCall: (params) => applications.export(params),
+    filenamePrefix: 'interviews',
+    pdfTitle: 'Upcoming Interviews Report',
+    pdfColumns: applicationExportColumns,
+    getFilterParams: () => filterHook.getExportParams(),
+  });
   
   const canViewInterviews = hasAnyPermission(['interviews.read', 'applications.read.all', 'applications.read.regional']);
   
@@ -285,10 +293,6 @@ export default function UpcomingInterviews() {
     }
   };
 
-  const handleExport = () => {
-    exportApplications(filterHook.getExportParams(), 'upcoming_interviews');
-  };
-
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
@@ -335,14 +339,16 @@ export default function UpcomingInterviews() {
       
       <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
         <div>
-          <h1 className="text-xl font-bold">Upcoming Interviews</h1>
+          <h1 className="text-lg font-bold">Upcoming Interviews</h1>
           <p className="text-muted-foreground mt-1">Schedule and manage applicant interviews</p>
         </div>
         <div className="flex items-center gap-2">
-          <Button variant="outline" onClick={handleExport} disabled={exporting}>
-            <Download className="mr-2 h-4 w-4" />
-            {exporting ? "Exporting..." : "Export Report"}
-          </Button>
+          <ExportButton
+            onExportCSV={() => exportCSV()}
+            onExportPDF={() => exportPDF()}
+            onPrint={() => printData()}
+            exporting={exporting}
+          />
           <div className="flex items-center border rounded-lg p-1">
             <Button variant={viewMode === 'cards' ? 'default' : 'ghost'} size="sm" onClick={() => setViewMode('cards')}>
               <Grid className="h-4 w-4" />
@@ -528,6 +534,7 @@ export default function UpcomingInterviews() {
       ) : (
         <Card>
           <CardContent className="p-0">
+            <div className="overflow-x-auto">
             <Table>
               <TableHeader>
                 <TableRow>
@@ -631,6 +638,7 @@ export default function UpcomingInterviews() {
                 ))}
               </TableBody>
             </Table>
+            </div>
           </CardContent>
         </Card>
       )}

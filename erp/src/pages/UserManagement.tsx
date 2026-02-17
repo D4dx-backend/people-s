@@ -17,6 +17,9 @@ import { users as usersApi, locations, type User, type Location } from "@/lib/ap
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "@/hooks/use-toast";
 import { useRBAC } from "@/hooks/useRBAC";
+import { useExport } from "@/hooks/useExport";
+import ExportButton from "@/components/common/ExportButton";
+import { userExportColumns } from "@/utils/exportColumns";
 
 // Role color mapping
 export const roleColors: Record<string, string> = {
@@ -71,6 +74,18 @@ export default function UserManagement() {
   const [showDetailsModal, setShowDetailsModal] = useState(false);
   const [selectedUser, setSelectedUser] = useState<User | undefined>(undefined);
   const [modalMode, setModalMode] = useState<"create" | "edit">("create");
+
+  const { exportCSV, exportPDF, printData, exporting } = useExport({
+    apiCall: (params) => usersApi.export(params),
+    filenamePrefix: 'users',
+    pdfTitle: 'Users Report',
+    pdfColumns: userExportColumns,
+    getFilterParams: () => ({
+      search: searchTerm || undefined,
+      role: selectedRole !== 'all' ? selectedRole : undefined,
+      status: selectedStatus !== 'all' ? selectedStatus : undefined,
+    }),
+  });
 
   const loadUsers = async () => {
     try {
@@ -315,15 +330,23 @@ export default function UserManagement() {
         user={selectedUser}
       />
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-xl font-bold">User Management</h1>
+          <h1 className="text-lg font-bold">User Management</h1>
           <p className="text-muted-foreground mt-1">Manage system users and permissions</p>
         </div>
-        <Button className="bg-gradient-primary shadow-glow" onClick={handleAddUser}>
-          <Plus className="mr-2 h-4 w-4" />
-          Add User
-        </Button>
+        <div className="flex gap-2">
+          <ExportButton
+            onExportCSV={() => exportCSV()}
+            onExportPDF={() => exportPDF()}
+            onPrint={() => printData()}
+            exporting={exporting}
+          />
+          <Button className="bg-gradient-primary shadow-glow" onClick={handleAddUser}>
+            <Plus className="mr-2 h-4 w-4" />
+            Add User
+          </Button>
+        </div>
       </div>
 
       {/* Statistics Cards */}
@@ -384,7 +407,7 @@ export default function UserManagement() {
           </div>
         </div>
         <Select value={selectedRole} onValueChange={setSelectedRole}>
-          <SelectTrigger className="w-[200px]">
+          <SelectTrigger className="w-full sm:w-[200px]">
             <SelectValue placeholder="Filter by role" />
           </SelectTrigger>
           <SelectContent>
@@ -400,7 +423,7 @@ export default function UserManagement() {
           </SelectContent>
         </Select>
         <Select value={selectedStatus} onValueChange={setSelectedStatus}>
-          <SelectTrigger className="w-[150px]">
+          <SelectTrigger className="w-full sm:w-[150px]">
             <SelectValue placeholder="Filter by status" />
           </SelectTrigger>
           <SelectContent>
@@ -435,6 +458,7 @@ export default function UserManagement() {
             />
           ) : (
             <div className="space-y-4">
+              <div className="overflow-x-auto">
               <Table>
                 <TableHeader>
                   <TableRow>
@@ -569,10 +593,11 @@ export default function UserManagement() {
                   ))}
                 </TableBody>
               </Table>
+              </div>
 
               {/* Pagination */}
               {totalPages > 1 && (
-                <div className="flex items-center justify-between pt-4 border-t">
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between pt-4 border-t">
                   <p className="text-sm text-muted-foreground">
                     Showing {((currentPage - 1) * 10) + 1} to {Math.min(currentPage * 10, totalItems)} of {totalItems} users
                   </p>

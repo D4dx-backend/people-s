@@ -2,6 +2,7 @@ const authService = require('../services/authService');
 const { User } = require('../models');
 const ResponseHelper = require('../utils/responseHelper');
 const { logActivity } = require('../middleware/activityLogger');
+const LoginLogService = require('../services/loginLogService');
 
 class AuthController {
   /**
@@ -36,6 +37,17 @@ class AuthController {
         severity: 'low'
       });
 
+      // Log to login logs
+      await LoginLogService.logLoginEvent({
+        userId: null,
+        userType: 'admin',
+        action: 'otp_requested',
+        status: 'success',
+        phone,
+        req,
+        otpDetails: { requestedAt: new Date(), purpose, channel: result.deliveryMethod || 'sms' }
+      });
+
       return ResponseHelper.success(res, result, 'OTP sent successfully');
     } catch (error) {
       console.error('❌ Send OTP Error:', error);
@@ -48,6 +60,18 @@ class AuthController {
         details: { error: error.message, phone: req.body.phone },
         status: 'failed',
         severity: 'medium'
+      });
+
+      // Log failed OTP to login logs
+      await LoginLogService.logLoginEvent({
+        userId: null,
+        userType: 'admin',
+        action: 'otp_requested',
+        status: 'failed',
+        phone: req.body.phone || 'unknown',
+        req,
+        failureReason: 'server_error',
+        metadata: { error: error.message }
       });
       
       return ResponseHelper.error(res, error.message, 400);
@@ -70,9 +94,41 @@ class AuthController {
       // Verify OTP and authenticate
       const result = await authService.verifyOTPAndLogin(phone, otp, purpose);
 
+      // Log successful login to login logs
+      await LoginLogService.logLoginEvent({
+        userId: result.user?.id || result.user?._id || null,
+        userType: 'admin',
+        action: 'login_success',
+        status: 'success',
+        phone,
+        req,
+        otpDetails: { verifiedAt: new Date(), purpose }
+      });
+
       return ResponseHelper.success(res, result, result.message);
     } catch (error) {
       console.error('❌ Verify OTP Error:', error);
+
+      // Determine failure reason
+      let failureReason = 'server_error';
+      if (error.message.includes('Invalid OTP') || error.message.includes('invalid')) failureReason = 'invalid_otp';
+      else if (error.message.includes('expired')) failureReason = 'expired_otp';
+      else if (error.message.includes('not found')) failureReason = 'user_not_found';
+      else if (error.message.includes('inactive') || error.message.includes('deactivated')) failureReason = 'user_inactive';
+      else if (error.message.includes('attempts') || error.message.includes('maximum')) failureReason = 'max_attempts';
+
+      // Log failed login to login logs
+      await LoginLogService.logLoginEvent({
+        userId: null,
+        userType: 'admin',
+        action: 'login_failed',
+        status: 'failed',
+        phone: req.body.phone || 'unknown',
+        req,
+        failureReason,
+        metadata: { error: error.message }
+      });
+
       return ResponseHelper.error(res, error.message, 400);
     }
   }
@@ -120,9 +176,32 @@ class AuthController {
 
       const result = await authService.refreshToken(refreshToken);
 
+      // Log token refresh
+      await LoginLogService.logLoginEvent({
+        userId: result.user?.id || null,
+        userType: 'admin',
+        action: 'token_refresh',
+        status: 'success',
+        phone: result.user?.phone || 'unknown',
+        req
+      });
+
       return ResponseHelper.success(res, result, 'Token refreshed successfully');
     } catch (error) {
       console.error('❌ Refresh Token Error:', error);
+
+      // Log failed token refresh  
+      await LoginLogService.logLoginEvent({
+        userId: null,
+        userType: 'admin',
+        action: 'token_refresh',
+        status: 'failed',
+        phone: 'unknown',
+        req,
+        failureReason: 'invalid_token',
+        metadata: { error: error.message }
+      });
+
       return ResponseHelper.error(res, error.message, 401);
     }
   }
@@ -137,6 +216,16 @@ class AuthController {
       const { deviceId } = req.body;
 
       const result = await authService.logout(userId, deviceId);
+
+      // Log logout to login logs
+      await LoginLogService.logLoginEvent({
+        userId,
+        userType: 'admin',
+        action: 'logout',
+        status: 'success',
+        phone: req.user.phone || 'unknown',
+        req
+      });
 
       return ResponseHelper.success(res, result, 'Logged out successfully');
     } catch (error) {
@@ -202,6 +291,48 @@ class AuthController {
     } catch (error) {
       console.error('❌ Update Profile Error:', error);
       return ResponseHelper.error(res, error.message, 400);
+    }
+  }
+
+  /**
+   * Change password (self-service for all roles)
+   * POST /api/auth/change-password
+   */
+  async changePassword(req, res) {
+    try {
+      const { currentPassword, newPassword } = req.body;
+      const userId = req.user._id;
+
+      if (!newPassword || newPassword.length < 6) {
+        return ResponseHelper.error(res, 'New password must be at least 6 characters', 400);
+      }
+
+      // Fetch user with password field (it's select: false by default)
+      const user = await User.findById(userId).select('+password');
+      if (!user) {
+        return ResponseHelper.error(res, 'User not found', 404);
+      }
+
+      // If user already has a password, verify current password
+      if (user.password) {
+        if (!currentPassword) {
+          return ResponseHelper.error(res, 'Current password is required', 400);
+        }
+        const isMatch = await user.comparePassword(currentPassword);
+        if (!isMatch) {
+          return ResponseHelper.error(res, 'Current password is incorrect', 401);
+        }
+      }
+      // If user has no password (OTP-only), allow setting one without currentPassword
+
+      user.password = newPassword; // Pre-save hook will hash it
+      user.updatedBy = userId;
+      await user.save();
+
+      return ResponseHelper.success(res, null, 'Password changed successfully');
+    } catch (error) {
+      console.error('❌ Change Password Error:', error);
+      return ResponseHelper.error(res, 'Failed to change password', 500);
     }
   }
 

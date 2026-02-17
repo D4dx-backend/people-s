@@ -19,6 +19,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
+import VoiceToTextButton from '@/components/ui/VoiceToTextButton';
 
 const PaymentScheduleView = () => {
   const { applicationId } = useParams<{ applicationId: string }>();
@@ -167,7 +168,7 @@ const PaymentScheduleView = () => {
             <ArrowLeft className="h-4 w-4" />
           </Button>
           <div>
-            <h1 className="text-xl font-bold">Application Payment Schedule</h1>
+            <h1 className="text-lg font-bold">Application Payment Schedule</h1>
             <p className="text-muted-foreground mt-1">
               {application.applicationNumber} - {application.beneficiary?.name}
             </p>
@@ -363,13 +364,23 @@ const PaymentScheduleView = () => {
 
             <div>
               <Label htmlFor="notes">Notes</Label>
-              <Textarea
-                id="notes"
-                value={paymentForm.notes}
-                onChange={(e) => setPaymentForm({ ...paymentForm, notes: e.target.value })}
-                placeholder="Any additional notes"
-                rows={3}
-              />
+              <div className="relative">
+                <Textarea
+                  id="notes"
+                  value={paymentForm.notes}
+                  onChange={(e) => setPaymentForm({ ...paymentForm, notes: e.target.value })}
+                  placeholder="Any additional notes"
+                  rows={3}
+                  className="pr-12"
+                />
+                <div className="absolute right-2 top-2">
+                  <VoiceToTextButton
+                    onTranscript={(text) => setPaymentForm(prev => ({ ...prev, notes: prev.notes ? prev.notes + ' ' + text : text }))}
+                    size="icon"
+                    className="h-8 w-8"
+                  />
+                </div>
+              </div>
             </div>
           </div>
 

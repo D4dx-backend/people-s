@@ -84,9 +84,9 @@ const ScheduleOverview = () => {
   return (
     <div className="space-y-6 animate-in fade-in duration-500">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-xl font-bold">Payment Schedule</h1>
+          <h1 className="text-lg font-bold">Payment Schedule</h1>
           <p className="text-muted-foreground">Quick view of upcoming and overdue payments</p>
         </div>
         <div className="flex items-center gap-2">
@@ -187,7 +187,7 @@ const ScheduleOverview = () => {
                 return (
                   <div
                     key={payment._id}
-                    className="flex items-center justify-between p-4 bg-destructive/5 rounded-lg border border-destructive/20 hover:shadow-elegant transition-shadow"
+                    className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between p-4 bg-destructive/5 rounded-lg border border-destructive/20 hover:shadow-elegant transition-shadow"
                   >
                     <div className="flex-1">
                       <div className="flex items-center gap-3 mb-2">
@@ -199,7 +199,7 @@ const ScheduleOverview = () => {
                           {daysOverdue} days overdue
                         </Badge>
                       </div>
-                      <div className="grid grid-cols-3 gap-4 text-sm">
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-sm">
                         <div>
                           <span className="text-muted-foreground">Beneficiary:</span>
                           <p className="font-medium">{payment.beneficiary?.name || 'N/A'}</p>
@@ -257,7 +257,7 @@ const ScheduleOverview = () => {
                 return (
                   <div
                     key={payment._id}
-                    className={`flex items-center justify-between p-4 rounded-lg border transition-shadow hover:shadow-elegant ${
+                    className={`flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between p-4 rounded-lg border transition-shadow hover:shadow-elegant ${
                       isUrgent ? 'bg-warning/5 border-warning/20' : 'bg-card border-border'
                     }`}
                   >
@@ -273,7 +273,7 @@ const ScheduleOverview = () => {
                           </Badge>
                         )}
                       </div>
-                      <div className="grid grid-cols-4 gap-4 text-sm">
+                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-sm">
                         <div>
                           <span className="text-muted-foreground">Beneficiary:</span>
                           <p className="font-medium">{payment.beneficiary?.name || 'N/A'}</p>
