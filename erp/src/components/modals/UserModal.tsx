@@ -157,12 +157,13 @@ export function UserModal({ open, onOpenChange, user, mode, onSave }: UserModalP
         return field._id || field.id || '';
       };
       
+      const stateId = getIdFromField(userData.adminScope?.state);
       const districtId = getIdFromField(userData.adminScope?.district);
       const areaId = getIdFromField(userData.adminScope?.area);
       const unitId = getIdFromField(userData.adminScope?.unit);
-      const selectedRegionId = userData.adminScope?.regions?.[0] 
+      const selectedRegionId = userData.adminScope?.regions?.[0]
         ? getIdFromField(userData.adminScope.regions[0])
-        : unitId || areaId || districtId || '';
+        : unitId || areaId || districtId || stateId || '';
       
       // Load cascading data based on role
       if (userData.role === 'area_admin' && districtId) {
@@ -330,12 +331,11 @@ export function UserModal({ open, onOpenChange, user, mode, onSave }: UserModalP
         return;
       }
 
-      // Validate admin scope requirements (not needed for super_admin and state_admin)
-      if (formData.role !== 'beneficiary' && 
-          formData.role !== 'project_coordinator' && 
-          formData.role !== 'scheme_coordinator' && 
-          formData.role !== 'super_admin' && 
-          formData.role !== 'state_admin') {
+      // Validate admin scope requirements (not needed for super_admin or beneficiary)
+      if (formData.role !== 'beneficiary' &&
+          formData.role !== 'project_coordinator' &&
+          formData.role !== 'scheme_coordinator' &&
+          formData.role !== 'super_admin') {
         if (!formData.selectedRegion) {
           toast({
             title: "Validation Error",
@@ -380,19 +380,19 @@ export function UserModal({ open, onOpenChange, user, mode, onSave }: UserModalP
         userData.email = trimmedEmail;
       }
 
-      // Add admin scope for roles that need it (not super_admin, state_admin, or beneficiary)
-      if (formData.role !== 'beneficiary' && 
-          formData.role !== 'super_admin' && 
-          formData.role !== 'state_admin') {
+      // Add admin scope for roles that need it (not super_admin or beneficiary)
+      if (formData.role !== 'beneficiary' && formData.role !== 'super_admin') {
         const adminScope: any = {
-          level: formData.role.includes('admin') ? formData.role.replace('_admin', '') : formData.role,
+          level: formData.role.includes('_admin') ? formData.role.replace('_admin', '') : formData.role.replace('_coordinator', ''),
           regions: formData.selectedRegion ? [formData.selectedRegion] : [],
           projects: formData.selectedProjects,
           schemes: formData.selectedSchemes
         };
 
-        // Add separate district, area, unit references for easier hierarchy display
-        if (formData.role === 'district_admin') {
+        // Add separate location references for easier hierarchy display
+        if (formData.role === 'state_admin') {
+          adminScope.state = formData.selectedRegion;
+        } else if (formData.role === 'district_admin') {
           adminScope.district = formData.selectedRegion;
         } else if (formData.role === 'area_admin') {
           adminScope.district = formData.selectedDistrict;
@@ -843,16 +843,10 @@ export function UserModal({ open, onOpenChange, user, mode, onSave }: UserModalP
               </div>
             )}
 
-            {/* Regional Access for Other Admin Roles - Single Select with Search */}
-            {formData.role !== 'beneficiary' && 
-             formData.role !== 'project_coordinator' && 
-             formData.role !== 'scheme_coordinator' && 
-             formData.role !== 'area_admin' && 
-             formData.role !== 'unit_admin' && 
-             formData.role !== 'super_admin' && 
-             formData.role !== 'state_admin' && (
+            {/* Regional Access for state_admin - uses availableLocations filtered to type=state */}
+            {formData.role === 'state_admin' && (
               <div className="space-y-2">
-                <Label>Regional Access *</Label>
+                <Label>State *</Label>
                 {loading ? (
                   <div className="flex items-center gap-2 p-4 border rounded">
                     <Loader2 className="h-4 w-4 animate-spin" />
@@ -872,7 +866,7 @@ export function UserModal({ open, onOpenChange, user, mode, onSave }: UserModalP
                     <div className="border rounded-lg max-h-60 overflow-y-auto">
                       {getFilteredLocations().length === 0 ? (
                         <p className="text-sm text-muted-foreground p-4">
-                          {availableLocations.length === 0 ? 'No locations available' : 'No locations found'}
+                          {availableLocations.length === 0 ? 'No states available' : 'No states found'}
                         </p>
                       ) : (
                         <div className="space-y-1 p-2">
@@ -898,6 +892,75 @@ export function UserModal({ open, onOpenChange, user, mode, onSave }: UserModalP
                       <div className="text-sm text-gray-600 flex items-center gap-2">
                         <span className="font-medium">Selected:</span>
                         <span>{availableLocations.find(l => l.id === formData.selectedRegion)?.name}</span>
+                        <button
+                          type="button"
+                          onClick={() => setFormData(prev => ({ ...prev, selectedRegion: '' }))}
+                          className="text-red-600 hover:text-red-700 text-xs underline"
+                        >
+                          Clear
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Regional Access for district_admin - uses availableDistricts from dedicated endpoint */}
+            {formData.role !== 'beneficiary' &&
+             formData.role !== 'project_coordinator' &&
+             formData.role !== 'scheme_coordinator' &&
+             formData.role !== 'area_admin' &&
+             formData.role !== 'unit_admin' &&
+             formData.role !== 'super_admin' &&
+             formData.role !== 'state_admin' && (
+              <div className="space-y-2">
+                <Label>{formData.role === 'state_admin' ? 'State *' : 'Regional Access *'}</Label>
+                {loading ? (
+                  <div className="flex items-center gap-2 p-4 border rounded">
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    <span className="text-sm text-muted-foreground">Loading locations...</span>
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    <div className="relative">
+                      <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+                      <Input
+                        placeholder="Search locations..."
+                        value={locationSearch}
+                        onChange={(e) => setLocationSearch(e.target.value)}
+                        className="pl-10"
+                      />
+                    </div>
+                    <div className="border rounded-lg max-h-60 overflow-y-auto">
+                      {availableDistricts.filter(d => d.name.toLowerCase().includes(locationSearch.toLowerCase())).length === 0 ? (
+                        <p className="text-sm text-muted-foreground p-4">
+                          {availableDistricts.length === 0 ? 'No districts available' : 'No districts found'}
+                        </p>
+                      ) : (
+                        <div className="space-y-1 p-2">
+                          {availableDistricts.filter(d => d.name.toLowerCase().includes(locationSearch.toLowerCase())).map((location) => (
+                            <button
+                              key={location.id}
+                              type="button"
+                              className={`w-full text-left px-3 py-2 hover:bg-gray-50 rounded-md transition-colors ${
+                                formData.selectedRegion === location.id ? 'bg-blue-50 border border-blue-200' : ''
+                              }`}
+                              onClick={() => {
+                                setFormData(prev => ({ ...prev, selectedRegion: location.id }));
+                              }}
+                            >
+                              <div className="font-medium">{location.name}</div>
+                              <div className="text-sm text-gray-500 capitalize">{location.type}</div>
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                    {formData.selectedRegion && (
+                      <div className="text-sm text-gray-600 flex items-center gap-2">
+                        <span className="font-medium">Selected:</span>
+                        <span>{availableDistricts.find(l => l.id === formData.selectedRegion)?.name}</span>
                         <button
                           type="button"
                           onClick={() => setFormData(prev => ({ ...prev, selectedRegion: '' }))}

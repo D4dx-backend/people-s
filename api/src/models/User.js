@@ -47,6 +47,10 @@ const userSchema = new mongoose.Schema({
       }
     },
     // Separate location references for easier hierarchy display
+    state: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Location'
+    },
     district: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'Location'

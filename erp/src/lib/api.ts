@@ -20,6 +20,7 @@ export interface User {
   adminScope?: {
     level: string;
     regions: string[];
+    state?: string;     // State reference (for state_admin)
     district?: string;  // District reference
     area?: string;      // Area reference (for area_admin and unit_admin)
     unit?: string;      // Unit reference (for unit_admin)
@@ -176,6 +177,78 @@ export interface Scheme {
   };
   createdAt: string;
   updatedAt: string;
+}
+
+// Scheme Target Types
+export interface SchemeTargetValueTarget {
+  value: string;
+  target: number;
+}
+
+export interface SchemeTargetCriteria {
+  formFieldId: number;
+  formFieldLabel: string;
+  formFieldType: string;
+  valueTargets: SchemeTargetValueTarget[];
+}
+
+export interface SchemeTargetMonthly {
+  month: number;
+  year: number;
+  target: number;
+  criteriaTargets: SchemeTargetCriteria[];
+}
+
+export interface SchemeTarget {
+  _id?: string;
+  scheme: string;
+  totalTarget: number;
+  description?: string;
+  monthlyTargets: SchemeTargetMonthly[];
+  monthlyTargetSum?: number;
+  createdBy?: { name: string; email: string };
+  updatedBy?: { name: string; email: string };
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface SchemeTargetFormField {
+  id: number;
+  label: string;
+  type: string;
+  options: { label: string; value: string }[];
+  pageTitle: string;
+}
+
+export interface SchemeTargetValueProgress {
+  value: string;
+  target: number;
+  achieved: number;
+  percentage: number;
+}
+
+export interface SchemeTargetCriteriaProgress {
+  formFieldId: number;
+  formFieldLabel: string;
+  formFieldType: string;
+  valueProgress: SchemeTargetValueProgress[];
+}
+
+export interface SchemeTargetMonthlyProgress {
+  month: number;
+  year: number;
+  target: number;
+  achieved: number;
+  percentage: number;
+  criteriaProgress: SchemeTargetCriteriaProgress[];
+}
+
+export interface SchemeTargetProgress {
+  scheme: string;
+  totalTarget: number;
+  totalAchieved: number;
+  totalPercentage: number;
+  monthlyProgress: SchemeTargetMonthlyProgress[];
 }
 
 export interface ApiResponse<T> {
@@ -722,6 +795,17 @@ export const schemes = {
     method: 'DELETE',
   }),
   export: (params?: any) => extendedApiClient.request(buildExportUrl('/schemes/export', params)),
+  // Scheme Targets
+  getTargets: (schemeId: string) => extendedApiClient.request(`/scheme-targets/${schemeId}`),
+  upsertTargets: (schemeId: string, data: any) => extendedApiClient.request(`/scheme-targets/${schemeId}`, {
+    method: 'PUT',
+    body: JSON.stringify(data),
+  }),
+  deleteTargets: (schemeId: string) => extendedApiClient.request(`/scheme-targets/${schemeId}`, {
+    method: 'DELETE',
+  }),
+  getTargetProgress: (schemeId: string) => extendedApiClient.request(`/scheme-targets/${schemeId}/progress`),
+  getTargetFormFields: (schemeId: string) => extendedApiClient.request(`/scheme-targets/${schemeId}/form-fields`),
 };
 
 export const users = {
@@ -1093,7 +1177,11 @@ export const applications = {
       method: 'PATCH',
       body: JSON.stringify(data),
     }),
-  revert: (id: string, data: { targetStageId: string; reason: string }) =>
+  getAvailableRevertRoles: (id: string) =>
+    extendedApiClient.request(`/applications/${id}/available-revert-roles`, {
+      method: 'GET',
+    }),
+  revert: (id: string, data: { targetRole: string; reason: string }) =>
     extendedApiClient.request(`/applications/${id}/revert`, {
       method: 'PATCH',
       body: JSON.stringify(data),
@@ -1820,14 +1908,15 @@ export const config = {
 
 // Speech-to-Text API
 export const speech = {
-  transcribe: (audio: string, options?: { encoding?: string; sampleRateHertz?: number; languageCode?: string }) =>
-    apiClient.request<{ text: string; confidence: number; languageCode: string }>('/speech/transcribe', {
+  transcribe: (audio: string, options?: { encoding?: string; sampleRateHertz?: number; languageCode?: string; rawText?: string }) =>
+    apiClient.request<{ text: string; rawText?: string; corrected?: boolean; confidence: number; languageCode: string }>('/speech/transcribe', {
       method: 'POST',
       body: JSON.stringify({
         audio,
         encoding: options?.encoding || 'WEBM_OPUS',
         sampleRateHertz: options?.sampleRateHertz || 48000,
-        languageCode: options?.languageCode || 'ml-IN'
+        languageCode: options?.languageCode || 'ml-IN',
+        rawText: options?.rawText
       })
     })
 };

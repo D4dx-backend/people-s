@@ -192,59 +192,27 @@ export function FieldEditor({ field, onUpdate, onDelete, onMoveUp, onMoveDown, a
                     </div>
                   </div>
 
-                  {/* Column Headers */}
+                  {/* Editable Table Preview - click headers/row labels to edit */}
                   <div className="space-y-1">
-                    <Label className="text-xs font-medium">Column Headers</Label>
-                    <div className="flex gap-2 flex-wrap">
-                      {Array.from({ length: field.columns || 2 }, (_, i) => (
-                        <Input
-                          key={`col-${i}`}
-                          value={field.columnTitles?.[i] || ""}
-                          onChange={(e) => {
-                            const titles = [...(field.columnTitles || Array(field.columns || 2).fill(""))];
-                            titles[i] = e.target.value;
-                            onUpdate({ ...field, columnTitles: titles });
-                          }}
-                          placeholder={`Column ${i + 1}`}
-                          className="h-7 text-xs flex-1 min-w-[80px]"
-                        />
-                      ))}
-                    </div>
-                  </div>
-
-                  {/* Row Labels */}
-                  <div className="space-y-1">
-                    <Label className="text-xs font-medium">Row Labels (optional)</Label>
-                    <div className="flex gap-2 flex-wrap">
-                      {Array.from({ length: field.rows || 3 }, (_, i) => (
-                        <Input
-                          key={`row-${i}`}
-                          value={field.rowTitles?.[i] || ""}
-                          onChange={(e) => {
-                            const titles = [...(field.rowTitles || Array(field.rows || 3).fill(""))];
-                            titles[i] = e.target.value;
-                            onUpdate({ ...field, rowTitles: titles });
-                          }}
-                          placeholder={`Row ${i + 1}`}
-                          className="h-7 text-xs flex-1 min-w-[80px]"
-                        />
-                      ))}
-                    </div>
-                  </div>
-
-                  {/* Table Preview */}
-                  <div className="space-y-1">
-                    <Label className="text-[10px] text-muted-foreground">Preview</Label>
+                    <Label className="text-[10px] text-muted-foreground">Click on column headers and row labels to edit</Label>
                     <div className="border rounded-md overflow-hidden">
                       <table className="w-full text-xs">
                         <thead>
                           <tr className="bg-muted">
-                            {(field.rowTitles?.some(t => t) ?? false) && (
-                              <th className="border-r border-b p-1.5 text-left font-medium text-muted-foreground"></th>
-                            )}
+                            <th className="border-r border-b p-0 text-left font-medium text-muted-foreground w-[100px]"></th>
                             {Array.from({ length: field.columns || 2 }, (_, i) => (
-                              <th key={i} className="border-r border-b p-1.5 text-left font-medium">
-                                {field.columnTitles?.[i] || `Col ${i + 1}`}
+                              <th key={i} className="border-r border-b p-0 text-left font-medium">
+                                <input
+                                  type="text"
+                                  value={field.columnTitles?.[i] || ""}
+                                  onChange={(e) => {
+                                    const titles = [...(field.columnTitles || Array(field.columns || 2).fill(""))];
+                                    titles[i] = e.target.value;
+                                    onUpdate({ ...field, columnTitles: titles });
+                                  }}
+                                  placeholder={`Column ${i + 1}`}
+                                  className="w-full h-8 px-1.5 bg-transparent text-xs font-medium outline-none focus:bg-primary/5 focus:ring-1 focus:ring-primary/30 rounded-none"
+                                />
                               </th>
                             ))}
                           </tr>
@@ -252,14 +220,26 @@ export function FieldEditor({ field, onUpdate, onDelete, onMoveUp, onMoveDown, a
                         <tbody>
                           {Array.from({ length: field.rows || 3 }, (_, r) => (
                             <tr key={r} className={r % 2 === 0 ? "" : "bg-muted/30"}>
-                              {(field.rowTitles?.some(t => t) ?? false) && (
-                                <td className="border-r border-b p-1.5 font-medium text-muted-foreground bg-muted/50 whitespace-nowrap">
-                                  {field.rowTitles?.[r] || `Row ${r + 1}`}
-                                </td>
-                              )}
+                              <td className="border-r border-b p-0 font-medium text-muted-foreground bg-muted/50 w-[100px]">
+                                <input
+                                  type="text"
+                                  value={field.rowTitles?.[r] || ""}
+                                  onChange={(e) => {
+                                    const titles = [...(field.rowTitles || Array(field.rows || 3).fill(""))];
+                                    titles[r] = e.target.value;
+                                    onUpdate({ ...field, rowTitles: titles });
+                                  }}
+                                  placeholder={`Row ${r + 1}`}
+                                  className="w-full h-7 px-1.5 bg-transparent text-xs font-medium outline-none focus:bg-primary/5 focus:ring-1 focus:ring-primary/30 text-muted-foreground rounded-none"
+                                />
+                              </td>
                               {Array.from({ length: field.columns || 2 }, (_, c) => (
                                 <td key={c} className="border-r border-b p-1">
-                                  <div className="h-5 bg-background rounded border border-dashed border-muted-foreground/20"></div>
+                                  <div className="h-5 bg-background rounded border border-dashed border-muted-foreground/20 flex items-center px-1.5">
+                                    <span className="text-[10px] text-muted-foreground/40 truncate">
+                                      {field.placeholder || `Enter ${field.columnTitles?.[c] || `value`}`}
+                                    </span>
+                                  </div>
                                 </td>
                               ))}
                             </tr>
@@ -486,7 +466,7 @@ export function FieldEditor({ field, onUpdate, onDelete, onMoveUp, onMoveDown, a
                       {!isOptionBasedType(field.type) && (
                         <div className="space-y-2">
                           <div className="flex items-center justify-between">
-                            <Label className="text-xs font-medium text-green-700">Rules (first match wins)</Label>
+                            <Label className="text-xs font-medium text-green-700">Rules <span className="font-normal text-green-600">({field.type === 'number' ? 'all matches add up' : 'first match wins'})</span></Label>
                             <Button
                               variant="ghost"
                               size="sm"
@@ -507,10 +487,23 @@ export function FieldEditor({ field, onUpdate, onDelete, onMoveUp, onMoveDown, a
                             </Button>
                           </div>
                           
+                          {/* Column headers */}
+                          {field.scoring?.scoringRules && field.scoring.scoringRules.length > 0 && (
+                            <div className="grid grid-cols-[1fr_1fr_80px_28px] gap-1 px-2 pb-0.5">
+                              <span className="text-[10px] font-semibold text-green-700 uppercase tracking-wide">Condition</span>
+                              <span className="text-[10px] font-semibold text-green-700 uppercase tracking-wide">Value</span>
+                              <span className="text-[10px] font-semibold text-green-700 uppercase tracking-wide text-center">Points</span>
+                              <span />
+                            </div>
+                          )}
+
                           {(field.scoring?.scoringRules || []).map((rule, ruleIdx) => {
                             const conditions = SCORING_CONDITIONS_BY_TYPE[field.type] || [];
+                            const needsValue = rule.condition !== 'is_not_empty' && rule.condition !== 'is_uploaded';
+                            const isBetween = rule.condition === 'between';
                             return (
-                              <div key={ruleIdx} className="flex items-center gap-1 p-2 border rounded bg-white">
+                              <div key={ruleIdx} className="grid grid-cols-[1fr_1fr_80px_28px] gap-1 items-center p-2 border rounded bg-white">
+                                {/* Condition */}
                                 <Select
                                   value={rule.condition}
                                   onValueChange={(condition) => {
@@ -520,7 +513,7 @@ export function FieldEditor({ field, onUpdate, onDelete, onMoveUp, onMoveDown, a
                                     onUpdate({ ...field, scoring: { ...scoring, scoringRules: rules } });
                                   }}
                                 >
-                                  <SelectTrigger className="h-7 text-xs w-28">
+                                  <SelectTrigger className="h-7 text-xs w-full">
                                     <SelectValue />
                                   </SelectTrigger>
                                   <SelectContent>
@@ -530,36 +523,41 @@ export function FieldEditor({ field, onUpdate, onDelete, onMoveUp, onMoveDown, a
                                   </SelectContent>
                                 </Select>
 
-                                {rule.condition !== 'is_not_empty' && rule.condition !== 'is_uploaded' && (
-                                  <Input
-                                    type={['number', 'date', 'datetime'].includes(field.type) && !['contains', 'equals'].includes(rule.condition) ? (field.type === 'number' ? 'number' : 'date') : 'text'}
-                                    value={rule.value || ''}
-                                    onChange={(e) => {
-                                      const scoring = { ...field.scoring! };
-                                      const rules = [...scoring.scoringRules];
-                                      rules[ruleIdx] = { ...rules[ruleIdx], value: e.target.value };
-                                      onUpdate({ ...field, scoring: { ...scoring, scoringRules: rules } });
-                                    }}
-                                    placeholder="Value"
-                                    className="h-7 text-xs flex-1"
-                                  />
-                                )}
+                                {/* Value (single or between range) */}
+                                <div className="flex items-center gap-1">
+                                  {needsValue ? (
+                                    <Input
+                                      type={['number', 'date', 'datetime'].includes(field.type) && !['contains', 'equals'].includes(rule.condition) ? (field.type === 'number' ? 'number' : 'date') : 'text'}
+                                      value={rule.value || ''}
+                                      onChange={(e) => {
+                                        const scoring = { ...field.scoring! };
+                                        const rules = [...scoring.scoringRules];
+                                        rules[ruleIdx] = { ...rules[ruleIdx], value: e.target.value };
+                                        onUpdate({ ...field, scoring: { ...scoring, scoringRules: rules } });
+                                      }}
+                                      placeholder={isBetween ? 'From' : 'Value'}
+                                      className="h-7 text-xs flex-1 min-w-0"
+                                    />
+                                  ) : (
+                                    <span className="text-xs text-muted-foreground italic px-1">—</span>
+                                  )}
+                                  {isBetween && (
+                                    <Input
+                                      type={field.type === 'number' ? 'number' : 'date'}
+                                      value={rule.value2 || ''}
+                                      onChange={(e) => {
+                                        const scoring = { ...field.scoring! };
+                                        const rules = [...scoring.scoringRules];
+                                        rules[ruleIdx] = { ...rules[ruleIdx], value2: e.target.value };
+                                        onUpdate({ ...field, scoring: { ...scoring, scoringRules: rules } });
+                                      }}
+                                      placeholder="To"
+                                      className="h-7 text-xs flex-1 min-w-0"
+                                    />
+                                  )}
+                                </div>
 
-                                {rule.condition === 'between' && (
-                                  <Input
-                                    type={field.type === 'number' ? 'number' : 'date'}
-                                    value={rule.value2 || ''}
-                                    onChange={(e) => {
-                                      const scoring = { ...field.scoring! };
-                                      const rules = [...scoring.scoringRules];
-                                      rules[ruleIdx] = { ...rules[ruleIdx], value2: e.target.value };
-                                      onUpdate({ ...field, scoring: { ...scoring, scoringRules: rules } });
-                                    }}
-                                    placeholder="To"
-                                    className="h-7 text-xs w-20"
-                                  />
-                                )}
-
+                                {/* Points */}
                                 <Input
                                   type="number"
                                   min="0"
@@ -570,10 +568,11 @@ export function FieldEditor({ field, onUpdate, onDelete, onMoveUp, onMoveDown, a
                                     rules[ruleIdx] = { ...rules[ruleIdx], points: Math.max(0, parseInt(e.target.value) || 0) };
                                     onUpdate({ ...field, scoring: { ...scoring, scoringRules: rules } });
                                   }}
-                                  className="h-7 w-14 text-xs"
-                                  placeholder="pts"
+                                  className="h-7 text-xs text-center"
+                                  placeholder="0"
                                 />
 
+                                {/* Delete */}
                                 <Button
                                   variant="ghost"
                                   size="icon"
@@ -592,7 +591,7 @@ export function FieldEditor({ field, onUpdate, onDelete, onMoveUp, onMoveDown, a
                           })}
 
                           {(!field.scoring?.scoringRules || field.scoring.scoringRules.length === 0) && (
-                            <p className="text-xs text-muted-foreground italic px-2">No rules added. Click "Add Rule" above.</p>
+                            <p className="text-xs text-muted-foreground italic px-2">No rules added. Click "+ Add Rule" above.</p>
                           )}
                         </div>
                       )}

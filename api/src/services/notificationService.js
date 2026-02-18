@@ -880,6 +880,103 @@ class NotificationService {
     await Promise.allSettled(jobs);
     return { success: true };
   }
+
+  // --- Application Forwarded (Role-Based Revert) ---
+  async notifyApplicationForwarded(application, targetStageName, targetRole, targetUsers, { forwardedBy, reason } = {}) {
+    const title = 'Application forwarded for review';
+    const schemeName = application.scheme?.name || 'a scheme';
+    const beneficiaryName = application.beneficiary?.name || 'A beneficiary';
+    const applicationNumber = application.applicationNumber || application._id;
+    const stageName = targetStageName || 'a previous stage';
+    const roleDisplayName = targetRole ? targetRole.split('_').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ') : 'admin';
+
+    const msgBeneficiary = `Your application ${applicationNumber} for ${schemeName} has been forwarded back to "${stageName}" for further review. Reason: ${reason || 'Not specified'}.`;
+    const msgAdmin = `Application ${applicationNumber} from ${beneficiaryName} for ${schemeName} has been forwarded to you for review at "${stageName}". Please take necessary action. Reason: ${reason || 'Not specified'}.`;
+
+    const relatedEntities = {
+      application: application._id,
+      scheme: application.scheme?._id,
+      project: application.project
+    };
+    const pushData = { 
+      applicationId: String(application._id), 
+      type: 'application_forwarded', 
+      stage: stageName,
+      role: targetRole 
+    };
+
+    const jobs = [];
+
+    // Notify beneficiary
+    jobs.push(
+      ...this._notifyRecipient({
+        recipient: {
+          beneficiary: application.beneficiary?._id,
+          phone: application.beneficiary?.phone,
+          user: application.beneficiary?.userId || application.beneficiary?._id
+        },
+        title, 
+        message: msgBeneficiary, 
+        category: 'application_status', 
+        priority: 'high',
+        relatedEntities, 
+        pushData, 
+        createdBy: forwardedBy
+      })
+    );
+
+    // Notify specific targeted users
+    if (targetUsers && targetUsers.length > 0) {
+      targetUsers.forEach(user => {
+        jobs.push(
+          ...this._notifyRecipient({
+            recipient: {
+              user: user._id,
+              phone: user.phone
+            },
+            title,
+            message: msgAdmin,
+            category: 'application_status',
+            priority: 'high',
+            relatedEntities,
+            pushData,
+            createdBy: forwardedBy
+          })
+        );
+      });
+    } else {
+      // Fallback to role-based notification if no specific users found
+      const filterFields = {
+        'unit_admin': 'adminScope.unit',
+        'area_admin': 'adminScope.area',
+        'district_admin': 'adminScope.district'
+      };
+      const filterField = filterFields[targetRole];
+      const filterValue = targetRole === 'unit_admin' ? application.unit 
+                        : targetRole === 'area_admin' ? application.area 
+                        : application.district;
+
+      if (filterField && filterValue) {
+        jobs.push(
+          ...this._notifyAdminRole({
+            role: targetRole,
+            filterField,
+            filterValue,
+            title,
+            message: msgAdmin,
+            category: 'application_status',
+            priority: 'high',
+            relatedEntities,
+            pushData,
+            createdBy: forwardedBy
+          })
+        );
+      }
+    }
+
+    await Promise.allSettled(jobs);
+    return { success: true };
+  }
 }
 
 module.exports = new NotificationService();

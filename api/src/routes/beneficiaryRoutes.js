@@ -300,7 +300,7 @@ router.post('/',
 // Export beneficiaries as CSV or JSON (admin route)
 router.get('/export',
   authenticate,
-  authorize('super_admin', 'state_admin', 'district_admin', 'area_admin', 'unit_admin'),
+  authorize('super_admin', 'state_admin', 'district_admin', 'area_admin', 'unit_admin', 'project_coordinator', 'scheme_coordinator'),
   createExportHandler(Beneficiary, exportConfigs.beneficiary)
 );
 

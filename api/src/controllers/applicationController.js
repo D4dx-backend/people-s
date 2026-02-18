@@ -4,6 +4,7 @@ const Scheme = require('../models/Scheme');
 const Project = require('../models/Project');
 const MasterData = require('../models/MasterData');
 const FormConfiguration = require('../models/FormConfiguration');
+const User = require('../models/User');
 const notificationService = require('../services/notificationService');
 const recurringPaymentService = require('../services/recurringPaymentService');
 const { calculateApplicationScore } = require('../utils/scoringEngine');
@@ -77,7 +78,7 @@ const getApplications = async (req, res) => {
     const userRegionalFilter = getUserRegionalFilter(req.user);
     console.log('🔍 User regional filter:', userRegionalFilter);
     
-    // Apply regional filtering (super_admin and state_admin have no restrictions)
+    // Apply regional filtering based on user's scope
     Object.assign(filter, userRegionalFilter);
     
     console.log('🔍 Final filter:', filter);
@@ -305,10 +306,9 @@ const createApplication = async (req, res) => {
     // Calculate eligibility score if form has scoring enabled
     if (req.body.formData) {
       try {
-        const formConfig = await FormConfiguration.findOne({ 
-          scheme: scheme, 
-          enabled: true,
-          'scoringConfig.enabled': true 
+        const formConfig = await FormConfiguration.findOne({
+          scheme: scheme,
+          enabled: true
         });
         if (formConfig) {
           const scoreResult = calculateApplicationScore(req.body.formData, formConfig);
@@ -586,34 +586,81 @@ const getUserRegionalFilter = (user) => {
   
   const filter = {};
   
-  // Super admin and state admin have access to all applications
-  if (user.role === 'super_admin' || user.role === 'state_admin') {
-    console.log(`🔍 ${user.role} - no restrictions`);
+  // Super admin has access to all applications
+  if (user.role === 'super_admin') {
+    console.log(`🔍 super_admin - no restrictions`);
     return filter; // No restrictions
   }
-  
+
   // Helper function to get ID from populated reference or direct ID
   const getId = (ref) => {
     if (!ref) return null;
     if (typeof ref === 'object' && ref._id) return ref._id.toString();
     return ref.toString();
   };
-  
+
+  // State admin: filter by their assigned state
+  if (user.role === 'state_admin') {
+    const stateId = user.adminScope?.state ? getId(user.adminScope.state) : null;
+    const regions = (user.adminScope?.regions || []).map(r => getId(r));
+    if (stateId) {
+      filter.state = stateId;
+      console.log('🔍 State admin filter applied (from adminScope.state):', filter);
+    } else if (regions.length > 0) {
+      filter.state = { $in: regions };
+      console.log('🔍 State admin filter applied (from regions):', filter);
+    } else {
+      console.log('🔍 State admin has no state scope - restricting to no results');
+      filter._id = { $exists: false }; // no state assigned → deny access to all applications
+    }
+    return filter;
+  }
+
+  // Project coordinator: see applications for their assigned projects
+  // Also apply region-based scoping if available for extra security
+  if (user.role === 'project_coordinator') {
+    const projectIds = (user.adminScope?.projects || []).map(p => getId(p)).filter(Boolean);
+    if (projectIds.length > 0) {
+      filter.project = { $in: projectIds };
+      console.log('🔍 Project coordinator filter applied:', filter);
+    } else {
+      // No assigned projects - return no results (use impossible ID)
+      filter._id = new (require('mongoose').Types.ObjectId)();
+      filter._id = { $exists: false }; // Will match nothing
+      console.log('🔍 Project coordinator has no assigned projects - returning empty');
+    }
+    return filter;
+  }
+
+  // Scheme coordinator: see applications for their assigned schemes
+  // Also apply region-based scoping if available for extra security
+  if (user.role === 'scheme_coordinator') {
+    const schemeIds = (user.adminScope?.schemes || []).map(s => getId(s)).filter(Boolean);
+    if (schemeIds.length > 0) {
+      filter.scheme = { $in: schemeIds };
+      console.log('🔍 Scheme coordinator filter applied:', filter);
+    } else {
+      filter._id = { $exists: false }; // Will match nothing
+      console.log('🔍 Scheme coordinator has no assigned schemes - returning empty');
+    }
+    return filter;
+  }
+
   // Check adminScope.regions array first (for backward compatibility)
   if (user.adminScope?.regions && user.adminScope.regions.length > 0) {
-    const regions = user.adminScope.regions.map(r => getId(r));
+    const regions = user.adminScope.regions.map(r => getId(r)).filter(Boolean);
     console.log('🔍 User has regions array:', regions);
-    
+
     if (user.role === 'district_admin') {
-      // District admin can see applications from their district
+      // District admin sees ALL applications within their district (all units/areas under it)
       filter.district = { $in: regions };
       console.log('🔍 District admin filter applied (from regions):', filter);
     } else if (user.role === 'area_admin') {
-      // Area admin can see applications from their area
+      // Area admin sees ALL applications within their area (all units under it)
       filter.area = { $in: regions };
       console.log('🔍 Area admin filter applied (from regions):', filter);
     } else if (user.role === 'unit_admin') {
-      // Unit admin can see applications from their unit
+      // Unit admin sees only their unit's applications
       filter.unit = { $in: regions };
       console.log('🔍 Unit admin filter applied (from regions):', filter);
     }
@@ -622,7 +669,7 @@ const getUserRegionalFilter = (user) => {
     const userUnitId = user.adminScope?.unit ? getId(user.adminScope.unit) : null;
     const userAreaId = user.adminScope?.area ? getId(user.adminScope.area) : null;
     const userDistrictId = user.adminScope?.district ? getId(user.adminScope.district) : null;
-    
+
     if (user.role === 'unit_admin' && userUnitId) {
       filter.unit = userUnitId;
       console.log('🔍 Unit admin filter applied (from direct unit):', filter);
@@ -630,30 +677,52 @@ const getUserRegionalFilter = (user) => {
       filter.area = userAreaId;
       console.log('🔍 Area admin filter applied (from direct area):', filter);
     } else if (user.role === 'district_admin' && userDistrictId) {
+      // District admin sees all applications in their district regardless of area/unit
       filter.district = userDistrictId;
       console.log('🔍 District admin filter applied (from direct district):', filter);
     } else {
-      console.log('🔍 No adminScope found for user - no filter applied');
+      // No scope defined - deny access to prevent data leakage
+      filter._id = { $exists: false };
+      console.log('🔍 No adminScope found for user - restricting access to prevent data leakage');
     }
   }
-  
+
   return filter;
 };
 
 const hasAccessToApplication = (user, application) => {
   // Super admin and state admin have access to everything
-  if (user.role === 'super_admin' || user.role === 'state_admin') {
-    console.log(`✅ ${user.role} - full access granted`);
+  if (user.role === 'super_admin') {
+    console.log(`✅ super_admin - full access granted`);
     return true;
   }
-  
+
   // Helper function to get ID from populated reference or direct ID
   const getId = (ref) => {
     if (!ref) return null;
     if (typeof ref === 'object' && ref._id) return ref._id.toString();
     return ref.toString();
   };
-  
+
+  // State admin: check if application belongs to their assigned state
+  if (user.role === 'state_admin') {
+    const stateId = user.adminScope?.state ? getId(user.adminScope.state) : null;
+    const regions = (user.adminScope?.regions || []).map(r => r.toString());
+    const applicationStateId = getId(application.state);
+    if (stateId) {
+      const hasAccess = applicationStateId && stateId === applicationStateId;
+      console.log(`🔍 State admin check: ${hasAccess ? '✅' : '❌'} (user state: ${stateId}, app state: ${applicationStateId})`);
+      return hasAccess;
+    } else if (regions.length > 0) {
+      const hasAccess = applicationStateId && regions.includes(applicationStateId);
+      console.log(`🔍 State admin check (regions): ${hasAccess ? '✅' : '❌'}`);
+      return hasAccess;
+    }
+    // No state scope assigned - grant access (backward compatible)
+    console.log('✅ State admin has no state scope - full access granted');
+    return true;
+  }
+
   console.log('🔍 hasAccessToApplication check:', {
     userRole: user.role,
     hasAdminScope: !!user.adminScope,
@@ -666,6 +735,32 @@ const hasAccessToApplication = (user, application) => {
     applicationUnit: getId(application.unit)
   });
   
+  // Project coordinator: check if application belongs to their assigned projects
+  if (user.role === 'project_coordinator') {
+    const projectIds = (user.adminScope?.projects || []).map(p => p.toString());
+    if (projectIds.length === 0) {
+      console.log('❌ Project coordinator has no assigned projects - access denied');
+      return false;
+    }
+    const appProjectId = getId(application.project);
+    const hasAccess = appProjectId && projectIds.includes(appProjectId);
+    console.log(`🔍 Project coordinator check: ${hasAccess ? '✅' : '❌'}`);
+    return hasAccess;
+  }
+
+  // Scheme coordinator: check if application belongs to their assigned schemes
+  if (user.role === 'scheme_coordinator') {
+    const schemeIds = (user.adminScope?.schemes || []).map(s => s.toString());
+    if (schemeIds.length === 0) {
+      console.log('❌ Scheme coordinator has no assigned schemes - access denied');
+      return false;
+    }
+    const appSchemeId = getId(application.scheme);
+    const hasAccess = appSchemeId && schemeIds.includes(appSchemeId);
+    console.log(`🔍 Scheme coordinator check: ${hasAccess ? '✅' : '❌'}`);
+    return hasAccess;
+  }
+
   // Handle both adminScope formats: regions array and direct district/area/unit
   if (user.adminScope) {
     // Format 1: Check adminScope.regions array
@@ -676,14 +771,17 @@ const hasAccessToApplication = (user, application) => {
       const applicationUnitId = getId(application.unit);
       
       if (user.role === 'district_admin') {
+        // District admin: access to any application whose district matches
         const hasAccess = applicationDistrictId && userRegions.includes(applicationDistrictId);
         console.log(`🔍 District admin check: ${hasAccess ? '✅' : '❌'} (user regions: [${userRegions.join(', ')}], app district: ${applicationDistrictId})`);
         return hasAccess;
       } else if (user.role === 'area_admin') {
+        // Area admin: access to any application whose area matches
         const hasAccess = applicationAreaId && userRegions.includes(applicationAreaId);
         console.log(`🔍 Area admin check: ${hasAccess ? '✅' : '❌'} (user regions: [${userRegions.join(', ')}], app area: ${applicationAreaId})`);
         return hasAccess;
       } else if (user.role === 'unit_admin') {
+        // Unit admin: access only to their unit's applications
         const hasAccess = applicationUnitId && userRegions.includes(applicationUnitId);
         console.log(`🔍 Unit admin check: ${hasAccess ? '✅' : '❌'} (user regions: [${userRegions.join(', ')}], app unit: ${applicationUnitId})`);
         return hasAccess;
@@ -730,22 +828,40 @@ const hasAccessToApplication = (user, application) => {
 
 const hasAccessToBeneficiary = (user, beneficiary) => {
   if (user.role === 'super_admin') return true;
-  
-  // Check if user has access based on their adminScope.regions
-  if (user.adminScope?.regions && user.adminScope.regions.length > 0) {
-    const userRegions = user.adminScope.regions.map(r => r.toString());
-    
-    if (user.role === 'state_admin') {
-      return userRegions.includes(beneficiary.state?.toString());
-    } else if (user.role === 'district_admin') {
-      return userRegions.includes(beneficiary.district?.toString());
-    } else if (user.role === 'area_admin') {
-      return userRegions.includes(beneficiary.area?.toString());
-    } else if (user.role === 'unit_admin') {
-      return userRegions.includes(beneficiary.unit?.toString());
-    }
+
+  const getId = (ref) => {
+    if (!ref) return null;
+    if (typeof ref === 'object' && ref._id) return ref._id.toString();
+    return ref.toString();
+  };
+
+  const regions = (user.adminScope?.regions || []).map(r => r.toString());
+
+  if (user.role === 'state_admin') {
+    const stateId = user.adminScope?.state ? getId(user.adminScope.state) : null;
+    if (stateId) return stateId === getId(beneficiary.state);
+    if (regions.length > 0) return regions.includes(getId(beneficiary.state));
+    return true; // No scope assigned - backward compatible
   }
-  
+
+  if (user.role === 'district_admin') {
+    const districtId = user.adminScope?.district ? getId(user.adminScope.district) : null;
+    if (districtId) return districtId === getId(beneficiary.district);
+    return regions.includes(getId(beneficiary.district));
+  }
+
+  if (user.role === 'area_admin') {
+    const areaId = user.adminScope?.area ? getId(user.adminScope.area) : null;
+    if (areaId) return areaId === getId(beneficiary.area);
+    return regions.includes(getId(beneficiary.area));
+  }
+
+  if (user.role === 'unit_admin') {
+    const unitId = user.adminScope?.unit ? getId(user.adminScope.unit) : null;
+    if (unitId) return unitId === getId(beneficiary.unit);
+    return regions.includes(getId(beneficiary.unit));
+  }
+
   return false;
 };
 
@@ -1130,18 +1246,127 @@ const updateApplicationsDistributionTimeline = async (schemeId, newDistributionT
   }
 };
 
+// ==============================
+// HELPER: GET USERS BY ROLE AND SCOPE
+// ==============================
+const getUsersByRoleAndScope = async (role, application) => {
+  try {
+    const query = { role, isActive: true };
+    
+    // Add geographic scope filtering based on role
+    if (role === 'unit_admin' && application.unit) {
+      query['adminScope.unit'] = application.unit;
+    } else if (role === 'area_admin' && application.area) {
+      query['adminScope.area'] = application.area;
+    } else if (role === 'district_admin' && application.district) {
+      query['adminScope.district'] = application.district;
+    }
+    
+    const users = await User.find(query)
+      .select('_id name phone email role adminScope')
+      .lean();
+    
+    return users;
+  } catch (error) {
+    console.error(`Error fetching users for role ${role}:`, error);
+    return [];
+  }
+};
+
+// ==============================
+// GET AVAILABLE REVERT ROLES
+// ==============================
+const getAvailableRevertRoles = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const application = await Application.findById(id);
+    if (!application) {
+      return res.status(404).json({
+        success: false,
+        message: 'Application not found'
+      });
+    }
+
+    // Find current stage
+    const sortedStages = [...application.applicationStages].sort((a, b) => a.order - b.order);
+    const currentStageIndex = sortedStages.findIndex(s => s.status === 'pending' || s.status === 'in_progress');
+    const effectiveCurrentIndex = currentStageIndex === -1 ? sortedStages.length - 1 : currentStageIndex;
+
+    // Get all stages before current
+    const previousStages = sortedStages.slice(0, effectiveCurrentIndex);
+
+    // Extract unique roles from previous stages (only admin roles)
+    const adminRoles = ['unit_admin', 'area_admin', 'district_admin'];
+    const rolesSet = new Set();
+    
+    previousStages.forEach(stage => {
+      if (stage.allowedRoles && stage.allowedRoles.length > 0) {
+        stage.allowedRoles.forEach(role => {
+          if (adminRoles.includes(role)) {
+            rolesSet.add(role);
+          }
+        });
+      }
+    });
+
+    // If no roles found in previous stages, use default hierarchy based on current stage
+    if (rolesSet.size === 0 && effectiveCurrentIndex > 0) {
+      // Default to unit_admin as a fallback
+      rolesSet.add('unit_admin');
+    }
+
+    const roles = Array.from(rolesSet);
+
+    // Sort roles by hierarchy: unit_admin < area_admin < district_admin
+    const roleHierarchy = { unit_admin: 1, area_admin: 2, district_admin: 3 };
+    roles.sort((a, b) => roleHierarchy[a] - roleHierarchy[b]);
+
+    // Get user counts for each role
+    const rolesWithCounts = await Promise.all(
+      roles.map(async (role) => {
+        const users = await getUsersByRoleAndScope(role, application);
+        return {
+          role,
+          userCount: users.length,
+          displayName: role.split('_').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ')
+        };
+      })
+    );
+
+    // Check if any roles have users
+    const hasAvailableUsers = rolesWithCounts.some(r => r.userCount > 0);
+
+    res.json({
+      success: true,
+      data: {
+        availableRoles: rolesWithCounts,
+        currentStage: sortedStages[effectiveCurrentIndex]?.name,
+        hasAvailableUsers,
+        message: !hasAvailableUsers ? 'No users found for previous stages. Please contact administrators to assign users to the relevant roles.' : null
+      }
+    });
+  } catch (error) {
+    console.error('Error fetching available revert roles:', error);
+    res.status(500).json({
+      success: false,
+      message: error.message || 'Failed to fetch available revert roles'
+    });
+  }
+};
+
 // ========================
 // REVERT APPLICATION STAGE
 // ========================
 const revertApplicationStage = async (req, res) => {
   try {
     const { id } = req.params;
-    const { targetStageId, reason } = req.body;
+    const { targetRole, reason } = req.body;
 
-    if (!targetStageId || !reason) {
+    if (!targetRole || !reason) {
       return res.status(400).json({
         success: false,
-        message: 'Target stage ID and reason are required'
+        message: 'Target role and reason are required'
       });
     }
 
@@ -1159,23 +1384,34 @@ const revertApplicationStage = async (req, res) => {
     // If all completed, consider the last stage as current
     const effectiveCurrentIndex = currentStageIndex === -1 ? sortedStages.length - 1 : currentStageIndex;
 
-    // Find target stage
-    const targetStageIndex = sortedStages.findIndex(s => s._id.toString() === targetStageId);
+    // Find the most recent stage before current that has targetRole in allowedRoles
+    let targetStageIndex = -1;
+    for (let i = effectiveCurrentIndex - 1; i >= 0; i--) {
+      const stage = sortedStages[i];
+      if (stage.allowedRoles && stage.allowedRoles.includes(targetRole)) {
+        targetStageIndex = i;
+        break;
+      }
+    }
+
     if (targetStageIndex === -1) {
       return res.status(404).json({
         success: false,
-        message: 'Target stage not found'
-      });
-    }
-
-    if (targetStageIndex >= effectiveCurrentIndex) {
-      return res.status(400).json({
-        success: false,
-        message: 'Can only revert to a previous stage'
+        message: `No previous stage found for role: ${targetRole}`
       });
     }
 
     const targetStage = sortedStages[targetStageIndex];
+
+    // Get users to forward the application to
+    const targetUsers = await getUsersByRoleAndScope(targetRole, application);
+    if (targetUsers.length === 0) {
+      console.warn(`⚠️ No active users found for role ${targetRole} in application scope`);
+      return res.status(400).json({
+        success: false,
+        message: `No active users found in ${targetRole.split('_').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ')} role for this application's location. Please contact administrators.`
+      });
+    }
 
     // Mark all stages from target to current as reverted, then set target to pending
     for (let i = targetStageIndex; i <= effectiveCurrentIndex; i++) {
@@ -1235,18 +1471,24 @@ const revertApplicationStage = async (req, res) => {
     await application.populate('beneficiary', 'name phone userId');
     await application.populate('scheme', 'name');
 
-    // Send revert notifications (WhatsApp + Push + In-App) to beneficiary + all admin layers
+    // Send revert/forward notifications to beneficiary + targeted users
     notificationService
-      .notifyStageReverted(application, targetStage.name, {
-        revertedBy: req.user._id,
+      .notifyApplicationForwarded(application, targetStage.name, targetRole, targetUsers, {
+        forwardedBy: req.user._id,
         reason
       })
-      .catch(err => console.error('❌ Stage revert notification failed:', err));
+      .catch(err => console.error('❌ Application forward notification failed:', err));
 
     res.json({
       success: true,
-      message: `Application reverted to stage: ${targetStage.name}`,
-      data: { application }
+      message: `Application forwarded to ${targetRole} at stage: ${targetStage.name}`,
+      data: { 
+        application,
+        forwardedTo: {
+          role: targetRole,
+          userCount: targetUsers.length
+        }
+      }
     });
   } catch (error) {
     console.error('Error reverting application stage:', error);
@@ -1692,6 +1934,47 @@ const getRenewalHistory = async (req, res) => {
   }
 };
 
+// Recalculate eligibility score for an existing application
+const recalculateScore = async (req, res) => {
+  try {
+    const application = await Application.findById(req.params.id);
+    if (!application) {
+      return res.status(404).json({ success: false, message: 'Application not found' });
+    }
+
+    // Authorization: verify requesting user has access to this specific application
+    if (!hasAccessToApplication(req.user, application)) {
+      return res.status(403).json({ success: false, message: 'Forbidden' });
+    }
+
+    if (!application.formData) {
+      return res.status(400).json({ success: false, message: 'Application has no form data to score' });
+    }
+
+    const formConfig = await FormConfiguration.findOne({
+      scheme: application.scheme,
+      enabled: true
+    });
+
+    if (!formConfig) {
+      return res.status(404).json({ success: false, message: 'No active form configuration found for this scheme' });
+    }
+
+    const scoreResult = calculateApplicationScore(application.formData, formConfig);
+    application.eligibilityScore = scoreResult;
+    await application.save();
+
+    res.json({
+      success: true,
+      message: 'Score recalculated successfully',
+      data: { eligibilityScore: scoreResult }
+    });
+  } catch (error) {
+    console.error('Error recalculating score:', error);
+    res.status(500).json({ success: false, message: 'Server error' });
+  }
+};
+
 module.exports = {
   getApplications,
   getApplication,
@@ -1704,10 +1987,12 @@ module.exports = {
   generateDistributionTimeline,
   updateDistributionTimelineOnApproval,
   updateApplicationsDistributionTimeline,
+  getAvailableRevertRoles,
   revertApplicationStage,
   updateApplicationStage,
   addStageComment,
   uploadStageDocument,
   getRenewalDueApplications,
-  getRenewalHistory
+  getRenewalHistory,
+  recalculateScore
 };

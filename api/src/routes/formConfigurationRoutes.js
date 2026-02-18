@@ -51,8 +51,8 @@ router.use(authenticate);
  *       403:
  *         description: Access denied
  */
-router.get('/', 
-  authorize('super_admin', 'state_admin', 'district_admin'),
+router.get('/',
+  authorize('super_admin', 'state_admin', 'district_admin', 'area_admin', 'unit_admin', 'project_coordinator', 'scheme_coordinator'),
   formConfigurationController.getAllFormConfigurations
 );
 

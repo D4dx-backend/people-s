@@ -29,6 +29,13 @@ interface Application {
   area: { _id: string; name: string; code: string; };
   unit: { _id: string; name: string; code: string; };
   createdAt: string;
+  eligibilityScore?: {
+    totalPoints: number;
+    maxPoints: number;
+    percentage: number;
+    meetsThreshold: boolean;
+    autoRejected: boolean;
+  };
 }
 
 export default function FieldVerificationApplications() {
@@ -56,7 +63,7 @@ export default function FieldVerificationApplications() {
 
   const canViewApplications = hasAnyPermission(['applications.read.all', 'applications.read.regional', 'applications.read.own']);
   const canApproveApplications = hasPermission('applications.approve');
-  const hasAdminAccess = user && ['super_admin', 'state_admin', 'district_admin', 'area_admin', 'unit_admin'].includes(user.role);
+  const hasAdminAccess = user && ['super_admin', 'state_admin', 'district_admin', 'area_admin', 'unit_admin', 'project_coordinator', 'scheme_coordinator'].includes(user.role);
   
   // Only area_admin, state_admin, and super_admin can review/approve applications
   const canReviewApplications = user && ['super_admin', 'state_admin', 'area_admin'].includes(user.role);
@@ -148,6 +155,7 @@ export default function FieldVerificationApplications() {
           setShowDetailModal(false);
           setSelectedApplicationId(null);
         }}
+        canApprove={!!canReviewApplications}
       />
       
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -274,6 +282,7 @@ export default function FieldVerificationApplications() {
                   <TableHead>Scheme</TableHead>
                   <TableHead>Project</TableHead>
                   <TableHead>Location</TableHead>
+                  <TableHead>Score</TableHead>
                   <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
               </TableHeader>
@@ -298,6 +307,19 @@ export default function FieldVerificationApplications() {
                         <div>{app.district.name}</div>
                         <div className="text-muted-foreground">{app.area.name}</div>
                       </div>
+                    </TableCell>
+                    <TableCell>
+                      {app.eligibilityScore && app.eligibilityScore.maxPoints > 0 ? (
+                        <Badge variant="outline" className={`${
+                          app.eligibilityScore.percentage >= 70 ? 'bg-green-50 text-green-700 border-green-200' :
+                          app.eligibilityScore.percentage >= 40 ? 'bg-yellow-50 text-yellow-700 border-yellow-200' :
+                          'bg-red-50 text-red-700 border-red-200'
+                        }`}>
+                          {app.eligibilityScore.percentage}%
+                        </Badge>
+                      ) : (
+                        <span className="text-xs text-muted-foreground">—</span>
+                      )}
                     </TableCell>
                     <TableCell className="text-right">
                       <div className="flex justify-end gap-1">

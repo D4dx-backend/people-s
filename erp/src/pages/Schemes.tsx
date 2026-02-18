@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Plus, Calendar, IndianRupee, Target, Users, Loader2, AlertCircle, Clock, Edit, Trash2, Eye, Settings, GitBranch, ChevronDown, ChevronUp, FileText } from "lucide-react";
+import { Plus, Calendar, IndianRupee, Target, Users, Loader2, AlertCircle, Clock, Edit, Trash2, Eye, Settings, GitBranch, ChevronDown, ChevronUp, FileText, BarChart3 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -11,6 +11,8 @@ import { SchemeModal } from "@/components/modals/SchemeModal";
 import { SchemeDetailsModal } from "@/components/modals/SchemeDetailsModal";
 import { TimelineConfigModal } from "@/components/modals/TimelineConfigModal";
 import { StagesConfigModal } from "@/components/modals/StagesConfigModal";
+import { SchemeTargetsModal } from "@/components/modals/SchemeTargetsModal";
+import { SchemeTargetProgressModal } from "@/components/modals/SchemeTargetProgressModal";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -77,6 +79,8 @@ export default function Schemes() {
   const [schemeForDetails, setSchemeForDetails] = useState<Scheme | null>(null);
   const [timelineModalOpen, setTimelineModalOpen] = useState(false);
   const [stagesModalOpen, setStagesModalOpen] = useState(false);
+  const [targetsModalOpen, setTargetsModalOpen] = useState(false);
+  const [progressModalOpen, setProgressModalOpen] = useState(false);
   const [expandedSchemes, setExpandedSchemes] = useState<Set<string>>(new Set());
 
   const { exportCSV, exportPDF, printData, exporting } = useExport({
@@ -221,6 +225,16 @@ export default function Schemes() {
     // Open stages configuration modal
     setSelectedScheme(scheme);
     setStagesModalOpen(true);
+  };
+
+  const handleConfigureTargets = (scheme: Scheme) => {
+    setSelectedScheme(scheme);
+    setTargetsModalOpen(true);
+  };
+
+  const handleViewProgress = (scheme: Scheme) => {
+    setSelectedScheme(scheme);
+    setProgressModalOpen(true);
   };
 
   return (
@@ -529,6 +543,14 @@ export default function Schemes() {
                               <Settings className="mr-1 h-3 w-3" />
                               Stages
                             </Button>
+                            <Button variant="outline" size="sm" onClick={() => handleConfigureTargets(scheme)}>
+                              <Target className="mr-1 h-3 w-3" />
+                              Targets
+                            </Button>
+                            <Button variant="outline" size="sm" onClick={() => handleViewProgress(scheme)}>
+                              <BarChart3 className="mr-1 h-3 w-3" />
+                              Progress
+                            </Button>
                           </>
                         )}
                         <Button variant="outline" size="sm" onClick={() => navigate(`/applications?scheme=${scheme.id}`)}>
@@ -585,6 +607,21 @@ export default function Schemes() {
         onOpenChange={setStagesModalOpen}
         scheme={selectedScheme}
         onSuccess={handleModalSuccess}
+      />
+
+      {/* Scheme Targets Modal */}
+      <SchemeTargetsModal
+        open={targetsModalOpen}
+        onOpenChange={setTargetsModalOpen}
+        scheme={selectedScheme}
+        onSuccess={handleModalSuccess}
+      />
+
+      {/* Scheme Target Progress Modal */}
+      <SchemeTargetProgressModal
+        open={progressModalOpen}
+        onOpenChange={setProgressModalOpen}
+        scheme={selectedScheme}
       />
 
       {/* Delete Confirmation Dialog */}

@@ -185,8 +185,14 @@ export default function Applications() {
   // Only area_admin, state_admin, and super_admin can review/approve applications
   const canReviewApplications = user && ['super_admin', 'state_admin', 'area_admin'].includes(user.role);
 
-  // Check if user has admin permissions
-  const hasAdminAccess = user && ['super_admin', 'state_admin', 'district_admin', 'area_admin', 'unit_admin'].includes(user.role);
+  // Only area_admin, state_admin, and super_admin can fully edit applications
+  const canEditApplications = user && ['super_admin', 'state_admin', 'area_admin'].includes(user.role);
+
+  // All admin roles can view and update stages (but not full edit/approve)
+  const canUpdateStages = user && ['super_admin', 'state_admin', 'district_admin', 'area_admin', 'unit_admin', 'project_coordinator', 'scheme_coordinator'].includes(user.role);
+
+  // Check if user has admin permissions (can see applications listing)
+  const hasAdminAccess = user && ['super_admin', 'state_admin', 'district_admin', 'area_admin', 'unit_admin', 'project_coordinator', 'scheme_coordinator'].includes(user.role);
 
   // Define functions using useCallback
   const loadApplications = useCallback(async () => {
@@ -408,7 +414,7 @@ export default function Applications() {
 
   // Function to get the appropriate action button based on application status and scheme requirements
   const getActionButton = (app: Application) => {
-    // Unit Admin and District Admin can only view - no action buttons
+    // Only senior admins (area_admin, state_admin, super_admin) can approve/reject
     if (!canReviewApplications) {
       return null;
     }
@@ -587,6 +593,7 @@ export default function Applications() {
         mode={modalMode}
         onApprove={handleApprove}
         onReject={handleReject}
+        canApprove={!!canReviewApplications}
       />
       <div className="flex items-center justify-between">
         <div>

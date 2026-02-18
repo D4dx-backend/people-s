@@ -1,0 +1,925 @@
+[{
+  "title": "KANHANGAD",
+  "code": "4178",
+  "districtName": "KASARGOD"
+},
+{
+  "title": "KASARAGOD",
+  "code": "8970",
+  "districtName": "KASARGOD"
+},
+{
+  "title": "KUMBALA",
+  "code": "1051",
+  "districtName": "KASARGOD"
+},
+{
+  "title": "PADANNA",
+  "code": "5385",
+  "districtName": "KASARGOD"
+},
+{
+  "title": "TRIKKARIPUR",
+  "code": "1944",
+  "districtName": "KASARGOD"
+},
+{
+  "title": "CHAKKARAKKAL",
+  "code": "3202",
+  "districtName": "KANNUR"
+},
+{
+  "title": "EDAKKAD",
+  "code": "6621",
+  "districtName": "KANNUR"
+},
+{
+  "title": "IRIKKUR",
+  "code": "1884",
+  "districtName": "KANNUR"
+},
+{
+  "title": "IRITTY",
+  "code": "8646",
+  "districtName": "KANNUR"
+},
+{
+  "title": "KANNUR",
+  "code": "2032",
+  "districtName": "KANNUR"
+},
+{
+  "title": "MADAYI",
+  "code": "2417",
+  "districtName": "KANNUR"
+},
+{
+  "title": "MATTANNUR",
+  "code": "1788",
+  "districtName": "KANNUR"
+},
+{
+  "title": "NEW MAHE",
+  "code": "1391",
+  "districtName": "KANNUR"
+},
+{
+  "title": "PANOOR",
+  "code": "3229",
+  "districtName": "KANNUR"
+},
+{
+  "title": "PAYYANNUR",
+  "code": "3575",
+  "districtName": "KANNUR"
+},
+{
+  "title": "TALIPARAMBA",
+  "code": "1411",
+  "districtName": "KANNUR"
+},
+{
+  "title": "THALASSERY",
+  "code": "3869",
+  "districtName": "KANNUR"
+},
+{
+  "title": "VALAPATTANAM",
+  "code": "2681",
+  "districtName": "KANNUR"
+},
+{
+  "title": "KALPATTA",
+  "code": "9233",
+  "districtName": "WAYANAD"
+},
+{
+  "title": "MANANTHAVADY",
+  "code": "6012",
+  "districtName": "WAYANAD"
+},
+{
+  "title": "MEPPADI",
+  "code": "4895",
+  "districtName": "WAYANAD"
+},
+{
+  "title": "SULTHAN BATHERI",
+  "code": "2935",
+  "districtName": "WAYANAD"
+},
+{
+  "title": "ARIKKULAM",
+  "code": "6863",
+  "districtName": "KOZHIKODE"
+},
+{
+  "title": "AYANCHERY",
+  "code": "6174",
+  "districtName": "KOZHIKODE"
+},
+{
+  "title": "BALUSSERY",
+  "code": "2300",
+  "districtName": "KOZHIKODE"
+},
+{
+  "title": "CHANGAROTH",
+  "code": "3230",
+  "districtName": "KOZHIKODE"
+},
+{
+  "title": "CHELANNUR",
+  "code": "4899",
+  "districtName": "KOZHIKODE"
+},
+{
+  "title": "FEROKE",
+  "code": "1768",
+  "districtName": "KOZHIKODE"
+},
+{
+  "title": "KAKKODY",
+  "code": "6551",
+  "districtName": "KOZHIKODE"
+},
+{
+  "title": "KARASSERY",
+  "code": "5767",
+  "districtName": "KOZHIKODE"
+},
+{
+  "title": "KODIYATHOOR",
+  "code": "2303",
+  "districtName": "KOZHIKODE"
+},
+{
+  "title": "KODUVALLY",
+  "code": "7396",
+  "districtName": "KOZHIKODE"
+},
+{
+  "title": "KOYILANDI",
+  "code": "8824",
+  "districtName": "KOZHIKODE"
+},
+{
+  "title": "KUNNAMANGALAM",
+  "code": "7258",
+  "districtName": "KOZHIKODE"
+},
+{
+  "title": "KUTTIADI",
+  "code": "2111",
+  "districtName": "KOZHIKODE"
+},
+{
+  "title": "MEPPAYUR",
+  "code": "3114",
+  "districtName": "KOZHIKODE"
+},
+{
+  "title": "MUKKAM",
+  "code": "8930",
+  "districtName": "KOZHIKODE"
+},
+{
+  "title": "NADAPURAM",
+  "code": "4942",
+  "districtName": "KOZHIKODE"
+},
+{
+  "title": "NARIKKUNI",
+  "code": "6286",
+  "districtName": "KOZHIKODE"
+},
+{
+  "title": "N.I.T",
+  "code": "4108",
+  "districtName": "KOZHIKODE"
+},
+{
+  "title": "OMASSERY",
+  "code": "5749",
+  "districtName": "KOZHIKODE"
+},
+{
+  "title": "PAYYOLI",
+  "code": "7578",
+  "districtName": "KOZHIKODE"
+},
+{
+  "title": "PERAMBRA",
+  "code": "4449",
+  "districtName": "KOZHIKODE"
+},
+{
+  "title": "RAMANATTUKARA",
+  "code": "1182",
+  "districtName": "KOZHIKODE"
+},
+{
+  "title": "THAMARASSERY",
+  "code": "1212",
+  "districtName": "KOZHIKODE"
+},
+{
+  "title": "TIRUVAMBADI",
+  "code": "5659",
+  "districtName": "KOZHIKODE"
+},
+{
+  "title": "ULLIYERI",
+  "code": "8630",
+  "districtName": "KOZHIKODE"
+},
+{
+  "title": "VADAKARA",
+  "code": "8797",
+  "districtName": "KOZHIKODE"
+},
+{
+  "title": "KOZHIKODE EAST",
+  "code": "5508",
+  "districtName": "KOZHIKODE CITY"
+},
+{
+  "title": "KOZHIKODE NORTH",
+  "code": "4350",
+  "districtName": "KOZHIKODE CITY"
+},
+{
+  "title": "KOZHIKODE SOUTH",
+  "code": "8265",
+  "districtName": "KOZHIKODE CITY"
+},
+{
+  "title": "MEDICAL COLLEGE",
+  "code": "6008",
+  "districtName": "KOZHIKODE CITY"
+},
+{
+  "title": "ALATHIYUR",
+  "code": "7837",
+  "districtName": "MALAPPURAM"
+},
+{
+  "title": "A.R.NAGAR",
+  "code": "3838",
+  "districtName": "MALAPPURAM"
+},
+{
+  "title": "AREEKODE",
+  "code": "9408",
+  "districtName": "MALAPPURAM"
+},
+{
+  "title": "CHUNGATHARA",
+  "code": "6495",
+  "districtName": "MALAPPURAM"
+},
+{
+  "title": "EDAPPAL",
+  "code": "4287",
+  "districtName": "MALAPPURAM"
+},
+{
+  "title": "EDAVANNA",
+  "code": "3513",
+  "districtName": "MALAPPURAM"
+},
+{
+  "title": "KARUVARAKKUND",
+  "code": "4044",
+  "districtName": "MALAPPURAM"
+},
+{
+  "title": "KONDOTTY EAST",
+  "code": "8232",
+  "districtName": "MALAPPURAM"
+},
+{
+  "title": "KONDOTTY WEST",
+  "code": "4771",
+  "districtName": "MALAPPURAM"
+},
+{
+  "title": "KOTTAKKAL",
+  "code": "3665",
+  "districtName": "MALAPPURAM"
+},
+{
+  "title": "MALAPPURAM",
+  "code": "7289",
+  "districtName": "MALAPPURAM"
+},
+{
+  "title": "MAKKARAPARAMBA",
+  "code": "8440",
+  "districtName": "MALAPPURAM"
+},
+{
+  "title": "MAMPAD",
+  "code": "5129",
+  "districtName": "MALAPPURAM"
+},
+{
+  "title": "MANJERI",
+  "code": "6538",
+  "districtName": "MALAPPURAM"
+},
+{
+  "title": "MARANCHERY",
+  "code": "9455",
+  "districtName": "MALAPPURAM"
+},
+{
+  "title": "NILAMBUR",
+  "code": "9402",
+  "districtName": "MALAPPURAM"
+},
+{
+  "title": "PADAPPARAMBU",
+  "code": "6814",
+  "districtName": "MALAPPURAM"
+},
+{
+  "title": "PANDIKKAD",
+  "code": "2485",
+  "districtName": "MALAPPURAM"
+},
+{
+  "title": "PARAPPUR",
+  "code": "4879",
+  "districtName": "MALAPPURAM"
+},
+{
+  "title": "PERINTHALMANNA",
+  "code": "7443",
+  "districtName": "MALAPPURAM"
+},
+{
+  "title": "PERUMBADAPP",
+  "code": "5158",
+  "districtName": "MALAPPURAM"
+},
+{
+  "title": "PONNANI",
+  "code": "3574",
+  "districtName": "MALAPPURAM"
+},
+{
+  "title": "PUTHANATHANI",
+  "code": "2209",
+  "districtName": "MALAPPURAM"
+},
+{
+  "title": "SANTHAPURAM",
+  "code": "8332",
+  "districtName": "MALAPPURAM"
+},
+{
+  "title": "TANALUR",
+  "code": "7176",
+  "districtName": "MALAPPURAM"
+},
+{
+  "title": "TANUR",
+  "code": "2071",
+  "districtName": "MALAPPURAM"
+},
+{
+  "title": "THALAKKAD",
+  "code": "9934",
+  "districtName": "MALAPPURAM"
+},
+{
+  "title": "TIRUR",
+  "code": "7591",
+  "districtName": "MALAPPURAM"
+},
+{
+  "title": "TIRURANGADI",
+  "code": "4848",
+  "districtName": "MALAPPURAM"
+},
+{
+  "title": "TIRURKAD",
+  "code": "5107",
+  "districtName": "MALAPPURAM"
+},
+{
+  "title": "UNIVERSITY",
+  "code": "7665",
+  "districtName": "MALAPPURAM"
+},
+{
+  "title": "VAILATHUR",
+  "code": "5763",
+  "districtName": "MALAPPURAM"
+},
+{
+  "title": "VALANCHERY",
+  "code": "4230",
+  "districtName": "MALAPPURAM"
+},
+{
+  "title": "VALLUVAMBRAM",
+  "code": "3825",
+  "districtName": "MALAPPURAM"
+},
+{
+  "title": "VAZHAKKAD",
+  "code": "8734",
+  "districtName": "MALAPPURAM"
+},
+{
+  "title": "VENGARA",
+  "code": "2785",
+  "districtName": "MALAPPURAM"
+},
+{
+  "title": "WANDOOR",
+  "code": "5754",
+  "districtName": "MALAPPURAM"
+},
+{
+  "title": "ALANALLUR",
+  "code": "3904",
+  "districtName": "PALAKKAD"
+},
+{
+  "title": "ALATHUR",
+  "code": "1766",
+  "districtName": "PALAKKAD"
+},
+{
+  "title": "CHERPULASSERY",
+  "code": "6149",
+  "districtName": "PALAKKAD"
+},
+{
+  "title": "CHITTUR",
+  "code": "4461",
+  "districtName": "PALAKKAD"
+},
+{
+  "title": "KAVASSERY",
+  "code": "3028",
+  "districtName": "PALAKKAD"
+},
+{
+  "title": "KOLLANGOD",
+  "code": "4540",
+  "districtName": "PALAKKAD"
+},
+{
+  "title": "KONGAD",
+  "code": "9889",
+  "districtName": "PALAKKAD"
+},
+{
+  "title": "KOPPAM",
+  "code": "2140",
+  "districtName": "PALAKKAD"
+},
+{
+  "title": "MANNARKKAD",
+  "code": "4057",
+  "districtName": "PALAKKAD"
+},
+{
+  "title": "OTTAPPALAM",
+  "code": "2589",
+  "districtName": "PALAKKAD"
+},
+{
+  "title": "PALAKKAD",
+  "code": "5744",
+  "districtName": "PALAKKAD"
+},
+{
+  "title": "PARALI",
+  "code": "2263",
+  "districtName": "PALAKKAD"
+},
+{
+  "title": "PATTAMBI",
+  "code": "4819",
+  "districtName": "PALAKKAD"
+},
+{
+  "title": "PUTHUKKOD",
+  "code": "3102",
+  "districtName": "PALAKKAD"
+},
+{
+  "title": "THRITHALA",
+  "code": "7046",
+  "districtName": "PALAKKAD"
+},
+{
+  "title": "CHALAKKUDI",
+  "code": "4103",
+  "districtName": "THRISSUR"
+},
+{
+  "title": "CHAVAKKAD",
+  "code": "6514",
+  "districtName": "THRISSUR"
+},
+{
+  "title": "CHELAKKARA",
+  "code": "8433",
+  "districtName": "THRISSUR"
+},
+{
+  "title": "EDAKAZHIYUR",
+  "code": "1599",
+  "districtName": "THRISSUR"
+},
+{
+  "title": "EDAVILANGU",
+  "code": "9287",
+  "districtName": "THRISSUR"
+},
+{
+  "title": "ERIYAD",
+  "code": "3889",
+  "districtName": "THRISSUR"
+},
+{
+  "title": "GURUVAYOOR",
+  "code": "3147",
+  "districtName": "THRISSUR"
+},
+{
+  "title": "IRINJALAKKUDA",
+  "code": "2055",
+  "districtName": "THRISSUR"
+},
+{
+  "title": "KARUVANNUR",
+  "code": "9476",
+  "districtName": "THRISSUR"
+},
+{
+  "title": "KODUNGALLUR",
+  "code": "6315",
+  "districtName": "THRISSUR"
+},
+{
+  "title": "KUNNAMKULAM",
+  "code": "8151",
+  "districtName": "THRISSUR"
+},
+{
+  "title": "MALA",
+  "code": "7751",
+  "districtName": "THRISSUR"
+},
+{
+  "title": "MATHILAKAM",
+  "code": "4028",
+  "districtName": "THRISSUR"
+},
+{
+  "title": "NATTIKA",
+  "code": "8138",
+  "districtName": "THRISSUR"
+},
+{
+  "title": "S N PURAM",
+  "code": "5974",
+  "districtName": "THRISSUR"
+},
+{
+  "title": "THRISSUR",
+  "code": "6055",
+  "districtName": "THRISSUR"
+},
+{
+  "title": "VADAKKEKAD",
+  "code": "3594",
+  "districtName": "THRISSUR"
+},
+{
+  "title": "VADANAPALLY",
+  "code": "4995",
+  "districtName": "THRISSUR"
+},
+{
+  "title": "WADAKKANCHERY",
+  "code": "1131",
+  "districtName": "THRISSUR"
+},
+{
+  "title": "ALUVA",
+  "code": "5830",
+  "districtName": "ERNAKULAM"
+},
+{
+  "title": "CHENGAMANAD",
+  "code": "7286",
+  "districtName": "ERNAKULAM"
+},
+{
+  "title": "EDATHALA",
+  "code": "7944",
+  "districtName": "ERNAKULAM"
+},
+{
+  "title": "KALAMASSERY",
+  "code": "1827",
+  "districtName": "ERNAKULAM"
+},
+{
+  "title": "KEEZHMAD",
+  "code": "6987",
+  "districtName": "ERNAKULAM"
+},
+{
+  "title": "KIZHAKKAMBALAM",
+  "code": "1122",
+  "districtName": "ERNAKULAM"
+},
+{
+  "title": "KOTHAMANGALAM",
+  "code": "5069",
+  "districtName": "ERNAKULAM"
+},
+{
+  "title": "KUNNATHNADU",
+  "code": "6934",
+  "districtName": "ERNAKULAM"
+},
+{
+  "title": "MANNAM",
+  "code": "9159",
+  "districtName": "ERNAKULAM"
+},
+{
+  "title": "MUVATTUPUZHA",
+  "code": "7148",
+  "districtName": "ERNAKULAM"
+},
+{
+  "title": "NEDUMBASSERY",
+  "code": "9930",
+  "districtName": "ERNAKULAM"
+},
+{
+  "title": "PALLARIMANGALAM",
+  "code": "9450",
+  "districtName": "ERNAKULAM"
+},
+{
+  "title": "PANAYIKULAM",
+  "code": "7308",
+  "districtName": "ERNAKULAM"
+},
+{
+  "title": "PARAVOOR",
+  "code": "3855",
+  "districtName": "ERNAKULAM"
+},
+{
+  "title": "PERUMBAVOOR",
+  "code": "8841",
+  "districtName": "ERNAKULAM"
+},
+{
+  "title": "VAZHAKKULAM",
+  "code": "5147",
+  "districtName": "ERNAKULAM"
+},
+{
+  "title": "VELIYATHUNAD",
+  "code": "7214",
+  "districtName": "ERNAKULAM"
+},
+{
+  "title": "ERNAKULAM",
+  "code": "9277",
+  "districtName": "KOCHI CITY"
+},
+{
+  "title": "KOCHI",
+  "code": "9877",
+  "districtName": "KOCHI CITY"
+},
+{
+  "title": "PALLURUTHY",
+  "code": "5018",
+  "districtName": "KOCHI CITY"
+},
+{
+  "title": "THRIKKAKARA",
+  "code": "8525",
+  "districtName": "KOCHI CITY"
+},
+{
+  "title": "VYPIN",
+  "code": "1610",
+  "districtName": "KOCHI CITY"
+},
+{
+  "title": "VYTILA",
+  "code": "9100",
+  "districtName": "KOCHI CITY"
+},
+{
+  "title": "ALAPPUZHA",
+  "code": "6655",
+  "districtName": "ALAPUZHA"
+},
+{
+  "title": "AMBALAPUZHA",
+  "code": "2550",
+  "districtName": "ALAPUZHA"
+},
+{
+  "title": "AROOR",
+  "code": "5610",
+  "districtName": "ALAPUZHA"
+},
+{
+  "title": "CHERTHALA",
+  "code": "2411",
+  "districtName": "ALAPUZHA"
+},
+{
+  "title": "HARIPAD",
+  "code": "9163",
+  "districtName": "ALAPUZHA"
+},
+{
+  "title": "KAYAMKULAM",
+  "code": "3474",
+  "districtName": "ALAPUZHA"
+},
+{
+  "title": "CHANGANASSERY",
+  "code": "2034",
+  "districtName": "KOTTAYAM"
+},
+{
+  "title": "ERATTUPETTA",
+  "code": "4600",
+  "districtName": "KOTTAYAM"
+},
+{
+  "title": "KANJIRAPPALLY",
+  "code": "4413",
+  "districtName": "KOTTAYAM"
+},
+{
+  "title": "KOTTAYAM",
+  "code": "8397",
+  "districtName": "KOTTAYAM"
+},
+{
+  "title": "MUNDAKKAYAM",
+  "code": "7170",
+  "districtName": "KOTTAYAM"
+},
+{
+  "title": "TALAYOLAPARAMBU",
+  "code": "9925",
+  "districtName": "KOTTAYAM"
+},
+{
+  "title": "ADIMALI",
+  "code": "4762",
+  "districtName": "IDUKKI"
+},
+{
+  "title": "HIGH RANGE",
+  "code": "5043",
+  "districtName": "IDUKKI"
+},
+{
+  "title": "THODUPUZHA",
+  "code": "2275",
+  "districtName": "IDUKKI"
+},
+{
+  "title": "PATHANAMTHITTA",
+  "code": "3681",
+  "districtName": "PATHANAMTHITTA"
+},
+{
+  "title": "THIRUVALLA",
+  "code": "4322",
+  "districtName": "PATHANAMTHITTA"
+},
+{
+  "title": "ANCHAL",
+  "code": "9067",
+  "districtName": "KOLLAM"
+},
+{
+  "title": "CHADAYAMANGALAM",
+  "code": "9267",
+  "districtName": "KOLLAM"
+},
+{
+  "title": "KADACKAL",
+  "code": "4781",
+  "districtName": "KOLLAM"
+},
+{
+  "title": "KARUNAGAPALLY",
+  "code": "1170",
+  "districtName": "KOLLAM"
+},
+{
+  "title": "KOLLAM",
+  "code": "5511",
+  "districtName": "KOLLAM"
+},
+{
+  "title": "KULATHUPUZHA",
+  "code": "2280",
+  "districtName": "KOLLAM"
+},
+{
+  "title": "PATHANAPURAM",
+  "code": "1882",
+  "districtName": "KOLLAM"
+},
+{
+  "title": "ATTINGAL",
+  "code": "2673",
+  "districtName": "THIRUVANANTHAPURAM"
+},
+{
+  "title": "CHIRAYINKEEZH",
+  "code": "3160",
+  "districtName": "THIRUVANANTHAPURAM"
+},
+{
+  "title": "KAZHAKOOTTAM",
+  "code": "8660",
+  "districtName": "THIRUVANANTHAPURAM"
+},
+{
+  "title": "NEDUMANGAD",
+  "code": "3034",
+  "districtName": "THIRUVANANTHAPURAM"
+},
+{
+  "title": "PALOD",
+  "code": "6239",
+  "districtName": "THIRUVANANTHAPURAM"
+},
+{
+  "title": "TRIVANDRUM NORTH",
+  "code": "1330",
+  "districtName": "THIRUVANANTHAPURAM"
+},
+{
+  "title": "TRIVANDRUM SOUTH",
+  "code": "4532",
+  "districtName": "THIRUVANANTHAPURAM"
+},
+{
+  "title": "TRIVANDRUM WEST",
+  "code": "8188",
+  "districtName": "THIRUVANANTHAPURAM"
+},
+{
+  "title": "VARKALA",
+  "code": "5594",
+  "districtName": "THIRUVANANTHAPURAM"
+},
+{
+  "title": "Area 1",
+  "code": "2036",
+  "districtName": "PATHANAMTHITTA"
+},
+{
+  "title": "BANGALORE",
+  "code": "4791",
+  "districtName": "BANGALORE"
+},
+{
+  "title": "CHENNAI",
+  "code": "6039",
+  "districtName": "CHENNAI"
+},
+{
+  "title": "Test",
+  "code": "5571",
+  "districtName": "Test"
+},
+{
+  "title": "MADAVOOR",
+  "code": "3902",
+  "districtName": "KOZHIKODE"
+},
+{
+  "title": "HALQA OFFICE",
+  "code": "2221",
+  "districtName": "HALQA OFFICE"
+}]

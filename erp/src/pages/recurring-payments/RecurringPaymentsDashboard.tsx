@@ -110,48 +110,49 @@ const RecurringPaymentsDashboard = () => {
   }
 
   return (
-    <div className="space-y-6 animate-in fade-in duration-500">
+    <div className="space-y-4 animate-in fade-in duration-500">
       {/* Header */}
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-lg font-bold">Recurring Payments Overview</h1>
-          <p className="text-muted-foreground mt-1">Manage and track recurring payment applications</p>
+          <h1 className="text-2xl font-bold tracking-tight">Recurring Payments</h1>
         </div>
         <div className="flex items-center gap-2">
           <Button
             variant="outline"
+            size="sm"
             onClick={() => navigate('/recurring-payments/schedule')}
           >
             <Calendar className="mr-2 h-4 w-4" />
-            Payment Schedule
+            Schedule
           </Button>
           <Button
             variant="outline"
+            size="sm"
             onClick={() => navigate('/recurring-payments/forecast')}
           >
             <TrendingUp className="mr-2 h-4 w-4" />
-            Budget Forecast
+            Forecast
           </Button>
           <Button
-            variant={showFilters ? "default" : "outline"}
+            variant={showFilters ? "secondary" : "outline"}
             size="sm"
             onClick={() => setShowFilters(!showFilters)}
           >
             <Filter className="mr-2 h-4 w-4" />
-            {showFilters ? "Hide Filters" : "Show Filters"}
+            Filters
           </Button>
         </div>
       </div>
 
       {/* Summary Cards */}
       {stats && (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
           <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 p-4 pb-2">
               <CardTitle className="text-sm font-medium">Total Payments</CardTitle>
               <Calendar className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
-            <CardContent>
+            <CardContent className="p-4 pt-0">
               <div className="text-2xl font-bold">{stats.totalPayments}</div>
               <p className="text-xs text-muted-foreground">
                 {stats.scheduled} scheduled, {stats.completed} completed
@@ -160,24 +161,24 @@ const RecurringPaymentsDashboard = () => {
           </Card>
 
           <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Overdue Payments</CardTitle>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 p-4 pb-2">
+              <CardTitle className="text-sm font-medium">Overdue</CardTitle>
               <AlertCircle className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
-            <CardContent>
+            <CardContent className="p-4 pt-0">
               <div className="text-2xl font-bold text-destructive">{stats.overdue}</div>
               <p className="text-xs text-muted-foreground">
-                Require immediate attention
+                Require attention
               </p>
             </CardContent>
           </Card>
 
           <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Upcoming (30 days)</CardTitle>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 p-4 pb-2">
+              <CardTitle className="text-sm font-medium">Upcoming (30d)</CardTitle>
               <CheckCircle className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
-            <CardContent>
+            <CardContent className="p-4 pt-0">
               <div className="text-2xl font-bold">{stats.upcoming.next30Days}</div>
               <p className="text-xs text-muted-foreground">
                 {stats.upcoming.next7Days} in next 7 days
@@ -186,11 +187,11 @@ const RecurringPaymentsDashboard = () => {
           </Card>
 
           <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 p-4 pb-2">
               <CardTitle className="text-sm font-medium">Total Amount</CardTitle>
               <DollarSign className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
-            <CardContent>
+            <CardContent className="p-4 pt-0">
               <div className="text-2xl font-bold">{formatCurrency(stats.amounts.total)}</div>
               <p className="text-xs text-muted-foreground">
                 {formatCurrency(stats.amounts.pending)} pending
@@ -243,58 +244,58 @@ const RecurringPaymentsDashboard = () => {
 
       {/* Applications Table */}
       <Card>
-        <CardHeader>
-          <CardTitle>Recurring Payment Applications</CardTitle>
-          <CardDescription>
-            {applications.length} application(s) with recurring payments
+        <CardHeader className="p-4 pb-2">
+          <CardTitle className="text-base">Recurring Applications</CardTitle>
+          <CardDescription className="text-xs">
+            {applications.length} found
           </CardDescription>
         </CardHeader>
-        <CardContent>
+        <CardContent className="p-0">
           <div className="overflow-x-auto">
             <Table>
               <TableHeader>
-                <TableRow>
-                  <TableHead>Application #</TableHead>
-                  <TableHead>Beneficiary</TableHead>
-                  <TableHead>Scheme</TableHead>
-                  <TableHead>Period</TableHead>
-                  <TableHead>Progress</TableHead>
-                  <TableHead>Next Payment</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Actions</TableHead>
+                <TableRow className="h-10 hover:bg-transparent">
+                  <TableHead className="h-10 w-[120px]">App #</TableHead>
+                  <TableHead className="h-10">Beneficiary</TableHead>
+                  <TableHead className="h-10">Scheme</TableHead>
+                  <TableHead className="h-10">Period</TableHead>
+                  <TableHead className="h-10 w-[200px]">Progress</TableHead>
+                  <TableHead className="h-10">Next</TableHead>
+                  <TableHead className="h-10">Status</TableHead>
+                  <TableHead className="h-10 w-[80px]">View</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {applications.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={8} className="text-center py-12">
+                    <TableCell colSpan={8} className="text-center py-8">
                       <div className="flex flex-col items-center gap-2">
-                        <CalendarClock className="h-12 w-12 text-muted-foreground opacity-50" />
-                        <p className="text-muted-foreground">No recurring payment applications found</p>
+                        <CalendarClock className="h-8 w-8 text-muted-foreground opacity-50" />
+                        <p className="text-sm text-muted-foreground">No recurring applications</p>
                       </div>
                     </TableCell>
                   </TableRow>
                 ) : (
                   applications.map((app) => (
-                    <TableRow key={app._id}>
-                      <TableCell className="font-medium">
+                    <TableRow key={app._id} className="h-12">
+                      <TableCell className="font-medium text-xs">
                         {app.applicationNumber}
                       </TableCell>
-                      <TableCell>
-                        {app.beneficiary?.name || 'N/A'}
+                      <TableCell className="text-xs py-2">
+                        <div className="font-medium truncate max-w-[150px]">{app.beneficiary?.name || 'N/A'}</div>
                       </TableCell>
-                      <TableCell>{app.scheme?.name || 'N/A'}</TableCell>
-                      <TableCell>
+                      <TableCell className="text-xs py-2">{app.scheme?.name || 'N/A'}</TableCell>
+                      <TableCell className="text-xs py-2">
                         {getPeriodLabel(app.recurringConfig.period)}
                       </TableCell>
-                      <TableCell>
+                      <TableCell className="py-2">
                         <div className="flex items-center gap-2">
-                          <div className="text-sm">
-                            {app.recurringConfig.completedPayments} / {app.recurringConfig.numberOfPayments}
+                          <div className="text-xs w-8">
+                            {Math.round((app.recurringConfig.completedPayments / app.recurringConfig.numberOfPayments) * 100)}%
                           </div>
-                          <div className="w-24 bg-muted rounded-full h-2">
+                          <div className="flex-1 bg-secondary rounded-full h-1.5 w-24">
                             <div
-                              className="bg-primary h-2 rounded-full"
+                              className="bg-primary h-1.5 rounded-full"
                               style={{
                                 width: `${(app.recurringConfig.completedPayments / app.recurringConfig.numberOfPayments) * 100}%`,
                               }}
@@ -302,24 +303,24 @@ const RecurringPaymentsDashboard = () => {
                           </div>
                         </div>
                       </TableCell>
-                      <TableCell>
+                      <TableCell className="text-xs py-2">
                         {app.recurringConfig.nextPaymentDate
-                          ? format(new Date(app.recurringConfig.nextPaymentDate), 'dd MMM yyyy')
+                          ? format(new Date(app.recurringConfig.nextPaymentDate), 'dd MMM yy')
                           : '-'}
                       </TableCell>
-                      <TableCell>
-                        <Badge variant="outline" className={statusColors[app.recurringConfig.status as keyof typeof statusColors] || "bg-muted text-muted-foreground"}>
+                      <TableCell className="py-2">
+                        <Badge variant="outline" className={`text-[10px] px-1.5 py-0 ${statusColors[app.recurringConfig.status as keyof typeof statusColors] || "bg-muted text-muted-foreground"}`}>
                           {app.recurringConfig.status.toUpperCase()}
                         </Badge>
                       </TableCell>
-                      <TableCell>
+                      <TableCell className="py-2">
                         <Button
                           variant="ghost"
-                          size="sm"
+                          size="icon"
+                          className="h-8 w-8"
                           onClick={() => navigate(`/recurring-payments/schedule/${app._id}`)}
                         >
-                          <Eye className="h-4 w-4 mr-1" />
-                          View
+                          <Eye className="h-3.5 w-3.5" />
                         </Button>
                       </TableCell>
                     </TableRow>
@@ -334,36 +335,35 @@ const RecurringPaymentsDashboard = () => {
       {/* Overdue Payments Alert */}
       {stats && stats.overdueList && stats.overdueList.length > 0 && (
         <Card className="border-destructive/20 bg-destructive/5">
-          <CardHeader>
-            <CardTitle className="text-destructive flex items-center">
-              <AlertCircle className="h-5 w-5 mr-2" />
+          <CardHeader className="p-4 pb-2">
+            <CardTitle className="text-destructive flex items-center text-sm">
+              <AlertCircle className="h-4 w-4 mr-2" />
               Overdue Payments
             </CardTitle>
-            <CardDescription>These payments require immediate attention</CardDescription>
           </CardHeader>
-          <CardContent>
+          <CardContent className="p-4 pt-0">
             <div className="space-y-2">
               {stats.overdueList.slice(0, 5).map((payment) => (
-                <div key={payment._id} className="flex justify-between items-center p-3 bg-card rounded-lg">
-                  <div>
+                <div key={payment._id} className="flex justify-between items-center p-2 bg-background/50 rounded-md border border-destructive/10">
+                  <div className="text-xs">
                     <div className="font-medium">
-                      {payment.application?.applicationNumber} - Payment #{payment.paymentNumber}
+                      {payment.application?.applicationNumber} <span className="text-muted-foreground mx-1">•</span> #{payment.paymentNumber}
                     </div>
-                    <div className="text-sm text-muted-foreground">
-                      {payment.beneficiary?.name} | {formatCurrency(payment.amount)}
+                    <div className="text-muted-foreground">
+                      {payment.beneficiary?.name} <span className="mx-1">•</span> {formatCurrency(payment.amount)}
                     </div>
                   </div>
-                  <div className="text-right">
-                    <div className="text-sm text-destructive font-medium">
-                      {payment.daysOverdue} days overdue
-                    </div>
+                  <div className="text-right flex items-center gap-3">
+                    <span className="text-xs text-destructive font-medium">
+                      {payment.daysOverdue}d overdue
+                    </span>
                     <Button
                       size="sm"
                       variant="outline"
-                      className="mt-1"
+                      className="h-7 text-xs px-2"
                       onClick={() => navigate(`/recurring-payments/payment/${payment._id}`)}
                     >
-                      Process Payment
+                      Pay
                     </Button>
                   </div>
                 </div>

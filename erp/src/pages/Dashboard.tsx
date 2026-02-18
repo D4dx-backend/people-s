@@ -21,7 +21,7 @@ const statusColors = {
 
 export default function Dashboard() {
   const navigate = useNavigate();
-  const { getUserRole, isLoading: rbacLoading } = useRBAC();
+  const { getUserRole, isLoading: rbacLoading, hasPermission, hasAnyPermission } = useRBAC();
   const { user, isAuthenticated, isLoading: authLoading } = useAuth();
   const [overview, setOverview] = useState<any>(null);
   const [recentApplications, setRecentApplications] = useState<any[]>([]);
@@ -30,6 +30,10 @@ export default function Dashboard() {
   const [projectPerformance, setProjectPerformance] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  const canViewFinances = hasPermission('finances.read.regional');
+  const canViewDonors = hasAnyPermission(['donors.read.regional', 'donors.read']);
+  const canViewApplications = hasAnyPermission(['applications.read.all', 'applications.read.regional', 'applications.read.own']);
   
   // Check if user is a beneficiary and redirect
   useEffect(() => {
@@ -63,7 +67,7 @@ export default function Dashboard() {
     } else {
       setLoading(false);
     }
-  }, [isAuthenticated, authLoading, rbacLoading, getUserRole]);
+  }, [isAuthenticated, authLoading, rbacLoading, getUserRole, canViewApplications]);
 
   const loadDashboardData = async () => {
     try {
@@ -73,12 +77,25 @@ export default function Dashboard() {
       console.log('📊 Dashboard: Loading data from API...');
       const startTime = Date.now();
 
-      const [overviewRes, applicationsRes, budgetRes, donationRes, projectRes] = await Promise.all([
+      // Build API calls based on user permissions to avoid 403 errors
+      const basePromises: Promise<any>[] = [
         dashboard.getOverview(),
-        dashboard.getRecentApplications(5),
-        budgetApi.getOverview(),
-        donationsApi.getStats(),
-        budgetApi.getProjects()
+      ];
+
+      // Only fetch applications data if user has the required permissions
+      const applicationsPromise = canViewApplications ? dashboard.getRecentApplications(5) : Promise.resolve(null);
+
+      // Only fetch finance/donation data if user has the required permissions
+      const budgetOverviewPromise = canViewFinances ? budgetApi.getOverview() : Promise.resolve(null);
+      const donationStatsPromise = canViewDonors ? donationsApi.getStats() : Promise.resolve(null);
+      const projectBudgetPromise = canViewFinances ? budgetApi.getProjects() : Promise.resolve(null);
+
+      const [overviewRes, budgetRes, donationRes, projectRes, applicationsRes] = await Promise.all([
+        ...basePromises,
+        budgetOverviewPromise,
+        donationStatsPromise,
+        projectBudgetPromise,
+        applicationsPromise,
       ]);
 
       const loadTime = Date.now() - startTime;
@@ -91,27 +108,27 @@ export default function Dashboard() {
       console.log('💵 API Response - Donation Stats:', donationRes);
       console.log('📁 API Response - Projects:', projectRes);
 
-      if (overviewRes.success && overviewRes.data) {
+      if (overviewRes?.success && overviewRes.data) {
         const overviewData = overviewRes.data as any;
         console.log('✅ Overview data loaded:', overviewData.overview);
         setOverview(overviewData.overview);
       }
-      if (applicationsRes.success && applicationsRes.data) {
+      if (applicationsRes?.success && applicationsRes.data) {
         const applicationsData = applicationsRes.data as any;
         console.log('✅ Recent applications loaded:', applicationsData.applications);
         setRecentApplications(applicationsData.applications);
       }
-      if (budgetRes.success && budgetRes.data) {
+      if (budgetRes?.success && budgetRes.data) {
         const budgetData = budgetRes.data as any;
         console.log('✅ Budget overview loaded:', budgetData.overview);
         setBudgetOverview(budgetData.overview);
       }
-      if (donationRes.success && donationRes.data) {
+      if (donationRes?.success && donationRes.data) {
         const donationData = donationRes.data as any;
         console.log('✅ Donation stats loaded:', donationData.stats);
         setDonationStats(donationData.stats);
       }
-      if (projectRes.success && projectRes.data) {
+      if (projectRes?.success && projectRes.data) {
         const projectData = projectRes.data as any;
         console.log('✅ Projects loaded:', projectData.projects);
         setProjectPerformance(projectData.projects.slice(0, 3));
@@ -197,120 +214,132 @@ export default function Dashboard() {
           icon={Users}
           trend={{ value: overview?.recentActivity?.beneficiaries || 0, isPositive: true }}
         />
-        <StatsCard
-          title="Budget Utilization"
-          value={formatCurrency(overview?.totalSpent || 0)}
-          icon={IndianRupee}
-          trend={{ value: overview?.totalBudget > 0 ? Math.round((overview.totalSpent / overview.totalBudget) * 100) : 0, isPositive: false }}
-        />
+        {canViewFinances && (
+          <StatsCard
+            title="Budget Utilization"
+            value={formatCurrency(overview?.totalSpent || 0)}
+            icon={IndianRupee}
+            trend={{ value: overview?.totalBudget > 0 && typeof overview?.totalSpent === 'number' ? Math.round((overview.totalSpent / overview.totalBudget) * 100) : 0, isPositive: false }}
+          />
+        )}
       </div>
 
       <div className="grid gap-6 md:grid-cols-2">
-        <Card className="hover:shadow-glow transition-all duration-300">
-          <CardHeader>
-            <CardTitle>Recent Applications</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              {recentApplications.map((app) => (
-                <div
-                  key={app.id}
-                  className="flex items-center justify-between rounded-2xl border border-border/40 bg-muted/30 px-4 py-3 transition-colors hover:bg-muted/50"
-                >
-                  <div className="space-y-1">
-                    <p className="font-medium">{app.applicant}</p>
-                    <p className="text-sm text-muted-foreground">{app.scheme}</p>
-                    <p className="text-xs text-muted-foreground">{app.id} • {app.date}</p>
+        {canViewApplications && (
+          <Card className="hover:shadow-glow transition-all duration-300">
+            <CardHeader>
+              <CardTitle>Recent Applications</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                {recentApplications.map((app) => (
+                  <div
+                    key={app.id}
+                    className="flex items-center justify-between rounded-2xl border border-border/40 bg-muted/30 px-4 py-3 transition-colors hover:bg-muted/50"
+                  >
+                    <div className="space-y-1">
+                      <p className="font-medium">{app.applicant}</p>
+                      <p className="text-sm text-muted-foreground">{app.scheme}</p>
+                      <p className="text-xs text-muted-foreground">{app.id} • {app.date}</p>
+                    </div>
+                    <Badge variant="outline" className={cn("rounded-full", statusColors[app.status as keyof typeof statusColors])}>
+                      {app.status}
+                    </Badge>
                   </div>
-                  <Badge variant="outline" className={cn("rounded-full", statusColors[app.status as keyof typeof statusColors])}>
-                    {app.status}
-                  </Badge>
-                </div>
-              ))}
-            </div>
-            <Button variant="outline" className="w-full mt-4 rounded-full">
-              View All Applications
-            </Button>
-          </CardContent>
-        </Card>
+                ))}
+                {recentApplications.length === 0 && (
+                  <p className="text-center text-muted-foreground py-4">No recent applications</p>
+                )}
+              </div>
+              <Button variant="outline" className="w-full mt-4 rounded-full">
+                View All Applications
+              </Button>
+            </CardContent>
+          </Card>
+        )}
 
-        <Card className="hover:shadow-glow transition-all duration-300">
-          <CardHeader>
-            <CardTitle>Financial Summary</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-muted-foreground">Total Budget</p>
-                  <p className="text-xl font-bold">{formatCurrency(budgetOverview?.totalBudget || 0)}</p>
+        {canViewFinances && (
+          <Card className="hover:shadow-glow transition-all duration-300">
+            <CardHeader>
+              <CardTitle>Financial Summary</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm text-muted-foreground">Total Budget</p>
+                    <p className="text-xl font-bold">{formatCurrency(budgetOverview?.totalBudget || 0)}</p>
+                  </div>
+                  <div className="rounded-2xl bg-gradient-secondary p-3 shadow-elegant">
+                    <TrendingUp className="h-6 w-6 text-secondary-foreground" />
+                  </div>
                 </div>
-                <div className="rounded-2xl bg-gradient-secondary p-3 shadow-elegant">
-                  <TrendingUp className="h-6 w-6 text-secondary-foreground" />
+                
+                <div className="space-y-2">
+                  <div className="flex justify-between text-sm">
+                    <span className="text-muted-foreground">Total Allocated</span>
+                    <span className="font-medium">{formatCurrency(budgetOverview?.totalAllocated || 0)}</span>
+                  </div>
+                  <div className="flex justify-between text-sm">
+                    <span className="text-muted-foreground">Total Disbursed</span>
+                    <span className="font-medium">{formatCurrency(budgetOverview?.totalDisbursed || 0)}</span>
+                  </div>
+                  <div className="flex justify-between text-sm">
+                    <span className="text-muted-foreground">Pending Payments</span>
+                    <span className="font-medium text-warning">{formatCurrency(budgetOverview?.totalPending || 0)}</span>
+                  </div>
+                  {canViewDonors && (
+                    <div className="flex justify-between text-sm border-t pt-2">
+                      <span className="text-muted-foreground">Total Donations</span>
+                      <span className="font-medium text-success">{formatCurrency(donationStats?.overall?.totalAmount || 0)}</span>
+                    </div>
+                  )}
+                  <div className="flex justify-between text-sm font-bold border-t pt-2">
+                    <span>Available Balance</span>
+                    <span className="text-success">{formatCurrency(budgetOverview?.availableBalance || 0)}</span>
+                  </div>
                 </div>
               </div>
-              
-              <div className="space-y-2">
-                <div className="flex justify-between text-sm">
-                  <span className="text-muted-foreground">Total Allocated</span>
-                  <span className="font-medium">{formatCurrency(budgetOverview?.totalAllocated || 0)}</span>
-                </div>
-                <div className="flex justify-between text-sm">
-                  <span className="text-muted-foreground">Total Disbursed</span>
-                  <span className="font-medium">{formatCurrency(budgetOverview?.totalDisbursed || 0)}</span>
-                </div>
-                <div className="flex justify-between text-sm">
-                  <span className="text-muted-foreground">Pending Payments</span>
-                  <span className="font-medium text-warning">{formatCurrency(budgetOverview?.totalPending || 0)}</span>
-                </div>
-                <div className="flex justify-between text-sm border-t pt-2">
-                  <span className="text-muted-foreground">Total Donations</span>
-                  <span className="font-medium text-success">{formatCurrency(donationStats?.overall?.totalAmount || 0)}</span>
-                </div>
-                <div className="flex justify-between text-sm font-bold border-t pt-2">
-                  <span>Available Balance</span>
-                  <span className="text-success">{formatCurrency(budgetOverview?.availableBalance || 0)}</span>
-                </div>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>
+        )}
       </div>
 
-      <Card className="hover:shadow-glow transition-all duration-300">
-        <CardHeader>
-          <CardTitle>Top Projects by Budget</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="grid gap-4 md:grid-cols-3">
-            {projectPerformance.map((project) => (
-              <div
-                key={project.id}
-                className="rounded-2xl border border-border/40 bg-muted/30 p-4 space-y-2 hover:shadow-elegant transition-all hover:-translate-y-0.5"
-              >
-                <h4 className="font-semibold">{project.name}</h4>
-                <div className="flex justify-between text-sm">
-                  <span className="text-muted-foreground">Total Budget</span>
-                  <span className="font-medium">{formatCurrency(project.totalBudget)}</span>
+      {canViewFinances && (
+        <Card className="hover:shadow-glow transition-all duration-300">
+          <CardHeader>
+            <CardTitle>Top Projects by Budget</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid gap-4 md:grid-cols-3">
+              {projectPerformance.map((project) => (
+                <div
+                  key={project.id}
+                  className="rounded-2xl border border-border/40 bg-muted/30 p-4 space-y-2 hover:shadow-elegant transition-all hover:-translate-y-0.5"
+                >
+                  <h4 className="font-semibold">{project.name}</h4>
+                  <div className="flex justify-between text-sm">
+                    <span className="text-muted-foreground">Total Budget</span>
+                    <span className="font-medium">{formatCurrency(project.totalBudget)}</span>
+                  </div>
+                  <div className="flex justify-between text-sm">
+                    <span className="text-muted-foreground">Utilization</span>
+                    <span className="font-medium">{project.utilizationRate?.toFixed(1) || 0}%</span>
+                  </div>
+                  <div className="flex justify-between text-sm">
+                    <span className="text-muted-foreground">Applications</span>
+                    <span className="font-medium">{project.applicationsCount || 0}</span>
+                  </div>
                 </div>
-                <div className="flex justify-between text-sm">
-                  <span className="text-muted-foreground">Utilization</span>
-                  <span className="font-medium">{project.utilizationRate?.toFixed(1) || 0}%</span>
+              ))}
+              {projectPerformance.length === 0 && (
+                <div className="col-span-3 text-center text-muted-foreground py-8">
+                  No project data available
                 </div>
-                <div className="flex justify-between text-sm">
-                  <span className="text-muted-foreground">Applications</span>
-                  <span className="font-medium">{project.applicationsCount || 0}</span>
-                </div>
-              </div>
-            ))}
-            {projectPerformance.length === 0 && (
-              <div className="col-span-3 text-center text-muted-foreground py-8">
-                No project data available
-              </div>
-            )}
-          </div>
-        </CardContent>
-      </Card>
-    </div>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+      )}    </div>
   );
 }

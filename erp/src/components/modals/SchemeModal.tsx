@@ -50,8 +50,8 @@ export function SchemeModal({ open, onOpenChange, scheme, mode, onSuccess }: Sch
     maxAge: "",
     gender: "any",
     incomeLimit: "",
-    educationLevel: "",
-    employmentStatus: "",
+    educationLevel: "any",
+    employmentStatus: "any",
     // Renewal Settings
     isRenewable: false,
     renewalPeriodDays: "365",
@@ -309,8 +309,8 @@ export function SchemeModal({ open, onOpenChange, scheme, mode, onSuccess }: Sch
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-4xl max-h-[90vh] overflow-hidden flex flex-col">
-        <DialogHeader>
+      <DialogContent className="max-w-4xl max-h-[90vh] overflow-hidden flex flex-col" style={{ display: "flex" }}>
+        <DialogHeader className="flex-shrink-0">
           <DialogTitle>{mode === "create" ? "Create New Scheme" : "Edit Scheme"}</DialogTitle>
           {/* Step Indicator */}
           <div className="flex items-center justify-center gap-2 pt-4">
@@ -793,7 +793,7 @@ export function SchemeModal({ open, onOpenChange, scheme, mode, onSuccess }: Sch
           )}
         </div>
 
-        <DialogFooter className="flex items-center justify-between sm:justify-between border-t pt-4">
+        <DialogFooter className="flex-shrink-0 flex items-center justify-between sm:justify-between border-t pt-4">
           <div className="text-sm text-muted-foreground">
             Step {currentStep} of {totalSteps}
           </div>

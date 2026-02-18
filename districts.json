@@ -1,0 +1,260 @@
+[{
+  "_id": {
+    "$oid": "686f82bac864c3dca0eb9131"
+  },
+  "title": "THIRUVANANTHAPURAM",
+  "createdAt": {
+    "$date": "2025-07-10T09:07:06.987Z"
+  },
+  "updatedAt": {
+    "$date": "2025-07-10T09:07:06.987Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "686f82c3c864c3dca0eb9134"
+  },
+  "title": "KOLLAM",
+  "createdAt": {
+    "$date": "2025-07-10T09:07:15.928Z"
+  },
+  "updatedAt": {
+    "$date": "2025-07-10T09:07:15.928Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "686f82d5c864c3dca0eb9137"
+  },
+  "title": "PATHANAMTHITTA",
+  "createdAt": {
+    "$date": "2025-07-10T09:07:33.535Z"
+  },
+  "updatedAt": {
+    "$date": "2025-07-10T09:07:33.535Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "686f82ddc864c3dca0eb913a"
+  },
+  "title": "IDUKKI",
+  "createdAt": {
+    "$date": "2025-07-10T09:07:41.290Z"
+  },
+  "updatedAt": {
+    "$date": "2025-07-10T09:07:41.290Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "686f82f1c864c3dca0eb913d"
+  },
+  "title": "KOTTAYAM",
+  "createdAt": {
+    "$date": "2025-07-10T09:08:01.064Z"
+  },
+  "updatedAt": {
+    "$date": "2025-07-10T09:08:01.064Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "686f8300c864c3dca0eb9140"
+  },
+  "title": "ALAPUZHA",
+  "createdAt": {
+    "$date": "2025-07-10T09:08:16.630Z"
+  },
+  "updatedAt": {
+    "$date": "2025-07-10T09:08:16.630Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "686f830ac864c3dca0eb9143"
+  },
+  "title": "ERNAKULAM",
+  "createdAt": {
+    "$date": "2025-07-10T09:08:26.028Z"
+  },
+  "updatedAt": {
+    "$date": "2025-07-10T09:08:26.028Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "686f8312c864c3dca0eb9146"
+  },
+  "title": "KOCHI CITY",
+  "createdAt": {
+    "$date": "2025-07-10T09:08:34.510Z"
+  },
+  "updatedAt": {
+    "$date": "2025-07-10T09:08:34.510Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "686f831dc864c3dca0eb9149"
+  },
+  "title": "THRISSUR",
+  "createdAt": {
+    "$date": "2025-07-10T09:08:45.753Z"
+  },
+  "updatedAt": {
+    "$date": "2025-07-10T09:08:45.753Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "686f8329c864c3dca0eb914c"
+  },
+  "title": "PALAKKAD",
+  "createdAt": {
+    "$date": "2025-07-10T09:08:57.494Z"
+  },
+  "updatedAt": {
+    "$date": "2025-07-10T09:08:57.494Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "686f8334c864c3dca0eb914f"
+  },
+  "title": "MALAPPURAM",
+  "createdAt": {
+    "$date": "2025-07-10T09:09:08.173Z"
+  },
+  "updatedAt": {
+    "$date": "2025-07-10T09:09:08.173Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "686f833cc864c3dca0eb9152"
+  },
+  "title": "KOZHIKODE",
+  "createdAt": {
+    "$date": "2025-07-10T09:09:16.145Z"
+  },
+  "updatedAt": {
+    "$date": "2025-07-10T09:09:16.145Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "686f834fc864c3dca0eb9155"
+  },
+  "title": "KOZHIKODE CITY",
+  "createdAt": {
+    "$date": "2025-07-10T09:09:35.721Z"
+  },
+  "updatedAt": {
+    "$date": "2025-07-10T09:09:35.721Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "686f835cc864c3dca0eb9158"
+  },
+  "title": "WAYANAD",
+  "createdAt": {
+    "$date": "2025-07-10T09:09:48.059Z"
+  },
+  "updatedAt": {
+    "$date": "2025-07-10T09:09:48.059Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "686f8361c864c3dca0eb915b"
+  },
+  "title": "KANNUR",
+  "createdAt": {
+    "$date": "2025-07-10T09:09:53.622Z"
+  },
+  "updatedAt": {
+    "$date": "2025-07-10T09:09:53.622Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "686f836cc864c3dca0eb915e"
+  },
+  "title": "KASARGOD",
+  "createdAt": {
+    "$date": "2025-07-10T09:10:04.579Z"
+  },
+  "updatedAt": {
+    "$date": "2025-07-10T09:21:33.897Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "68b534250356ef1d24116212"
+  },
+  "title": "BANGALORE",
+  "createdAt": {
+    "$date": "2025-09-01T05:50:30.631Z"
+  },
+  "updatedAt": {
+    "$date": "2025-09-01T05:50:58.135Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "68b535cd0356ef1d24116289"
+  },
+  "title": "CHENNAI",
+  "createdAt": {
+    "$date": "2025-09-01T05:57:33.566Z"
+  },
+  "updatedAt": {
+    "$date": "2025-09-01T05:57:33.566Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "68d4feb3fd546aa66cec73f0"
+  },
+  "title": "Test",
+  "createdAt": {
+    "$date": "2025-09-25T08:34:59.517Z"
+  },
+  "updatedAt": {
+    "$date": "2025-09-25T08:34:59.517Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "6979b2738070c2579517cc0f"
+  },
+  "title": "HALQA OFFICE",
+  "createdAt": {
+    "$date": "2026-01-28T06:53:39.308Z"
+  },
+  "updatedAt": {
+    "$date": "2026-01-28T06:56:06.125Z"
+  },
+  "__v": 0
+}]

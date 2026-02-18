@@ -21,6 +21,8 @@ interface ApplicationViewModalProps {
   onApprove?: (id: string, remarks: string, distributionTimeline?: any[], forwardToCommittee?: boolean, interviewReport?: string, isRecurring?: boolean, recurringConfig?: any) => void;
   onReject?: (id: string, remarks: string) => void;
   previousApplications?: any[];
+  /** Whether the current user has permission to approve/reject applications */
+  canApprove?: boolean;
 }
 
 export function ApplicationViewModal({ 
@@ -30,7 +32,8 @@ export function ApplicationViewModal({
   mode = "view",
   onApprove,
   onReject,
-  previousApplications = []
+  previousApplications = [],
+  canApprove = false
 }: ApplicationViewModalProps) {
   const [remarks, setRemarks] = useState("");
   const [forwardToCommittee, setForwardToCommittee] = useState(false);
@@ -787,8 +790,8 @@ Status: ${application?.status || 'N/A'}
             </>
           )}
 
-          {/* Action Buttons - Show in view mode or edit mode */}
-          {(((application?.status === "pending" || application?.status === "interview_scheduled") && mode === "view") || mode === "edit") && !showAction && (
+          {/* Action Buttons - Only shown to users with approve permission */}
+          {canApprove && (((application?.status === "pending" || application?.status === "interview_scheduled") && mode === "view") || mode === "edit") && !showAction && (
             <>
               <Separator />
               {mode === "edit" && (
