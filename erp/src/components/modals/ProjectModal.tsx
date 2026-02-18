@@ -7,11 +7,10 @@ import { Textarea } from "@/components/ui/textarea";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Checkbox } from "@/components/ui/checkbox";
 import { CalendarIcon, Loader2, ChevronLeft, ChevronRight, Check } from "lucide-react";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
-import { type Project, projects as projectsApi, apiClient, locations as locationsApi } from "@/lib/api";
+import { type Project, projects as projectsApi } from "@/lib/api";
 import { toast } from "@/hooks/use-toast";
 
 interface ProjectModalProps {
@@ -28,26 +27,12 @@ export function ProjectModal({ open, onOpenChange, project, mode }: ProjectModal
     description: "",
     category: "",
     priority: "medium",
-    scope: "",
     budget: "",
-    coordinator: "",
-    targetRegions: [] as string[],
+    status: "draft",
   });
   const [startDate, setStartDate] = useState<Date>();
   const [endDate, setEndDate] = useState<Date>();
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [coordinators, setCoordinators] = useState<Array<{ id: string; name: string; email: string }>>([]);
-  const [locations, setLocations] = useState<Array<{ _id: string; name: string; type: string; code: string }>>([]);
-  const [loadingCoordinators, setLoadingCoordinators] = useState(false);
-  const [loadingLocations, setLoadingLocations] = useState(false);
-
-  // Fetch coordinators and locations when modal opens
-  useEffect(() => {
-    if (open) {
-      fetchCoordinators();
-      fetchLocations();
-    }
-  }, [open]);
 
   // Initialize form data when project changes
   useEffect(() => {
@@ -58,10 +43,8 @@ export function ProjectModal({ open, onOpenChange, project, mode }: ProjectModal
         description: project.description || "",
         category: project.category || "",
         priority: project.priority || "medium",
-        scope: project.scope || "",
         budget: project.budget?.total?.toString() || "",
-        coordinator: project.coordinator?.id || "",
-        targetRegions: project.targetRegions?.map(r => r.id) || [],
+        status: project.status || "draft",
       });
       
       if (project.startDate) {
@@ -78,81 +61,13 @@ export function ProjectModal({ open, onOpenChange, project, mode }: ProjectModal
         description: "",
         category: "",
         priority: "medium",
-        scope: "",
         budget: "",
-        coordinator: "",
-        targetRegions: [],
+        status: "draft",
       });
       setStartDate(undefined);
       setEndDate(undefined);
     }
   }, [project, mode, open]);
-
-  const fetchCoordinators = async () => {
-    try {
-      setLoadingCoordinators(true);
-      // Try using getByRole first, fallback to getUsers with role filter
-      let response;
-      try {
-        response = await apiClient.getUsersByRole("project_coordinator");
-      } catch (error) {
-        // Fallback to getUsers with role filter
-        console.log('⚠️ getUsersByRole failed, trying getUsers with role filter');
-        response = await apiClient.getUsers({ role: "project_coordinator", limit: 100 });
-      }
-      
-      console.log('📋 Coordinators API response:', response);
-      if (response.success && response.data) {
-        const users = response.data.users || [];
-        const coordinatorsList = users
-          .filter(u => u.isActive !== false) // Only include active users
-          .map(u => ({ 
-            id: u.id, 
-            name: u.name, 
-            email: u.email || '' 
-          }));
-        console.log('✅ Loaded coordinators:', coordinatorsList.length, coordinatorsList);
-        setCoordinators(coordinatorsList);
-        
-        if (coordinatorsList.length === 0) {
-          console.warn('⚠️ No active project coordinators found in the system');
-        }
-      } else {
-        console.warn('⚠️ No coordinators found or API error:', response);
-        setCoordinators([]);
-      }
-    } catch (error) {
-      console.error("❌ Failed to fetch coordinators:", error);
-      toast({
-        title: "Warning",
-        description: "Failed to load coordinators. You can still create the project without a coordinator.",
-        variant: "default",
-      });
-      setCoordinators([]);
-    } finally {
-      setLoadingCoordinators(false);
-    }
-  };
-
-  const fetchLocations = async () => {
-    try {
-      setLoadingLocations(true);
-      // Fetch districts, areas, and units based on scope
-      const response = await locationsApi.getAll({ limit: 200, isActive: true });
-      if (response.success && response.data) {
-        setLocations(response.data.locations.map(l => ({ 
-          _id: (l as any)._id || l.id, 
-          name: l.name, 
-          type: l.type, 
-          code: l.code 
-        })));
-      }
-    } catch (error) {
-      console.error("Failed to fetch locations:", error);
-    } finally {
-      setLoadingLocations(false);
-    }
-  };
 
   const handleInputChange = (field: string, value: string) => {
     setFormData(prev => ({
@@ -166,7 +81,7 @@ export function ProjectModal({ open, onOpenChange, project, mode }: ProjectModal
       setIsSubmitting(true);
 
       // Validate required fields
-      if (!formData.name || !formData.code || !formData.description || !formData.category || !formData.scope) {
+      if (!formData.name || !formData.code || !formData.description || !formData.category) {
         toast({
           title: "Validation Error",
           description: "Please fill in all required fields",
@@ -174,7 +89,6 @@ export function ProjectModal({ open, onOpenChange, project, mode }: ProjectModal
         });
         return;
       }
-
 
       if (!startDate || !endDate) {
         toast({
@@ -191,7 +105,6 @@ export function ProjectModal({ open, onOpenChange, project, mode }: ProjectModal
         description: formData.description,
         category: formData.category,
         priority: formData.priority,
-        scope: formData.scope,
         startDate: startDate.toISOString(),
         endDate: endDate.toISOString(),
         budget: {
@@ -202,14 +115,9 @@ export function ProjectModal({ open, onOpenChange, project, mode }: ProjectModal
         },
       };
 
-      // Only include coordinator if provided
-      if (formData.coordinator) {
-        (projectData as any).coordinator = formData.coordinator;
-      }
-
-      // Only include targetRegions if provided
-      if (formData.targetRegions && formData.targetRegions.length > 0) {
-        (projectData as any).targetRegions = formData.targetRegions;
+      // Include status for edit mode
+      if (mode === "edit" && formData.status) {
+        (projectData as any).status = formData.status;
       }
 
       if (mode === "create") {
@@ -258,18 +166,17 @@ export function ProjectModal({ open, onOpenChange, project, mode }: ProjectModal
   };
 
   const [currentStep, setCurrentStep] = useState(1);
-  const totalSteps = 3;
+  const totalSteps = 2;
 
   const stepLabels = [
     "Basic Information",
     "Schedule & Budget",
-    "Team & Files",
   ];
 
   const validateStep = (step: number): boolean => {
     switch (step) {
       case 1:
-        if (!formData.name || !formData.code || !formData.description || !formData.category || !formData.scope) {
+        if (!formData.name || !formData.code || !formData.description || !formData.category) {
           toast({ title: "Validation Error", description: "Please fill in all required fields", variant: "destructive" });
           return false;
         }
@@ -279,8 +186,6 @@ export function ProjectModal({ open, onOpenChange, project, mode }: ProjectModal
           toast({ title: "Validation Error", description: "Please select start and end dates", variant: "destructive" });
           return false;
         }
-        return true;
-      case 3:
         return true;
       default:
         return true;
@@ -306,8 +211,8 @@ export function ProjectModal({ open, onOpenChange, project, mode }: ProjectModal
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl max-h-[90vh] overflow-hidden flex flex-col">
-        <DialogHeader>
+      <DialogContent className="max-w-2xl max-h-[90vh] overflow-hidden flex flex-col" style={{ display: "flex" }}>
+        <DialogHeader className="flex-shrink-0">
           <DialogTitle>{mode === "create" ? "Create New Project" : "Edit Project"}</DialogTitle>
           {/* Step Indicator */}
           <div className="flex items-center justify-center gap-2 pt-4">
@@ -384,7 +289,7 @@ export function ProjectModal({ open, onOpenChange, project, mode }: ProjectModal
             />
           </div>
 
-          <div className="grid gap-4 md:grid-cols-3">
+          <div className="grid gap-4 md:grid-cols-2">
             <div className="space-y-2">
               <Label>Category *</Label>
               <Select value={formData.category} onValueChange={(value) => handleInputChange("category", value)}>
@@ -419,21 +324,6 @@ export function ProjectModal({ open, onOpenChange, project, mode }: ProjectModal
               </Select>
             </div>
 
-            <div className="space-y-2">
-              <Label>Scope *</Label>
-              <Select value={formData.scope} onValueChange={(value) => handleInputChange("scope", value)}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select scope" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="state">State</SelectItem>
-                  <SelectItem value="district">District</SelectItem>
-                  <SelectItem value="area">Area</SelectItem>
-                  <SelectItem value="unit">Unit</SelectItem>
-                  <SelectItem value="multi_region">Multi Region</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
           </div>
           </>
           )}
@@ -489,55 +379,27 @@ export function ProjectModal({ open, onOpenChange, project, mode }: ProjectModal
                 </div>
               )}
             </div>
-            <div className="space-y-2">
-              <Label>Coordinator</Label>
-              {mode === "create" ? (
-                <Select 
-                  value={formData.coordinator || undefined} 
-                  onValueChange={(value) => handleInputChange("coordinator", value)}
-                  disabled={loadingCoordinators || coordinators.length === 0}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder={
-                      loadingCoordinators 
-                        ? "Loading coordinators..." 
-                        : coordinators.length === 0 
-                        ? "No coordinators available (optional)" 
-                        : "Select coordinator (optional)"
-                    } />
-                  </SelectTrigger>
-                  {coordinators.length > 0 && (
-                    <SelectContent>
-                      {coordinators.map((coord) => (
-                        <SelectItem key={coord.id} value={coord.id}>
-                          {coord.name} {coord.email ? `(${coord.email})` : ''}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  )}
-                </Select>
-              ) : (
-                <>
-                  <Input 
-                    value={project?.coordinator?.name || ""}
-                    disabled
-                  />
-                  <div className="text-sm text-muted-foreground">
-                    Role: {project?.coordinator?.role?.replace('_', ' ')} | 
-                    Email: {project?.coordinator?.email}
-                  </div>
-                </>
-              )}
-            </div>
           </div>
 
           {project && mode === "edit" && (
             <div className="space-y-2">
               <Label>Current Status & Progress</Label>
               <div className="grid gap-4 md:grid-cols-2">
-                <div className="p-3 border rounded-lg">
-                  <p className="text-sm text-muted-foreground">Status</p>
-                  <p className="font-medium capitalize">{project.status.replace('_', ' ')}</p>
+                <div className="space-y-1">
+                  <Label className="text-sm text-muted-foreground">Status</Label>
+                  <Select value={formData.status} onValueChange={(value) => handleInputChange("status", value)}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select status" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="draft">Draft</SelectItem>
+                      <SelectItem value="approved">Approved</SelectItem>
+                      <SelectItem value="active">Active</SelectItem>
+                      <SelectItem value="on_hold">On Hold</SelectItem>
+                      <SelectItem value="completed">Completed</SelectItem>
+                      <SelectItem value="cancelled">Cancelled</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
                 <div className="p-3 border rounded-lg">
                   <p className="text-sm text-muted-foreground">Progress</p>
@@ -548,36 +410,9 @@ export function ProjectModal({ open, onOpenChange, project, mode }: ProjectModal
           )}
           </>
           )}
-
-          {/* Step 3: Regions & Files */}
-          {currentStep === 3 && (
-          <>
-          {project && mode === "edit" && (
-            <div className="space-y-2">
-              <Label>Target Regions</Label>
-              <div className="flex flex-wrap gap-2">
-                {project.targetRegions.map((region) => (
-                  <span key={region.id} className="px-2 py-1 bg-blue-100 text-blue-800 rounded text-sm">
-                    {region.name} ({region.type})
-                  </span>
-                ))}
-              </div>
-            </div>
-          )}
-          
-          <div className="space-y-2">
-            <Label>Project Image</Label>
-            <Input type="file" accept="image/*" />
-          </div>
-          <div className="space-y-2">
-            <Label>Documents (Optional)</Label>
-            <Input type="file" accept=".pdf,.doc,.docx" multiple />
-          </div>
-          </>
-          )}
         </div>
 
-        <DialogFooter className="flex items-center justify-between sm:justify-between border-t pt-4">
+        <DialogFooter className="flex-shrink-0 flex items-center justify-between sm:justify-between border-t pt-4">
           <div className="text-sm text-muted-foreground">
             Step {currentStep} of {totalSteps}
           </div>

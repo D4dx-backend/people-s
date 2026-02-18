@@ -1073,6 +1073,41 @@ class RBACService {
         action: 'delete',
         scope: 'global',
         securityLevel: 'internal'
+      },
+
+      // Website Management Permissions
+      {
+        name: 'website.read',
+        displayName: 'View Website Settings',
+        description: 'View website management pages and settings',
+        module: 'website',
+        category: 'read',
+        resource: 'website',
+        action: 'read',
+        scope: 'global',
+        securityLevel: 'internal'
+      },
+      {
+        name: 'website.write',
+        displayName: 'Edit Website Settings',
+        description: 'Create and update website content, banners, news, brochures, and partners',
+        module: 'website',
+        category: 'update',
+        resource: 'website',
+        action: 'update',
+        scope: 'global',
+        securityLevel: 'confidential'
+      },
+      {
+        name: 'website.delete',
+        displayName: 'Delete Website Content',
+        description: 'Delete website banners, news, brochures, and partners',
+        module: 'website',
+        category: 'delete',
+        resource: 'website',
+        action: 'delete',
+        scope: 'global',
+        securityLevel: 'confidential'
       }
     ];
 
@@ -1202,7 +1237,10 @@ class RBACService {
           'login_logs.read', 'login_logs.export', 'login_logs.delete',
           
           // Error Logs
-          'error_logs.read', 'error_logs.manage', 'error_logs.export', 'error_logs.delete'
+          'error_logs.read', 'error_logs.manage', 'error_logs.export', 'error_logs.delete',
+
+          // Website Management
+          'website.read', 'website.write', 'website.delete'
         ]
       },
       {

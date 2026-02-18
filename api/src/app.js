@@ -105,6 +105,7 @@ const paymentRoutes = require('./routes/paymentRoutes');
 const reportRoutes = require('./routes/reportRoutes');
 const recurringPaymentRoutes = require('./routes/recurringPaymentRoutes');
 const speechRoutes = require('./routes/speechRoutes');
+const schemeTargetRoutes = require('./routes/schemeTargetRoutes');
 
 const dashboardRoutes = require('./routes/dashboardRoutes');
 const rbacRoutes = require('./routes/rbacRoutes');
@@ -132,6 +133,7 @@ app.use('/api/sms', smsRoutes);
 app.use('/api/notifications', notificationRoutes);
 app.use('/api/projects', projectRoutes);
 app.use('/api/schemes', schemeRoutes);
+app.use('/api/scheme-targets', schemeTargetRoutes);
 app.use('/api/locations', locationRoutes);
 app.use('/api/beneficiary', beneficiaryApiRoutes); // Beneficiary-specific API routes (must come before /api/beneficiaries)
 app.use('/api/beneficiaries', beneficiaryRoutes); // Admin routes for beneficiary management

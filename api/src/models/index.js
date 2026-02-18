@@ -20,6 +20,7 @@ const MasterData = require('./MasterData');
 const RecurringPayment = require('./RecurringPayment');
 const LoginLog = require('./LoginLog');
 const ErrorLog = require('./ErrorLog');
+const SchemeTarget = require('./SchemeTarget');
 
 // Website Management Models
 const WebsiteSettings = require('./WebsiteSettings');
@@ -55,6 +56,7 @@ module.exports = {
   RecurringPayment,
   LoginLog,
   ErrorLog,
+  SchemeTarget,
 
   WebsiteSettings,
   NewsEvent,
