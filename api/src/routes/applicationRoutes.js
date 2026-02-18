@@ -14,7 +14,8 @@ const {
   addStageComment,
   uploadStageDocument,
   getRenewalDueApplications,
-  getRenewalHistory
+  getRenewalHistory,
+  recalculateScore
 } = require('../controllers/applicationController');
 const { authenticate, authorize } = require('../middleware/auth');
 const { syncApplicationStages } = require('../middleware/syncStages');
@@ -91,39 +92,39 @@ const approveApplicationValidation = [
 // Export applications as CSV or JSON
 router.get('/export',
   authenticate,
-  authorize('super_admin', 'state_admin', 'district_admin', 'area_admin', 'unit_admin'),
+  authorize('super_admin', 'state_admin', 'district_admin', 'area_admin', 'unit_admin', 'project_coordinator', 'scheme_coordinator'),
   createExportHandler(Application, exportConfigs.application)
 );
 
 // Renewal management routes (must come before /:id routes)
 router.get('/renewal-due',
   authenticate,
-  authorize('super_admin', 'state_admin', 'district_admin', 'area_admin', 'unit_admin'),
+  authorize('super_admin', 'state_admin', 'district_admin', 'area_admin', 'unit_admin', 'project_coordinator', 'scheme_coordinator'),
   getRenewalDueApplications
 );
 
 router.get('/:id/renewal-history',
   authenticate,
-  authorize('super_admin', 'state_admin', 'district_admin', 'area_admin', 'unit_admin'),
+  authorize('super_admin', 'state_admin', 'district_admin', 'area_admin', 'unit_admin', 'project_coordinator', 'scheme_coordinator'),
   getRenewalHistory
 );
 
 // Get available roles to revert application to (must be before /:id route)
 router.get('/:id/available-revert-roles',
   authenticate,
-  authorize('super_admin', 'state_admin', 'district_admin', 'area_admin'),
+  authorize('super_admin', 'state_admin', 'district_admin', 'area_admin', 'unit_admin', 'project_coordinator', 'scheme_coordinator'),
   getAvailableRevertRoles
 );
 
-router.get('/', 
-  authenticate, 
-  authorize('super_admin', 'state_admin', 'district_admin', 'area_admin', 'unit_admin'), 
+router.get('/',
+  authenticate,
+  authorize('super_admin', 'state_admin', 'district_admin', 'area_admin', 'unit_admin', 'project_coordinator', 'scheme_coordinator'),
   getApplications
 );
 
-router.get('/:id', 
-  authenticate, 
-  authorize('super_admin', 'state_admin', 'district_admin', 'area_admin', 'unit_admin'), 
+router.get('/:id',
+  authenticate,
+  authorize('super_admin', 'state_admin', 'district_admin', 'area_admin', 'unit_admin', 'project_coordinator', 'scheme_coordinator'),
   getApplication
 );
 
@@ -135,9 +136,10 @@ router.post('/',
   createApplication
 );
 
+// Full application edit is restricted to senior admin roles only
 router.put('/:id', 
   authenticate, 
-  authorize('super_admin', 'state_admin', 'district_admin', 'area_admin', 'unit_admin'), 
+  authorize('super_admin', 'state_admin', 'area_admin'), 
   updateApplicationValidation, 
   updateApplication
 );
@@ -167,36 +169,43 @@ router.put('/:id/approve',
 
 router.delete('/:id', 
   authenticate, 
-  authorize('super_admin', 'state_admin', 'district_admin', 'area_admin', 'unit_admin'), 
+  authorize('super_admin', 'state_admin', 'area_admin'), 
   deleteApplication
 );
 
-// Update application stage status (now includes district_admin, unit_admin)
+// Update application stage status (all admin roles + coordinators can update stages)
 router.patch('/:id/stages/:stageId', 
   authenticate, 
-  authorize('super_admin', 'state_admin', 'district_admin', 'area_admin', 'unit_admin'), 
+  authorize('super_admin', 'state_admin', 'district_admin', 'area_admin', 'unit_admin', 'project_coordinator', 'scheme_coordinator'), 
   updateApplicationStage
 );
 
 // Add comment to a stage
 router.patch('/:id/stages/:stageId/comment', 
   authenticate, 
-  authorize('super_admin', 'state_admin', 'district_admin', 'area_admin', 'unit_admin'), 
+  authorize('super_admin', 'state_admin', 'district_admin', 'area_admin', 'unit_admin', 'project_coordinator', 'scheme_coordinator'), 
   addStageComment
 );
 
 // Upload document for a stage
 router.post('/:id/stages/:stageId/documents/:docIndex', 
   authenticate, 
-  authorize('super_admin', 'state_admin', 'district_admin', 'area_admin', 'unit_admin'), 
+  authorize('super_admin', 'state_admin', 'district_admin', 'area_admin', 'unit_admin', 'project_coordinator', 'scheme_coordinator'), 
   uploadSingle('document'),
   uploadStageDocument
 );
 
+// Recalculate eligibility score for an application
+router.post('/:id/recalculate-score',
+  authenticate,
+  authorize('super_admin', 'state_admin', 'district_admin', 'area_admin', 'unit_admin', 'project_coordinator', 'scheme_coordinator'),
+  recalculateScore
+);
+
 // Revert application to a previous stage
-router.patch('/:id/revert', 
+router.patch('/:id/revert',
   authenticate, 
-  authorize('super_admin', 'state_admin', 'district_admin', 'area_admin'), 
+  authorize('super_admin', 'state_admin', 'district_admin', 'area_admin', 'unit_admin', 'project_coordinator', 'scheme_coordinator'), 
   revertApplicationStage
 );
 

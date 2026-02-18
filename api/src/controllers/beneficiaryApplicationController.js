@@ -480,10 +480,9 @@ class BeneficiaryApplicationController {
 
           // Calculate eligibility score if form has scoring enabled
           try {
-            const formConfig = await FormConfiguration.findOne({ 
-              scheme: schemeId, 
-              enabled: true,
-              'scoringConfig.enabled': true 
+            const formConfig = await FormConfiguration.findOne({
+              scheme: schemeId,
+              enabled: true
             });
             if (formConfig) {
               const scoreResult = calculateApplicationScore(formData, formConfig);
@@ -596,10 +595,9 @@ class BeneficiaryApplicationController {
 
       // Calculate eligibility score if form has scoring enabled
       try {
-        const formConfig = await FormConfiguration.findOne({ 
-          scheme: schemeId, 
-          enabled: true,
-          'scoringConfig.enabled': true 
+        const formConfig = await FormConfiguration.findOne({
+          scheme: schemeId,
+          enabled: true
         });
 
         if (formConfig) {

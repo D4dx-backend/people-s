@@ -36,16 +36,42 @@ class ProjectController {
         ];
       }
 
-      // Apply regional access control
+      // Apply role-based access control
       if (req.user.role !== 'super_admin' && req.user.role !== 'state_admin') {
-        const userRegions = req.user.adminScope?.regions || [];
-        if (userRegions.length > 0) {
-          filter.targetRegions = { $in: userRegions };
+        if (req.user.role === 'project_coordinator') {
+          // Project coordinators only see their assigned projects
+          const assignedProjects = req.user.adminScope?.projects || [];
+          if (assignedProjects.length > 0) {
+            filter._id = { $in: assignedProjects };
+          } else {
+            filter._id = { $in: [] }; // No assigned projects
+          }
+        } else if (req.user.role === 'scheme_coordinator') {
+          // Scheme coordinators see projects that contain their assigned schemes
+          const assignedSchemes = req.user.adminScope?.schemes || [];
+          if (assignedSchemes.length > 0) {
+            const Scheme = require('../models').Scheme;
+            const schemes = await Scheme.find({ _id: { $in: assignedSchemes } }).select('project');
+            const projectIds = [...new Set(schemes.map(s => s.project).filter(Boolean))];
+            if (projectIds.length > 0) {
+              filter._id = { $in: projectIds };
+            } else {
+              filter._id = { $in: [] };
+            }
+          } else {
+            filter._id = { $in: [] };
+          }
+        } else {
+          // Regional admins see projects in their regions
+          const userRegions = req.user.adminScope?.regions || [];
+          if (userRegions.length > 0) {
+            filter.targetRegions = { $in: userRegions };
+          }
         }
       }
 
       const skip = (page - 1) * limit;
-      
+
       const projects = await Project.find(filter)
         .populate('coordinator', 'name email phone role')
         .populate('targetRegions', 'name type code')
@@ -310,9 +336,29 @@ class ProjectController {
       // Build filter based on user access
       const filter = {};
       if (req.user.role !== 'super_admin' && req.user.role !== 'state_admin') {
-        const userRegions = req.user.adminScope?.regions || [];
-        if (userRegions.length > 0) {
-          filter.targetRegions = { $in: userRegions };
+        if (req.user.role === 'project_coordinator') {
+          const assignedProjects = req.user.adminScope?.projects || [];
+          if (assignedProjects.length > 0) {
+            filter._id = { $in: assignedProjects };
+          } else {
+            filter._id = { $in: [] };
+          }
+        } else if (req.user.role === 'scheme_coordinator') {
+          // Scheme coordinators see projects that contain their assigned schemes
+          const assignedSchemes = req.user.adminScope?.schemes || [];
+          if (assignedSchemes.length > 0) {
+            const Scheme = require('../models').Scheme;
+            const schemes = await Scheme.find({ _id: { $in: assignedSchemes } }).select('project');
+            const projectIds = [...new Set(schemes.map(s => s.project).filter(Boolean))];
+            filter._id = projectIds.length > 0 ? { $in: projectIds } : { $in: [] };
+          } else {
+            filter._id = { $in: [] };
+          }
+        } else {
+          const userRegions = req.user.adminScope?.regions || [];
+          if (userRegions.length > 0) {
+            filter.targetRegions = { $in: userRegions };
+          }
         }
       }
 

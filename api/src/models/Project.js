@@ -37,7 +37,7 @@ const projectSchema = new mongoose.Schema({
   scope: {
     type: String,
     enum: ['state', 'district', 'area', 'unit', 'multi_region'],
-    required: [true, 'Project scope is required']
+    default: 'state'
   },
   targetRegions: [{
     type: mongoose.Schema.Types.ObjectId,
@@ -369,19 +369,59 @@ projectSchema.virtual('applicationsCount', {
 projectSchema.methods.canUserAccess = function(user) {
   // Super admin and state admin can access all projects
   if (user.role === 'super_admin' || user.role === 'state_admin') return true;
-  
+
   // Project coordinator can access assigned projects
   if (user.role === 'project_coordinator') {
-    return user.adminScope?.projects?.some(projectId => 
+    return user.adminScope?.projects?.some(projectId =>
       projectId.toString() === this._id.toString()
     ) || false;
   }
-  
-  // Other admins can access projects in their regions
+
+  // Scheme coordinator can access projects that contain their assigned schemes
+  if (user.role === 'scheme_coordinator') {
+    const assignedSchemes = (user.adminScope?.schemes || []).map(s =>
+      s && typeof s === 'object' ? s._id?.toString() : s?.toString()
+    ).filter(Boolean);
+    if (assignedSchemes.length === 0) return false;
+    // Check if this project's _id is referenced from any assigned scheme
+    // Fine-grained lookup is done at controller level; here we verify the project
+    // has at least one scheme ID listed in the user's assigned schemes
+    const projectSchemes = (this.schemes || []).map(s =>
+      s && typeof s === 'object' ? s._id?.toString() : s?.toString()
+    ).filter(Boolean);
+    if (projectSchemes.length > 0) {
+      return projectSchemes.some(sid => assignedSchemes.includes(sid));
+    }
+    // If project.schemes is not populated, fall back to allowing access
+    // (controller will perform the authoritative scheme→project lookup)
+    return true;
+  }
+
+  // District/area/unit admins - check via direct scope properties
+  const getId = (ref) => {
+    if (!ref) return null;
+    if (typeof ref === 'object' && ref._id) return ref._id.toString();
+    return ref.toString();
+  };
+
+  if (user.role === 'district_admin' && user.adminScope?.district) {
+    const districtId = getId(user.adminScope.district);
+    if (this.targetRegions?.some(r => getId(r) === districtId)) return true;
+  }
+  if (user.role === 'area_admin' && user.adminScope?.area) {
+    const areaId = getId(user.adminScope.area);
+    if (this.targetRegions?.some(r => getId(r) === areaId)) return true;
+  }
+  if (user.role === 'unit_admin' && user.adminScope?.unit) {
+    const unitId = getId(user.adminScope.unit);
+    if (this.targetRegions?.some(r => getId(r) === unitId)) return true;
+  }
+
+  // Check via regions array
   if (!user.adminScope?.regions || !this.targetRegions) return false;
-  
-  return this.targetRegions.some(regionId => 
-    user.adminScope.regions.some(userRegionId => 
+
+  return this.targetRegions.some(regionId =>
+    user.adminScope.regions.some(userRegionId =>
       userRegionId.toString() === regionId.toString()
     )
   );

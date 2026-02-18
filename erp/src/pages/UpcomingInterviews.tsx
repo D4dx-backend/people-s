@@ -55,6 +55,7 @@ export default function UpcomingInterviews() {
   });
   
   const canViewInterviews = hasAnyPermission(['interviews.read', 'applications.read.all', 'applications.read.regional']);
+  const canApproveInterviews = hasAnyPermission(['applications.approve']);
   
   const [interviewList, setInterviewList] = useState<Interview[]>([]);
   const [loading, setLoading] = useState(true);
@@ -328,6 +329,7 @@ export default function UpcomingInterviews() {
         mode={modalMode}
         onApprove={handleApprove}
         onReject={handleReject}
+        canApprove={canApproveInterviews}
       />
       
       <ReportsModal

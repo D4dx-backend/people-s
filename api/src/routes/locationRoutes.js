@@ -291,7 +291,7 @@ router.get('/export',
 
 router.get('/',
   authenticate,
-  authorize('super_admin', 'state_admin', 'district_admin', 'area_admin', 'unit_admin'),
+  authorize('super_admin', 'state_admin', 'district_admin', 'area_admin', 'unit_admin', 'project_coordinator', 'scheme_coordinator'),
   validate(locationSchemas.query, 'query'),
   locationController.getLocations
 );
@@ -373,7 +373,7 @@ router.get('/',
  */
 router.get('/hierarchy',
   authenticate,
-  authorize('super_admin', 'state_admin', 'district_admin', 'area_admin', 'unit_admin'),
+  authorize('super_admin', 'state_admin', 'district_admin', 'area_admin', 'unit_admin', 'project_coordinator', 'scheme_coordinator'),
   locationController.getHierarchy
 );
 
@@ -554,7 +554,7 @@ router.get('/statistics',
  */
 router.get('/by-type/:type',
   authenticate,
-  authorize('super_admin', 'state_admin', 'district_admin', 'area_admin', 'unit_admin'),
+  authorize('super_admin', 'state_admin', 'district_admin', 'area_admin', 'unit_admin', 'project_coordinator', 'scheme_coordinator'),
   locationController.getLocationsByType
 );
 
@@ -687,7 +687,7 @@ router.post('/',
  */
 router.get('/:id',
   authenticate,
-  authorize('super_admin', 'state_admin', 'district_admin', 'area_admin', 'unit_admin'),
+  authorize('super_admin', 'state_admin', 'district_admin', 'area_admin', 'unit_admin', 'project_coordinator', 'scheme_coordinator'),
   validate(Joi.object({ id: commonSchemas.objectId }), 'params'),
   locationController.getLocationById
 );

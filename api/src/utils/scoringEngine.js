@@ -41,29 +41,34 @@ function evaluateField(value, field) {
       const numValue = parseFloat(value);
       if (isNaN(numValue)) return { earnedPoints: 0, appliedRule: 'Invalid number' };
 
-      // Evaluate rules top-to-bottom, first match wins
+      // Accumulate points from all matching rules (capped at maxPoints by caller)
+      let totalPoints = 0;
+      const matchedRules = [];
+
       for (const rule of rules) {
         const ruleValue = parseFloat(rule.value);
         const ruleValue2 = rule.value2 ? parseFloat(rule.value2) : null;
 
         switch (rule.condition) {
           case 'greater_than':
-            if (numValue > ruleValue) return { earnedPoints: rule.points, appliedRule: `> ${ruleValue}` };
+            if (numValue > ruleValue) { totalPoints += rule.points; matchedRules.push(`> ${ruleValue}`); }
             break;
           case 'less_than':
-            if (numValue < ruleValue) return { earnedPoints: rule.points, appliedRule: `< ${ruleValue}` };
+            if (numValue < ruleValue) { totalPoints += rule.points; matchedRules.push(`< ${ruleValue}`); }
             break;
           case 'between':
             if (ruleValue2 !== null && numValue >= ruleValue && numValue <= ruleValue2) {
-              return { earnedPoints: rule.points, appliedRule: `${ruleValue} - ${ruleValue2}` };
+              totalPoints += rule.points; matchedRules.push(`${ruleValue} - ${ruleValue2}`);
             }
             break;
           case 'equals':
-            if (numValue === ruleValue) return { earnedPoints: rule.points, appliedRule: `= ${ruleValue}` };
+            if (numValue === ruleValue) { totalPoints += rule.points; matchedRules.push(`= ${ruleValue}`); }
             break;
         }
       }
-      return { earnedPoints: 0, appliedRule: 'No matching rule' };
+
+      if (matchedRules.length === 0) return { earnedPoints: 0, appliedRule: 'No matching rule' };
+      return { earnedPoints: totalPoints, appliedRule: matchedRules.join(', ') };
     }
 
     case 'select':
@@ -232,11 +237,15 @@ function calculateApplicationScore(formData, formConfig) {
     calculatedAt: new Date()
   };
 
-  if (!formConfig?.scoringConfig?.enabled) {
+  if (!formData || !formConfig?.pages) {
     return defaultResult;
   }
 
-  if (!formData || !formConfig?.pages) {
+  // Check if any field actually has scoring rules — if not, nothing to calculate
+  const hasScoringFields = formConfig.pages.some(page =>
+    page.fields?.some(field => field.scoring?.enabled && field.scoring?.maxPoints > 0)
+  );
+  if (!hasScoringFields) {
     return defaultResult;
   }
 
@@ -280,9 +289,10 @@ function calculateApplicationScore(formData, formConfig) {
     ? Math.round((totalEarnedPoints / totalMaxPoints) * 10000) / 100 // 2 decimal places
     : 0;
 
-  const threshold = formConfig.scoringConfig.minimumThreshold || 0;
+  const scoringConfig = formConfig.scoringConfig || {};
+  const threshold = scoringConfig.enabled ? (scoringConfig.minimumThreshold || 0) : 0;
   const meetsThreshold = threshold === 0 || percentage >= threshold;
-  const autoRejected = formConfig.scoringConfig.autoRejectBelowThreshold && !meetsThreshold;
+  const autoRejected = scoringConfig.enabled && scoringConfig.autoRejectBelowThreshold && !meetsThreshold;
 
   return {
     totalPoints: totalEarnedPoints,

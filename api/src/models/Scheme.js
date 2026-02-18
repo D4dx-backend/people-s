@@ -413,11 +413,18 @@ schemeSchema.methods.canUserAccess = function(user) {
   
   // Project coordinator can access schemes in assigned projects
   if (user.role === 'project_coordinator') {
-    return user.adminScope?.projects?.some(projectId => 
+    return user.adminScope?.projects?.some(projectId =>
       projectId.toString() === this.project.toString()
     ) || false;
   }
-  
+
+  // Scheme coordinator can access their assigned schemes
+  if (user.role === 'scheme_coordinator') {
+    return user.adminScope?.schemes?.some(schemeId =>
+      schemeId.toString() === this._id.toString()
+    ) || false;
+  }
+
   // If scheme has no target regions (applicable to all), allow access based on user role
   if (!this.targetRegions || this.targetRegions.length === 0) {
     return ['district_admin', 'area_admin', 'unit_admin'].includes(user.role);

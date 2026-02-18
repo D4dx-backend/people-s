@@ -36,31 +36,51 @@ class SchemeController {
         ];
       }
 
-      // Apply regional access control
+      // Apply role-based access control
       if (req.user.role !== 'super_admin' && req.user.role !== 'state_admin') {
-        const userRegions = req.user.adminScope?.regions || [];
-        if (userRegions.length > 0) {
-          // Include schemes with no target regions (applicable to all) or schemes in user's regions
-          const regionalFilter = [
-            { targetRegions: { $size: 0 } }, // Schemes applicable to all regions
-            { targetRegions: { $in: userRegions } } // Schemes in user's regions
-          ];
-          
-          // Merge with existing $or filter if present
-          if (filter.$or) {
-            filter.$and = [
-              { $or: filter.$or },
-              { $or: regionalFilter }
-            ];
-            delete filter.$or;
+        if (req.user.role === 'scheme_coordinator') {
+          // Scheme coordinators only see their assigned schemes
+          const assignedSchemes = req.user.adminScope?.schemes || [];
+          if (assignedSchemes.length > 0) {
+            filter._id = { $in: assignedSchemes };
           } else {
-            filter.$or = regionalFilter;
+            filter._id = null;
+          }
+        } else if (req.user.role === 'project_coordinator') {
+          // Project coordinators see schemes under their assigned projects
+          const assignedProjects = req.user.adminScope?.projects || [];
+          if (assignedProjects.length > 0) {
+            filter.project = { $in: assignedProjects };
+          } else {
+            filter._id = null;
+          }
+        } else {
+          // Regional admins see schemes in their regions or schemes with no target regions
+          const userRegions = req.user.adminScope?.regions || [];
+          if (userRegions.length > 0) {
+            const regionalFilter = [
+              { targetRegions: { $size: 0 } },
+              { targetRegions: { $in: userRegions } }
+            ];
+
+            if (filter.$or) {
+              filter.$and = [
+                { $or: filter.$or },
+                { $or: regionalFilter }
+              ];
+              delete filter.$or;
+            } else {
+              filter.$or = regionalFilter;
+            }
+          } else {
+            // No regions assigned – deny access
+            filter._id = { $in: [] };
           }
         }
       }
 
       const skip = (page - 1) * limit;
-      
+
       const schemes = await Scheme.find(filter)
         .populate('project', 'name code description')
         .populate('targetRegions', 'name type code')
@@ -401,13 +421,31 @@ class SchemeController {
       // Build filter based on user access
       const filter = {};
       if (req.user.role !== 'super_admin' && req.user.role !== 'state_admin') {
-        const userRegions = req.user.adminScope?.regions || [];
-        if (userRegions.length > 0) {
-          // Include schemes with no target regions (applicable to all) or schemes in user's regions
-          filter.$or = [
-            { targetRegions: { $size: 0 } }, // Schemes applicable to all regions
-            { targetRegions: { $in: userRegions } } // Schemes in user's regions
-          ];
+        if (req.user.role === 'scheme_coordinator') {
+          const assignedSchemes = req.user.adminScope?.schemes || [];
+          if (assignedSchemes.length > 0) {
+            filter._id = { $in: assignedSchemes };
+          } else {
+            filter._id = null;
+          }
+        } else if (req.user.role === 'project_coordinator') {
+          const assignedProjects = req.user.adminScope?.projects || [];
+          if (assignedProjects.length > 0) {
+            filter.project = { $in: assignedProjects };
+          } else {
+            filter._id = null;
+          }
+        } else {
+          const userRegions = req.user.adminScope?.regions || [];
+          if (userRegions.length > 0) {
+            filter.$or = [
+              { targetRegions: { $size: 0 } },
+              { targetRegions: { $in: userRegions } }
+            ];
+          } else {
+            // No regions assigned – deny access
+            filter._id = { $in: [] };
+          }
         }
       }
 
@@ -484,15 +522,33 @@ class SchemeController {
         'applicationSettings.endDate': { $gte: new Date() }
       };
 
-      // Apply regional access control
+      // Apply role-based access control
       if (req.user.role !== 'super_admin' && req.user.role !== 'state_admin') {
-        const userRegions = req.user.adminScope?.regions || [];
-        if (userRegions.length > 0) {
-          // Include schemes with no target regions (applicable to all) or schemes in user's regions
-          filter.$or = [
-            { targetRegions: { $size: 0 } }, // Schemes applicable to all regions
-            { targetRegions: { $in: userRegions } } // Schemes in user's regions
-          ];
+        if (req.user.role === 'scheme_coordinator') {
+          const assignedSchemes = req.user.adminScope?.schemes || [];
+          if (assignedSchemes.length > 0) {
+            filter._id = { $in: assignedSchemes };
+          } else {
+            filter._id = null;
+          }
+        } else if (req.user.role === 'project_coordinator') {
+          const assignedProjects = req.user.adminScope?.projects || [];
+          if (assignedProjects.length > 0) {
+            filter.project = { $in: assignedProjects };
+          } else {
+            filter._id = null;
+          }
+        } else {
+          const userRegions = req.user.adminScope?.regions || [];
+          if (userRegions.length > 0) {
+            filter.$or = [
+              { targetRegions: { $size: 0 } },
+              { targetRegions: { $in: userRegions } }
+            ];
+          } else {
+            // No regions assigned – deny access
+            filter._id = { $in: [] };
+          }
         }
       }
 

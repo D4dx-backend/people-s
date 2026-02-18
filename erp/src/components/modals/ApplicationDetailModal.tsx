@@ -363,13 +363,15 @@ interface ApplicationDetailModalProps {
   applicationId: string | null;
   onClose: () => void;
   onActionComplete?: () => void;
+  canApprove?: boolean;
 }
 
 export const ApplicationDetailModal: React.FC<ApplicationDetailModalProps> = ({
   isOpen,
   applicationId,
   onClose,
-  onActionComplete
+  onActionComplete,
+  canApprove = false
 }) => {
   const { toast } = useToast();
   const { user } = useAuth();
@@ -432,13 +434,14 @@ export const ApplicationDetailModal: React.FC<ApplicationDetailModalProps> = ({
         setLoadingRevertRoles(true);
         try {
           const response = await applicationsApi.getAvailableRevertRoles(application._id);
-          if (response.success && response.data?.availableRoles) {
-            setAvailableRevertRoles(response.data.availableRoles);
+          const responseData = response.data as any;
+          if (response.success && responseData?.availableRoles) {
+            setAvailableRevertRoles(responseData.availableRoles);
             // Show info message if no users available (not an error)
-            if (response.data.message) {
+            if (responseData.message) {
               toast({
                 title: "Information",
-                description: response.data.message,
+                description: responseData.message,
                 variant: "default"
               });
             }
@@ -796,6 +799,74 @@ export const ApplicationDetailModal: React.FC<ApplicationDetailModalProps> = ({
     return String(value);
   };
 
+  const getFieldConfig = (fieldKey: string): any | null => {
+    if (!formConfig?.pages) return null;
+    for (const page of formConfig.pages) {
+      const fieldsToCheck = [...(page.fields || [])];
+      if (page.sections) {
+        for (const section of page.sections) {
+          if (section.fields) fieldsToCheck.push(...section.fields);
+        }
+      }
+      const fieldKeyNumber = fieldKey.match(/field_(\d+)/)?.[1];
+      const field = fieldsToCheck.find((f: any) => {
+        const fieldIdStr = String(f.id);
+        return (
+          fieldIdStr === fieldKeyNumber ||
+          f.id === parseInt(fieldKeyNumber || '0', 10)
+        );
+      });
+      if (field) return field;
+    }
+    return null;
+  };
+
+  const renderTableValue = (value: any, fieldConfig: any) => {
+    const colCount = fieldConfig?.columns || 2;
+    const rowCount = fieldConfig?.rows || 2;
+    const columnTitles: string[] = fieldConfig?.columnTitles || [];
+    const rowTitles: string[] = fieldConfig?.rowTitles || [];
+    const hasRowLabels = rowTitles.some((t: string) => t);
+
+    // Normalize value to 2D array
+    const tableData: string[][] = Array.isArray(value)
+      ? value
+      : Array.from({ length: rowCount }, () => Array(colCount).fill(''));
+
+    return (
+      <div className="overflow-auto rounded border">
+        <table className="w-full text-sm border-collapse">
+          <thead>
+            <tr className="bg-muted">
+              {hasRowLabels && <th className="border p-2 text-xs font-medium text-left text-muted-foreground" />}
+              {Array.from({ length: colCount }, (_, i) => (
+                <th key={i} className="border p-2 text-xs font-semibold text-left">
+                  {columnTitles[i] || `Column ${i + 1}`}
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {Array.from({ length: rowCount }, (_, r) => (
+              <tr key={r} className={r % 2 === 0 ? '' : 'bg-muted/30'}>
+                {hasRowLabels && (
+                  <td className="border p-2 text-xs font-medium text-muted-foreground bg-muted/50 whitespace-nowrap">
+                    {rowTitles[r] || `Row ${r + 1}`}
+                  </td>
+                )}
+                {Array.from({ length: colCount }, (_, c) => (
+                  <td key={c} className="border p-2 text-xs">
+                    {tableData[r]?.[c] || <span className="text-muted-foreground italic">—</span>}
+                  </td>
+                ))}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    );
+  };
+
   const getFieldLabel = (fieldKey: string): string => {
     console.log('🔍 Looking up label for field:', fieldKey);
     console.log('- Form config available:', !!formConfig);
@@ -908,18 +979,48 @@ export const ApplicationDetailModal: React.FC<ApplicationDetailModalProps> = ({
       );
     }
 
+    // Split entries into table fields (span full width) and regular fields (grid)
+    const regularEntries: [string, any][] = [];
+    const tableEntries: [string, any][] = [];
+
+    for (const entry of entries) {
+      const config = getFieldConfig(entry[0]);
+      if (config?.type === 'row' || config?.type === 'column' || Array.isArray(entry[1])) {
+        tableEntries.push(entry);
+      } else {
+        regularEntries.push(entry);
+      }
+    }
+
     return (
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {entries.map(([key, value]) => {
+      <div className="space-y-4">
+        {/* Regular key-value fields in 2-col grid */}
+        {regularEntries.length > 0 && (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {regularEntries.map(([key, value]) => {
+              const label = getFieldLabel(key);
+              return (
+                <div key={key} className="space-y-1">
+                  <label className="text-sm font-medium text-muted-foreground">
+                    {label}
+                  </label>
+                  <div className="text-sm bg-muted p-2 rounded-md break-words">
+                    {formatFieldValue(value)}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+
+        {/* Table (Row/Column) fields span full width */}
+        {tableEntries.map(([key, value]) => {
           const label = getFieldLabel(key);
+          const config = getFieldConfig(key);
           return (
-            <div key={key} className="space-y-1">
-              <label className="text-sm font-medium text-muted-foreground">
-                {label}
-              </label>
-              <div className="text-sm bg-muted p-2 rounded-md break-words">
-                {formatFieldValue(value)}
-              </div>
+            <div key={key} className="space-y-2">
+              <label className="text-sm font-medium text-muted-foreground">{label}</label>
+              {renderTableValue(value, config)}
             </div>
           );
         })}
@@ -1980,7 +2081,7 @@ export const ApplicationDetailModal: React.FC<ApplicationDetailModalProps> = ({
             </Button>
           )}
           
-          {application && !showAction && (
+          {application && !showAction && canApprove && (
             // Show approve/reject buttons if:
             // 1. Status is interview_scheduled, OR
             // 2. Status is pending AND scheme doesn't require interview

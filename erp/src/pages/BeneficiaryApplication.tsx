@@ -123,6 +123,58 @@ export default function BeneficiaryApplication() {
 
   const phoneNumber = localStorage.getItem("user_phone") || "";
 
+  // handleSaveDraft must be declared before any early returns (React hooks rule)
+  const handleSaveDraft = useCallback(async (autoSave = false) => {
+    if (!scheme || isRenewalMode || isSavingDraft) return;
+
+    setIsSavingDraft(true);
+    try {
+      const draftData = {
+        formData: formDataRef.current,
+        documents: Object.keys(uploadedFiles).map(docType => ({
+          type: docType,
+          filename: uploadedFiles[docType].name,
+          url: `placeholder-url-for-${uploadedFiles[docType].name}`
+        })),
+        currentPage: currentSection,
+        autoSave
+      };
+
+      let response;
+      if (draftId) {
+        response = await beneficiaryApi.updateDraft(draftId, draftData);
+      } else {
+        response = await beneficiaryApi.saveDraft({
+          schemeId: scheme._id,
+          ...draftData
+        });
+        setDraftId(response.draft._id);
+      }
+
+      const now = new Date();
+      setLastSaved(now);
+      lastSavedDataRef.current = JSON.stringify(formDataRef.current);
+
+      if (!autoSave) {
+        toast({
+          title: "Draft Saved",
+          description: `Saved at ${now.toLocaleTimeString()}`,
+        });
+      }
+    } catch (error) {
+      if (!autoSave) {
+        toast({
+          title: "Failed to Save Draft",
+          description: error instanceof Error ? error.message : "Please try again",
+          variant: "destructive",
+        });
+      }
+      console.error('Draft save error:', error);
+    } finally {
+      setIsSavingDraft(false);
+    }
+  }, [scheme, isRenewalMode, draftId, uploadedFiles, currentSection, isSavingDraft]);
+
   // Keep ref in sync with state
   useEffect(() => {
     formDataRef.current = formData;
@@ -477,57 +529,6 @@ export default function BeneficiaryApplication() {
     }
   };
 
-  const handleSaveDraft = useCallback(async (autoSave = false) => {
-    if (!scheme || isRenewalMode || isSavingDraft) return;
-
-    setIsSavingDraft(true);
-    try {
-      const draftData = {
-        formData: formDataRef.current,
-        documents: Object.keys(uploadedFiles).map(docType => ({
-          type: docType,
-          filename: uploadedFiles[docType].name,
-          url: `placeholder-url-for-${uploadedFiles[docType].name}`
-        })),
-        currentPage: currentSection,
-        autoSave
-      };
-
-      let response;
-      if (draftId) {
-        response = await beneficiaryApi.updateDraft(draftId, draftData);
-      } else {
-        response = await beneficiaryApi.saveDraft({
-          schemeId: scheme._id,
-          ...draftData
-        });
-        setDraftId(response.draft._id);
-      }
-
-      const now = new Date();
-      setLastSaved(now);
-      lastSavedDataRef.current = JSON.stringify(formDataRef.current);
-
-      if (!autoSave) {
-        toast({
-          title: "Draft Saved",
-          description: `Saved at ${now.toLocaleTimeString()}`,
-        });
-      }
-    } catch (error) {
-      if (!autoSave) {
-        toast({
-          title: "Failed to Save Draft",
-          description: error instanceof Error ? error.message : "Please try again",
-          variant: "destructive",
-        });
-      }
-      console.error('Draft save error:', error);
-    } finally {
-      setIsSavingDraft(false);
-    }
-  }, [scheme, isRenewalMode, draftId, uploadedFiles, currentSection, isSavingDraft]);
-
   const handleSubmit = async () => {
     if (!scheme) return;
     
@@ -820,7 +821,7 @@ export default function BeneficiaryApplication() {
                               }
                               handleInputChange(fieldKey, newData);
                             }}
-                            placeholder="..."
+                            placeholder={field.placeholder || `Enter ${field.columnTitles?.[c] || 'value'}`}
                             className={`h-8 text-sm border-0 shadow-none focus-visible:ring-1 ${error ? "bg-red-50" : ""}`}
                           />
                         </td>

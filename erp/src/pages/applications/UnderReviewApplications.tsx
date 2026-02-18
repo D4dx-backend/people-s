@@ -30,6 +30,13 @@ interface Application {
   area: { _id: string; name: string; code: string; };
   unit: { _id: string; name: string; code: string; };
   createdAt: string;
+  eligibilityScore?: {
+    totalPoints: number;
+    maxPoints: number;
+    percentage: number;
+    meetsThreshold: boolean;
+    autoRejected: boolean;
+  };
 }
 
 export default function UnderReviewApplications() {
@@ -57,7 +64,7 @@ export default function UnderReviewApplications() {
 
   const canViewApplications = hasAnyPermission(['applications.read.all', 'applications.read.regional', 'applications.read.own']);
   const canApproveApplications = hasPermission('applications.approve');
-  const hasAdminAccess = user && ['super_admin', 'state_admin', 'district_admin', 'area_admin', 'unit_admin'].includes(user.role);
+  const hasAdminAccess = user && ['super_admin', 'state_admin', 'district_admin', 'area_admin', 'unit_admin', 'project_coordinator', 'scheme_coordinator'].includes(user.role);
   
   // Only area_admin, state_admin, and super_admin can review/approve applications
   const canReviewApplications = user && ['super_admin', 'state_admin', 'area_admin'].includes(user.role);
@@ -258,8 +265,17 @@ export default function UnderReviewApplications() {
                       </div>
                     </div>
                     <div className="flex flex-col gap-2 items-end">
-                      <Badge variant="outline" className="bg-info/10 text-info border-info/20"><Eye className="mr-1 h-3 w-3" />UNDER REVIEW</Badge>
-                      <div className="flex flex-col gap-2 w-full">
+                      <Badge variant="outline" className="bg-info/10 text-info border-info/20"><Eye className="mr-1 h-3 w-3" />UNDER REVIEW</Badge>                      {app.eligibilityScore && app.eligibilityScore.maxPoints > 0 ? (
+                        <Badge variant="outline" className={`${
+                          app.eligibilityScore.percentage >= 70 ? 'bg-green-50 text-green-700 border-green-200' :
+                          app.eligibilityScore.percentage >= 40 ? 'bg-yellow-50 text-yellow-700 border-yellow-200' :
+                          'bg-red-50 text-red-700 border-red-200'
+                        }`}>
+                          {app.eligibilityScore.percentage}%
+                        </Badge>
+                      ) : (
+                        <span className="text-xs text-muted-foreground">—</span>
+                      )}                      <div className="flex flex-col gap-2 w-full">
                         <Button variant="outline" size="sm" onClick={() => handleViewApplication(app)} className="w-full"><Eye className="mr-2 h-4 w-4" />Details</Button>
                         {canReviewApplications && (
                           <div className="flex gap-2">
@@ -284,6 +300,7 @@ export default function UnderReviewApplications() {
                   <TableHead>Scheme</TableHead>
                   <TableHead>Project</TableHead>
                   <TableHead>Location</TableHead>
+                  <TableHead>Score</TableHead>
                   <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
               </TableHeader>
@@ -308,6 +325,19 @@ export default function UnderReviewApplications() {
                         <div>{app.district.name}</div>
                         <div className="text-muted-foreground">{app.area.name}</div>
                       </div>
+                    </TableCell>
+                    <TableCell>
+                      {app.eligibilityScore && app.eligibilityScore.maxPoints > 0 ? (
+                        <Badge variant="outline" className={`${
+                          app.eligibilityScore.percentage >= 70 ? 'bg-green-50 text-green-700 border-green-200' :
+                          app.eligibilityScore.percentage >= 40 ? 'bg-yellow-50 text-yellow-700 border-yellow-200' :
+                          'bg-red-50 text-red-700 border-red-200'
+                        }`}>
+                          {app.eligibilityScore.percentage}%
+                        </Badge>
+                      ) : (
+                        <span className="text-xs text-muted-foreground">—</span>
+                      )}
                     </TableCell>
                     <TableCell className="text-right">
                       <div className="flex justify-end gap-1">

@@ -18,6 +18,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { useAuth } from "@/hooks/useAuth";
+import { useRBAC } from "@/hooks/useRBAC";
 import { useNavigate } from "react-router-dom";
 import { toast } from "@/hooks/use-toast";
 import { api } from "@/lib/api";
@@ -146,15 +147,17 @@ function NotificationBell() {
 
 export function Header({ onMenuClick }: HeaderProps) {
   const { user, logout } = useAuth();
+  const { hasPermission } = useRBAC();
   const navigate = useNavigate();
   const [lastLogin, setLastLogin] = useState<string | null>(null);
   const [lastLoginDevice, setLastLoginDevice] = useState<string | null>(null);
 
-  // Fetch last login for current user
+  // Fetch last login for current user — only if user has login_logs.read permission
   useEffect(() => {
     if (!user?.id) return;
     const token = localStorage.getItem('token');
     if (!token) return;
+    if (!hasPermission('login_logs.read')) return;
 
     (async () => {
       try {

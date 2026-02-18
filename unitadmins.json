@@ -1,0 +1,5238 @@
+[
+  {
+    "_id": {
+      "$oid": "68e0f555f6e4997908561c59"
+    },
+    "unit": "Puthur Pallikkal",
+    "ruknId": "110894",
+    "name": "Faizal Pk",
+    "contactNo": "9846775199",
+    "emailId": "faizaldevathyal@gmail.com",
+    "district": "Malappuram",
+    "isActive": true,
+    "__v": 0,
+    "createdAt": {
+      "$date": "2025-10-04T10:22:13.711Z"
+    },
+    "updatedAt": {
+      "$date": "2025-12-19T09:12:05.178Z"
+    },
+    "lastLogin": {
+      "$date": "2025-11-10T06:47:49.959Z"
+    },
+    "area": "University"
+  },
+  {
+    "_id": {
+      "$oid": "68e0f555f6e4997908561c5a"
+    },
+    "unit": "Cheruvatta",
+    "ruknId": "111331",
+    "name": "A Abdul Haleem",
+    "contactNo": "9447886243",
+    "emailId": "draahaleem@gmail.com",
+    "district": "Kozhikode (City)",
+    "isActive": true,
+    "__v": 0,
+    "createdAt": {
+      "$date": "2025-10-04T10:22:13.712Z"
+    },
+    "updatedAt": {
+      "$date": "2026-01-21T06:30:04.926Z"
+    },
+    "lastLogin": {
+      "$date": "2026-01-21T06:30:04.926Z"
+    },
+    "area": "Kozhikode East"
+  },
+  {
+    "_id": {
+      "$oid": "68e0f555f6e4997908561c5b"
+    },
+    "unit": "Thiruvananthapuram South",
+    "ruknId": "109529",
+    "name": "Aarif M",
+    "contactNo": "9746237377",
+    "emailId": "arifmashali@gmail.com",
+    "district": "Thiruvananthapuram",
+    "isActive": true,
+    "__v": 0,
+    "createdAt": {
+      "$date": "2025-10-04T10:22:13.712Z"
+    },
+    "updatedAt": {
+      "$date": "2026-01-10T11:03:23.061Z"
+    },
+    "area": "Thiruvananthapuram South",
+    "lastLogin": {
+      "$date": "2026-01-10T11:03:23.060Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "68e0f555f6e4997908561c5c"
+    },
+    "unit": "Kuruvattoor",
+    "ruknId": "111169",
+    "name": "Abbas M",
+    "contactNo": "9567480148",
+    "emailId": "abbasmalayil@gmail.com",
+    "district": "Kozhikode",
+    "isActive": true,
+    "__v": 0,
+    "createdAt": {
+      "$date": "2025-10-04T10:22:13.712Z"
+    },
+    "updatedAt": {
+      "$date": "2026-01-14T06:03:30.823Z"
+    },
+    "area": "Kakkodi",
+    "lastLogin": {
+      "$date": "2026-01-14T06:03:30.822Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "68e0f555f6e4997908561c5d"
+    },
+    "unit": "Edavanna",
+    "ruknId": "110423",
+    "name": "Abbasali. B",
+    "contactNo": "9048225100",
+    "emailId": "abbasalipathapiriyam@gmail.com",
+    "district": "Malappuram",
+    "isActive": true,
+    "__v": 0,
+    "createdAt": {
+      "$date": "2025-10-04T10:22:13.712Z"
+    },
+    "updatedAt": {
+      "$date": "2026-01-15T04:07:04.396Z"
+    },
+    "area": "Edavanna",
+    "lastLogin": {
+      "$date": "2026-01-15T04:07:04.396Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "68e0f555f6e4997908561c5e"
+    },
+    "unit": "Cheruvadi",
+    "ruknId": "111064",
+    "name": "Abdu C",
+    "contactNo": "9497644801",
+    "emailId": "cabdu47@gmail.com",
+    "district": "Kozhikode",
+    "isActive": true,
+    "__v": 0,
+    "createdAt": {
+      "$date": "2025-10-04T10:22:13.712Z"
+    },
+    "updatedAt": {
+      "$date": "2025-12-19T09:12:05.381Z"
+    },
+    "lastLogin": {
+      "$date": "2025-10-23T07:39:25.147Z"
+    },
+    "area": "Kodiyathur"
+  },
+  {
+    "_id": {
+      "$oid": "68e0f555f6e4997908561c5f"
+    },
+    "unit": "Adimali",
+    "ruknId": "113644",
+    "name": "Abdul Assis A P",
+    "contactNo": "8111902011",
+    "emailId": "azeezadimali@gmail.com",
+    "district": "Idukki",
+    "isActive": true,
+    "__v": 0,
+    "createdAt": {
+      "$date": "2025-10-04T10:22:13.713Z"
+    },
+    "updatedAt": {
+      "$date": "2026-01-11T01:36:13.955Z"
+    },
+    "lastLogin": {
+      "$date": "2026-01-11T01:36:13.955Z"
+    },
+    "area": "Adimali"
+  },
+  {
+    "_id": {
+      "$oid": "68e0f555f6e4997908561c60"
+    },
+    "unit": "Kozhikode South",
+    "ruknId": "111394",
+    "name": "Abdul Azeez.P",
+    "contactNo": "9446559039",
+    "emailId": "abdulazeezpparakal@gmail.com",
+    "district": "Kozhikode (City)",
+    "isActive": true,
+    "__v": 0,
+    "createdAt": {
+      "$date": "2025-10-04T10:22:13.713Z"
+    },
+    "updatedAt": {
+      "$date": "2026-01-28T03:29:26.369Z"
+    },
+    "lastLogin": {
+      "$date": "2026-01-28T03:29:26.368Z"
+    },
+    "area": "Kozhikode South"
+  },
+  {
+    "_id": {
+      "$oid": "68e0f555f6e4997908561c61"
+    },
+    "unit": "Poonoor",
+    "ruknId": "113965",
+    "name": "Abdul Fathah P C",
+    "contactNo": "7736895665",
+    "emailId": "pcfathah@gmail.com",
+    "district": "Kozhikode",
+    "isActive": true,
+    "__v": 0,
+    "createdAt": {
+      "$date": "2025-10-04T10:22:13.713Z"
+    },
+    "updatedAt": {
+      "$date": "2026-01-11T15:07:49.269Z"
+    },
+    "lastLogin": {
+      "$date": "2026-01-11T15:07:49.268Z"
+    },
+    "area": "Thamarassery"
+  },
+  {
+    "_id": {
+      "$oid": "68e0f555f6e4997908561c62"
+    },
+    "unit": "Vengannur",
+    "ruknId": "112481",
+    "name": "Abdul Gafoor P M",
+    "contactNo": "9567653778",
+    "emailId": "agmazahiri@gmail.com",
+    "district": "Palakkad",
+    "isActive": true,
+    "__v": 0,
+    "createdAt": {
+      "$date": "2025-10-04T10:22:13.715Z"
+    },
+    "updatedAt": {
+      "$date": "2026-01-12T01:55:54.511Z"
+    },
+    "lastLogin": {
+      "$date": "2026-01-12T01:55:54.511Z"
+    },
+    "area": "Alathur"
+  },
+  {
+    "_id": {
+      "$oid": "68e0f555f6e4997908561c63"
+    },
+    "unit": "Cherthala",
+    "ruknId": "109713",
+    "name": "Abdul Hakeem H",
+    "contactNo": "9846996242",
+    "emailId": "hakkimpanavally@gmail.com",
+    "district": "Alappuzha",
+    "isActive": true,
+    "__v": 0,
+    "createdAt": {
+      "$date": "2025-10-04T10:22:13.715Z"
+    },
+    "updatedAt": {
+      "$date": "2026-01-05T06:30:08.168Z"
+    },
+    "lastLogin": {
+      "$date": "2026-01-05T06:30:08.168Z"
+    },
+    "area": "Cherthala"
+  },
+  {
+    "_id": {
+      "$oid": "68e0f555f6e4997908561c64"
+    },
+    "unit": "Vallapuzha",
+    "ruknId": "110234",
+    "name": "Abdul Hakeem Nadwi",
+    "contactNo": "9496821500",
+    "emailId": "abdulhakeemnadwi@gmail.com",
+    "district": "Palakkad",
+    "isActive": true,
+    "__v": 0,
+    "createdAt": {
+      "$date": "2025-10-04T10:22:13.715Z"
+    },
+    "updatedAt": {
+      "$date": "2025-12-19T09:12:05.627Z"
+    },
+    "lastLogin": {
+      "$date": "2025-10-20T05:06:20.290Z"
+    },
+    "area": "Cherpulassery"
+  },
+  {
+    "_id": {
+      "$oid": "68e0f555f6e4997908561c65"
+    },
+    "unit": "Kanjirappally",
+    "ruknId": "109658",
+    "name": "Abdul Hakeem Pa",
+    "contactNo": "9645006015",
+    "emailId": "paaabdulhakeem@gmail.com",
+    "district": "Kottayam",
+    "isActive": true,
+    "__v": 0,
+    "createdAt": {
+      "$date": "2025-10-04T10:22:13.716Z"
+    },
+    "updatedAt": {
+      "$date": "2026-01-28T03:38:26.439Z"
+    },
+    "area": "Kanjirappally",
+    "lastLogin": {
+      "$date": "2026-01-28T03:38:26.438Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "68e0f555f6e4997908561c66"
+    },
+    "unit": "Perumbavoor",
+    "ruknId": "109747",
+    "name": "Abdul Jabbar T. M.",
+    "contactNo": "9446070166",
+    "emailId": "2abduljabbartm@gmail.com",
+    "district": "Ernakulam",
+    "isActive": true,
+    "__v": 0,
+    "createdAt": {
+      "$date": "2025-10-04T10:22:13.716Z"
+    },
+    "updatedAt": {
+      "$date": "2025-12-19T09:12:05.714Z"
+    },
+    "lastLogin": {
+      "$date": "2025-10-20T14:52:26.042Z"
+    },
+    "area": "Perumbavoor"
+  },
+  {
+    "_id": {
+      "$oid": "68e0f555f6e4997908561c67"
+    },
+    "unit": "Kalpatta",
+    "ruknId": "111412",
+    "name": "Abdul Jalal Ev",
+    "contactNo": "9497085494",
+    "emailId": "abduljalalev@gmail.com",
+    "district": "Wayanad",
+    "isActive": true,
+    "__v": 0,
+    "createdAt": {
+      "$date": "2025-10-04T10:22:13.717Z"
+    },
+    "updatedAt": {
+      "$date": "2026-01-03T11:53:15.041Z"
+    },
+    "lastLogin": {
+      "$date": "2026-01-03T11:53:15.041Z"
+    },
+    "area": "Kalpatta"
+  },
+  {
+    "_id": {
+      "$oid": "68e0f555f6e4997908561c68"
+    },
+    "unit": "Kuniyil",
+    "ruknId": "110320",
+    "name": "Abdul Kareem K.V",
+    "contactNo": "9447414138",
+    "emailId": "kvabdulkareem925@gmail.com",
+    "district": "Malappuram",
+    "isActive": true,
+    "__v": 0,
+    "createdAt": {
+      "$date": "2025-10-04T10:22:13.717Z"
+    },
+    "updatedAt": {
+      "$date": "2026-01-17T23:46:41.171Z"
+    },
+    "lastLogin": {
+      "$date": "2026-01-17T23:46:41.169Z"
+    },
+    "area": "Areekod"
+  },
+  {
+    "_id": {
+      "$oid": "68e0f555f6e4997908561c69"
+    },
+    "unit": "Varkala",
+    "ruknId": "109495",
+    "name": "Abdul Khader",
+    "contactNo": "9495012815",
+    "emailId": "abdulkhader.t.v.m@gmail.com",
+    "district": "Thiruvananthapuram",
+    "isActive": true,
+    "__v": 0,
+    "createdAt": {
+      "$date": "2025-10-04T10:22:13.717Z"
+    },
+    "updatedAt": {
+      "$date": "2026-01-04T06:28:11.320Z"
+    },
+    "lastLogin": {
+      "$date": "2026-01-04T06:28:11.320Z"
+    },
+    "area": "Varkala"
+  },
+  {
+    "_id": {
+      "$oid": "68e0f555f6e4997908561c6a"
+    },
+    "unit": "Vazhakkulam",
+    "ruknId": "109757",
+    "name": "Abdul Khader K B",
+    "contactNo": "9895602027",
+    "emailId": "kbakhader1967@gmail.com",
+    "district": "Ernakulam",
+    "isActive": true,
+    "__v": 0,
+    "createdAt": {
+      "$date": "2025-10-04T10:22:13.717Z"
+    },
+    "updatedAt": {
+      "$date": "2026-01-13T15:23:18.561Z"
+    },
+    "lastLogin": {
+      "$date": "2026-01-13T15:23:18.560Z"
+    },
+    "area": "Vazhakkulam"
+  },
+  {
+    "_id": {
+      "$oid": "68e0f555f6e4997908561c6b"
+    },
+    "unit": "Sivapuram",
+    "ruknId": "111261",
+    "name": "Abdul Khader M.K",
+    "contactNo": "9744314103",
+    "emailId": "khadersivapuram@gmail.com",
+    "district": "Kozhikode",
+    "isActive": true,
+    "__v": 0,
+    "createdAt": {
+      "$date": "2025-10-04T10:22:13.717Z"
+    },
+    "updatedAt": {
+      "$date": "2026-01-14T01:42:45.544Z"
+    },
+    "lastLogin": {
+      "$date": "2026-01-14T01:42:45.543Z"
+    },
+    "area": "Balussery"
+  },
+  {
+    "_id": {
+      "$oid": "68e0f555f6e4997908561c6c"
+    },
+    "unit": "Kunnamangalam",
+    "ruknId": "112265",
+    "name": "Abdul Khader P P",
+    "contactNo": "9497567836",
+    "emailId": "",
+    "district": "Kozhikode",
+    "isActive": true,
+    "__v": 0,
+    "createdAt": {
+      "$date": "2025-10-04T10:22:13.718Z"
+    },
+    "updatedAt": {
+      "$date": "2026-02-02T11:43:18.852Z"
+    },
+    "area": "Kunnamangalam",
+    "lastLogin": {
+      "$date": "2026-02-02T11:43:18.851Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "68e0f555f6e4997908561c6d"
+    },
+    "unit": "Chengamanad",
+    "ruknId": "109927",
+    "name": "Abdul Khader.K",
+    "contactNo": "9895412880",
+    "emailId": "abdulkaderuveismanzil@gmail.com",
+    "district": "Ernakulam",
+    "isActive": true,
+    "__v": 0,
+    "createdAt": {
+      "$date": "2025-10-04T10:22:13.718Z"
+    },
+    "updatedAt": {
+      "$date": "2026-01-03T14:05:20.009Z"
+    },
+    "area": "Chengamanad",
+    "lastLogin": {
+      "$date": "2026-01-03T14:05:20.009Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "68e0f555f6e4997908561c6e"
+    },
+    "unit": "Thottumugham",
+    "ruknId": "113091",
+    "name": "Abdul Khadir P M",
+    "contactNo": "7907951896",
+    "emailId": "khadir753@gmail.com",
+    "district": "Ernakulam",
+    "isActive": true,
+    "__v": 0,
+    "createdAt": {
+      "$date": "2025-10-04T10:22:13.718Z"
+    },
+    "updatedAt": {
+      "$date": "2026-01-19T14:04:55.885Z"
+    },
+    "lastLogin": {
+      "$date": "2026-01-19T14:04:55.885Z"
+    },
+    "area": "Keezhmad"
+  },
+  {
+    "_id": {
+      "$oid": "68e0f555f6e4997908561c6f"
+    },
+    "unit": "Karakunnu",
+    "ruknId": "110411",
+    "name": "Abdul Latheef Basmala",
+    "contactNo": "9744815743",
+    "emailId": "abdullatheefbasmala@gmail.com",
+    "district": "Malappuram",
+    "isActive": true,
+    "__v": 0,
+    "createdAt": {
+      "$date": "2025-10-04T10:22:13.718Z"
+    },
+    "updatedAt": {
+      "$date": "2025-12-19T09:12:06.059Z"
+    },
+    "area": "Edavanna"
+  },
+  {
+    "_id": {
+      "$oid": "68e0f555f6e4997908561c70"
+    },
+    "unit": "Mampad",
+    "ruknId": "110642",
+    "name": "Abdul Latheef K.P",
+    "contactNo": "9496614734",
+    "emailId": "kpalatheefmpad@gmail.com",
+    "district": "Malappuram",
+    "isActive": true,
+    "__v": 0,
+    "createdAt": {
+      "$date": "2025-10-04T10:22:13.718Z"
+    },
+    "updatedAt": {
+      "$date": "2026-01-13T04:47:33.663Z"
+    },
+    "lastLogin": {
+      "$date": "2026-01-13T04:47:33.663Z"
+    },
+    "area": "Mampad"
+  },
+  {
+    "_id": {
+      "$oid": "68e0f555f6e4997908561c71"
+    },
+    "unit": "Omassery",
+    "ruknId": "111135",
+    "name": "Abdul Latheef M",
+    "contactNo": "9895978213",
+    "emailId": "latheefm2010@gmail.com",
+    "district": "Kozhikode",
+    "isActive": true,
+    "__v": 0,
+    "createdAt": {
+      "$date": "2025-10-04T10:22:13.718Z"
+    },
+    "updatedAt": {
+      "$date": "2026-01-16T09:40:52.793Z"
+    },
+    "lastLogin": {
+      "$date": "2026-01-16T09:40:52.792Z"
+    },
+    "area": "Omassery"
+  },
+  {
+    "_id": {
+      "$oid": "68e0f555f6e4997908561c72"
+    },
+    "unit": "Perumpadappu",
+    "ruknId": "110725",
+    "name": "Abdul Majeed Pm",
+    "contactNo": "9645962468",
+    "emailId": "majeedpm7@gmail.com",
+    "district": "Malappuram",
+    "isActive": true,
+    "__v": 0,
+    "createdAt": {
+      "$date": "2025-10-04T10:22:13.718Z"
+    },
+    "updatedAt": {
+      "$date": "2025-12-19T09:12:06.171Z"
+    },
+    "lastLogin": {
+      "$date": "2025-10-20T07:36:37.657Z"
+    },
+    "area": "Perumpadappu"
+  },
+  {
+    "_id": {
+      "$oid": "68e0f555f6e4997908561c73"
+    },
+    "unit": "Mukkam",
+    "ruknId": "111252",
+    "name": "Abdul Majeed.K",
+    "contactNo": "9946438838",
+    "emailId": "majeedkilikkotte@gmail.com",
+    "district": "Kozhikode",
+    "isActive": true,
+    "__v": 0,
+    "createdAt": {
+      "$date": "2025-10-04T10:22:13.718Z"
+    },
+    "updatedAt": {
+      "$date": "2026-01-03T02:53:03.218Z"
+    },
+    "lastLogin": {
+      "$date": "2026-01-03T02:53:03.218Z"
+    },
+    "area": "Mukkam"
+  },
+  {
+    "_id": {
+      "$oid": "68e0f555f6e4997908561c74"
+    },
+    "unit": "Mathottam",
+    "ruknId": "111387",
+    "name": "Abdul Mujeeb. Mv",
+    "contactNo": "9847548484",
+    "emailId": "drabdulmujeeb@gmail.com",
+    "district": "Kozhikode (City)",
+    "isActive": true,
+    "__v": 0,
+    "createdAt": {
+      "$date": "2025-10-04T10:22:13.718Z"
+    },
+    "updatedAt": {
+      "$date": "2026-01-10T01:27:11.469Z"
+    },
+    "lastLogin": {
+      "$date": "2026-01-10T01:27:11.469Z"
+    },
+    "area": "Kozhikode South"
+  },
+  {
+    "_id": {
+      "$oid": "68e0f555f6e4997908561c75"
+    },
+    "unit": "Tirur",
+    "ruknId": "110825",
+    "name": "Abdul Naser Kurikkkal M.P",
+    "contactNo": "9447018800",
+    "emailId": "drkurikkal@gmail.com",
+    "district": "Malappuram",
+    "isActive": true,
+    "__v": 0,
+    "createdAt": {
+      "$date": "2025-10-04T10:22:13.718Z"
+    },
+    "updatedAt": {
+      "$date": "2026-01-25T16:41:48.976Z"
+    },
+    "lastLogin": {
+      "$date": "2026-01-25T16:41:48.975Z"
+    },
+    "area": "Tirur"
+  },
+  {
+    "_id": {
+      "$oid": "68e0f555f6e4997908561c76"
+    },
+    "unit": "Kodinhi",
+    "ruknId": "110855",
+    "name": "Abdul Naser Thaniyeppil",
+    "contactNo": "9895506547",
+    "emailId": "2hamzapalkkat@gmail.com",
+    "district": "Malappuram",
+    "isActive": true,
+    "__v": 0,
+    "createdAt": {
+      "$date": "2025-10-04T10:22:13.718Z"
+    },
+    "updatedAt": {
+      "$date": "2026-02-01T05:46:26.241Z"
+    },
+    "lastLogin": {
+      "$date": "2026-02-01T05:46:26.240Z"
+    },
+    "area": "Tirurangadi"
+  },
+  {
+    "_id": {
+      "$oid": "68e0f555f6e4997908561c77"
+    },
+    "unit": "Panoor",
+    "ruknId": "111539",
+    "name": "Abdul Nasir M",
+    "contactNo": "9846142700",
+    "emailId": "abdullaabdulnasir@gmail.com",
+    "district": "Kannur",
+    "isActive": true,
+    "__v": 0,
+    "createdAt": {
+      "$date": "2025-10-04T10:22:13.718Z"
+    },
+    "updatedAt": {
+      "$date": "2026-01-19T08:52:12.771Z"
+    },
+    "lastLogin": {
+      "$date": "2026-01-19T08:52:12.770Z"
+    },
+    "area": "Panoor"
+  },
+  {
+    "_id": {
+      "$oid": "68e0f555f6e4997908561c78"
+    },
+    "unit": "Tanur",
+    "ruknId": "110808",
+    "name": "Abdul Nazir M.M",
+    "contactNo": "8593994348",
+    "emailId": "n2asirmm@gmail.com",
+    "district": "Malappuram",
+    "isActive": true,
+    "__v": 0,
+    "createdAt": {
+      "$date": "2025-10-04T10:22:13.719Z"
+    },
+    "updatedAt": {
+      "$date": "2026-01-02T15:58:08.677Z"
+    },
+    "lastLogin": {
+      "$date": "2026-01-02T15:58:08.677Z"
+    },
+    "area": "Tanur"
+  },
+  {
+    "_id": {
+      "$oid": "68e0f555f6e4997908561c79"
+    },
+    "unit": "Kumali",
+    "ruknId": "109632",
+    "name": "Abdul Rahim",
+    "contactNo": "9447612382",
+    "emailId": "abulbushra@gmail.com",
+    "district": "Idukki",
+    "isActive": true,
+    "__v": 0,
+    "createdAt": {
+      "$date": "2025-10-04T10:22:13.719Z"
+    },
+    "updatedAt": {
+      "$date": "2026-01-09T13:13:07.200Z"
+    },
+    "lastLogin": {
+      "$date": "2026-01-09T13:13:07.200Z"
+    },
+    "area": "High Range"
+  },
+  {
+    "_id": {
+      "$oid": "68e0f555f6e4997908561c7a"
+    },
+    "unit": "Nattika",
+    "ruknId": "110100",
+    "name": "Abdul Rahman Pk",
+    "contactNo": "9846502887",
+    "emailId": "parakkotar@gmail.com",
+    "district": "Thrissur",
+    "isActive": true,
+    "__v": 0,
+    "createdAt": {
+      "$date": "2025-10-04T10:22:13.719Z"
+    },
+    "updatedAt": {
+      "$date": "2026-01-10T05:10:38.406Z"
+    },
+    "lastLogin": {
+      "$date": "2026-01-10T05:10:38.405Z"
+    },
+    "area": "Nattika"
+  },
+  {
+    "_id": {
+      "$oid": "68e0f555f6e4997908561c7b"
+    },
+    "unit": "Chalakkal",
+    "ruknId": "109800",
+    "name": "Abdul Sherief Ak",
+    "contactNo": "9400427270",
+    "emailId": "akasaluva@gmail.com",
+    "district": "Ernakulam",
+    "isActive": true,
+    "__v": 0,
+    "createdAt": {
+      "$date": "2025-10-04T10:22:13.719Z"
+    },
+    "updatedAt": {
+      "$date": "2026-01-03T12:16:30.868Z"
+    },
+    "lastLogin": {
+      "$date": "2026-01-03T12:16:30.868Z"
+    },
+    "area": "Keezhmad"
+  },
+  {
+    "_id": {
+      "$oid": "68e0f555f6e4997908561c7c"
+    },
+    "unit": "Vettom",
+    "ruknId": "111343",
+    "name": "Abdul Shukkoor. Pv",
+    "contactNo": "9495174927",
+    "emailId": "shukoored@gmail.com",
+    "district": "Malappuram",
+    "isActive": true,
+    "__v": 0,
+    "createdAt": {
+      "$date": "2025-10-04T10:22:13.719Z"
+    },
+    "updatedAt": {
+      "$date": "2026-02-10T02:55:42.897Z"
+    },
+    "lastLogin": {
+      "$date": "2026-02-10T02:55:42.896Z"
+    },
+    "area": "Tirur"
+  },
+  {
+    "_id": {
+      "$oid": "68e0f555f6e4997908561c7d"
+    },
+    "unit": "Kizhuparamba",
+    "ruknId": "110314",
+    "name": "Abdulkader.K",
+    "contactNo": "9447889630",
+    "emailId": "bkkader@gmail.com",
+    "district": "Malappuram",
+    "isActive": true,
+    "__v": 0,
+    "createdAt": {
+      "$date": "2025-10-04T10:22:13.720Z"
+    },
+    "updatedAt": {
+      "$date": "2026-01-05T09:30:59.024Z"
+    },
+    "lastLogin": {
+      "$date": "2026-01-05T09:30:59.024Z"
+    },
+    "area": "Areekod"
+  },
+  {
+    "_id": {
+      "$oid": "68e0f555f6e4997908561c7e"
+    },
+    "unit": "Vatakara",
+    "ruknId": "111172",
+    "name": "Abdulla K",
+    "contactNo": "9947651786",
+    "emailId": "kunhamikottaprath@gmail.com",
+    "district": "Kozhikode",
+    "isActive": true,
+    "__v": 0,
+    "createdAt": {
+      "$date": "2025-10-04T10:22:13.720Z"
+    },
+    "updatedAt": {
+      "$date": "2026-01-15T14:11:53.612Z"
+    },
+    "lastLogin": {
+      "$date": "2026-01-15T14:11:53.612Z"
+    },
+    "area": "Vatakara"
+  },
+  {
+    "_id": {
+      "$oid": "68e0f555f6e4997908561c7f"
+    },
+    "unit": "Keezhmad",
+    "ruknId": "109807",
+    "name": "Abdulla Nm",
+    "contactNo": "9846040142",
+    "emailId": "abdullanm610@gmail.com",
+    "district": "Ernakulam",
+    "isActive": true,
+    "__v": 0,
+    "createdAt": {
+      "$date": "2025-10-04T10:22:13.720Z"
+    },
+    "updatedAt": {
+      "$date": "2026-01-15T11:18:37.847Z"
+    },
+    "area": "Keezhmad",
+    "lastLogin": {
+      "$date": "2026-01-15T11:18:37.846Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "68e0f555f6e4997908561c80"
+    },
+    "unit": "Karuvanpoyil",
+    "ruknId": "111109",
+    "name": "Abdulla. K",
+    "contactNo": "9745176495",
+    "emailId": "kolappurathabdulla@gmail.com",
+    "district": "Kozhikode",
+    "isActive": true,
+    "__v": 0,
+    "createdAt": {
+      "$date": "2025-10-04T10:22:13.720Z"
+    },
+    "updatedAt": {
+      "$date": "2026-01-06T09:42:14.187Z"
+    },
+    "area": "Koduvally",
+    "lastLogin": {
+      "$date": "2026-01-06T09:42:14.186Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "68e0f555f6e4997908561c81"
+    },
+    "unit": "Panayikulam",
+    "ruknId": "109913",
+    "name": "Abdulla.K.B",
+    "contactNo": "9447767066",
+    "emailId": "kbabdulla@gmail.com",
+    "district": "Ernakulam",
+    "isActive": true,
+    "__v": 0,
+    "createdAt": {
+      "$date": "2025-10-04T10:22:13.720Z"
+    },
+    "updatedAt": {
+      "$date": "2026-01-14T14:21:07.820Z"
+    },
+    "lastLogin": {
+      "$date": "2026-01-14T14:21:07.820Z"
+    },
+    "area": "Panayikulam"
+  },
+  {
+    "_id": {
+      "$oid": "68e0f555f6e4997908561c82"
+    },
+    "unit": "Koduvally",
+    "ruknId": "117508",
+    "name": "Abdullatheef K",
+    "contactNo": "8086360835",
+    "emailId": "g@s80gmail.com",
+    "district": "Kozhikode",
+    "isActive": true,
+    "__v": 0,
+    "createdAt": {
+      "$date": "2025-10-04T10:22:13.720Z"
+    },
+    "updatedAt": {
+      "$date": "2026-01-28T14:28:52.465Z"
+    },
+    "lastLogin": {
+      "$date": "2026-01-28T14:28:52.464Z"
+    },
+    "area": "Koduvally"
+  },
+  {
+    "_id": {
+      "$oid": "68e0f555f6e4997908561c83"
+    },
+    "unit": "Valluvambram",
+    "ruknId": "110953",
+    "name": "Abdunasasr. C",
+    "contactNo": "9447408306",
+    "emailId": "naserchavikkadan@gmail.com",
+    "district": "Malappuram",
+    "isActive": true,
+    "__v": 0,
+    "createdAt": {
+      "$date": "2025-10-04T10:22:13.720Z"
+    },
+    "updatedAt": {
+      "$date": "2026-01-06T09:04:17.526Z"
+    },
+    "area": "Valluvambram",
+    "lastLogin": {
+      "$date": "2026-01-06T09:04:17.526Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "68e0f555f6e4997908561c84"
+    },
+    "unit": "Kodiyathur",
+    "ruknId": "111074",
+    "name": "Abdurahiman P P",
+    "contactNo": "9447701741",
+    "emailId": "pparkdr@gmail.com",
+    "district": "Kozhikode",
+    "isActive": true,
+    "__v": 0,
+    "createdAt": {
+      "$date": "2025-10-04T10:22:13.721Z"
+    },
+    "updatedAt": {
+      "$date": "2025-12-19T09:12:06.867Z"
+    },
+    "area": "Kodiyathur"
+  },
+  {
+    "_id": {
+      "$oid": "68e0f555f6e4997908561c85"
+    },
+    "unit": "Velom",
+    "ruknId": "113297",
+    "name": "Abdurahman K",
+    "contactNo": "8086000430",
+    "emailId": "arkodumayil@gmail.com",
+    "district": "Kozhikode",
+    "isActive": true,
+    "__v": 0,
+    "createdAt": {
+      "$date": "2025-10-04T10:22:13.721Z"
+    },
+    "updatedAt": {
+      "$date": "2026-01-30T10:54:45.677Z"
+    },
+    "lastLogin": {
+      "$date": "2026-01-30T10:54:45.677Z"
+    },
+    "area": "Kuttiady"
+  },
+  {
+    "_id": {
+      "$oid": "68e0f555f6e4997908561c86"
+    },
+    "unit": "Pezhumkara",
+    "ruknId": "110259",
+    "name": "Abdussalam K A",
+    "contactNo": "9744627133",
+    "emailId": "pkdabdussalam@gmail.com",
+    "district": "Palakkad",
+    "isActive": true,
+    "__v": 0,
+    "createdAt": {
+      "$date": "2025-10-04T10:22:13.721Z"
+    },
+    "updatedAt": {
+      "$date": "2026-02-05T02:50:17.027Z"
+    },
+    "lastLogin": {
+      "$date": "2026-02-05T02:50:17.025Z"
+    },
+    "area": "Palakkad"
+  },
+  {
+    "_id": {
+      "$oid": "68e0f555f6e4997908561c87"
+    },
+    "unit": "Manjeri",
+    "ruknId": "110555",
+    "name": "Abdussalam Kodakkadan",
+    "contactNo": "9287000700",
+    "emailId": "salamk@salamk.net",
+    "district": "Malappuram",
+    "isActive": true,
+    "__v": 0,
+    "createdAt": {
+      "$date": "2025-10-04T10:22:13.721Z"
+    },
+    "updatedAt": {
+      "$date": "2026-01-13T17:36:47.602Z"
+    },
+    "lastLogin": {
+      "$date": "2026-01-13T17:36:47.601Z"
+    },
+    "area": "Manjeri"
+  },
+  {
+    "_id": {
+      "$oid": "68e0f555f6e4997908561c88"
+    },
+    "unit": "Pulikkal",
+    "ruknId": "110453",
+    "name": "Abdussamad  Master  C",
+    "contactNo": "9995614416",
+    "emailId": "arkozhikodan@gmail.com",
+    "district": "Malappuram",
+    "isActive": true,
+    "__v": 0,
+    "createdAt": {
+      "$date": "2025-10-04T10:22:13.721Z"
+    },
+    "updatedAt": {
+      "$date": "2026-01-07T07:57:09.647Z"
+    },
+    "lastLogin": {
+      "$date": "2026-01-07T07:57:09.647Z"
+    },
+    "area": "Kondotty"
+  },
+  {
+    "_id": {
+      "$oid": "68e0f555f6e4997908561c89"
+    },
+    "unit": "Kizhissery",
+    "ruknId": "110441",
+    "name": "Abooacker Master N C",
+    "contactNo": "7994332325",
+    "emailId": "n1caboobackernc@gmail.com",
+    "district": "Malappuram",
+    "isActive": true,
+    "__v": 0,
+    "createdAt": {
+      "$date": "2025-10-04T10:22:13.721Z"
+    },
+    "updatedAt": {
+      "$date": "2026-01-16T09:16:47.495Z"
+    },
+    "lastLogin": {
+      "$date": "2026-01-16T09:16:47.494Z"
+    },
+    "area": "Kondotty"
+  },
+  {
+    "_id": {
+      "$oid": "68e0f555f6e4997908561c8a"
+    },
+    "unit": "Parappanangadi",
+    "ruknId": "110692",
+    "name": "Aboobacker P.K",
+    "contactNo": "7012711182",
+    "emailId": "abdurahimankanoor@gmail.com",
+    "district": "Malappuram",
+    "isActive": true,
+    "__v": 0,
+    "createdAt": {
+      "$date": "2025-10-04T10:22:13.723Z"
+    },
+    "updatedAt": {
+      "$date": "2026-01-26T15:57:23.932Z"
+    },
+    "lastLogin": {
+      "$date": "2026-01-26T15:57:23.931Z"
+    },
+    "area": "Tirurangadi"
+  },
+  {
+    "_id": {
+      "$oid": "68e0f555f6e4997908561c8b"
+    },
+    "unit": "Ernakulam South",
+    "ruknId": "116670",
+    "name": "Aboobakkar Sidheeq M A",
+    "contactNo": "9447200597",
+    "emailId": "sidheeqaboobakkar327@gmail.com",
+    "district": "Kochi",
+    "isActive": true,
+    "__v": 0,
+    "createdAt": {
+      "$date": "2025-10-04T10:22:13.723Z"
+    },
+    "updatedAt": {
+      "$date": "2026-01-15T05:09:24.944Z"
+    },
+    "area": "Ernakulam",
+    "lastLogin": {
+      "$date": "2026-01-15T05:09:24.943Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "68e0f555f6e4997908561c8c"
+    },
+    "unit": "Chavakkad",
+    "ruknId": "110079",
+    "name": "Abubacker . Thacharakkal",
+    "contactNo": "9497063736",
+    "emailId": "abubaker390@gmail.com",
+    "district": "Thrissur",
+    "isActive": true,
+    "__v": 0,
+    "createdAt": {
+      "$date": "2025-10-04T10:22:13.723Z"
+    },
+    "updatedAt": {
+      "$date": "2026-01-03T06:23:00.068Z"
+    },
+    "area": "Chavakkad",
+    "lastLogin": {
+      "$date": "2026-01-03T06:23:00.067Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "68e0f555f6e4997908561c8d"
+    },
+    "unit": "Pallikkal Bazar",
+    "ruknId": "110888",
+    "name": "Abubaker Kunzhu Me",
+    "contactNo": "9847306362",
+    "emailId": "meakunju@gmail.com",
+    "district": "Malappuram",
+    "isActive": true,
+    "__v": 0,
+    "createdAt": {
+      "$date": "2025-10-04T10:22:13.724Z"
+    },
+    "updatedAt": {
+      "$date": "2026-01-14T16:32:11.432Z"
+    },
+    "lastLogin": {
+      "$date": "2026-01-14T16:32:11.432Z"
+    },
+    "area": "University"
+  },
+  {
+    "_id": {
+      "$oid": "68e0f555f6e4997908561c8e"
+    },
+    "unit": "Thalassery",
+    "ruknId": "111507",
+    "name": "Acm Basheer",
+    "contactNo": "9746975852",
+    "emailId": "acharath.acm@gmail.com",
+    "district": "Kannur",
+    "isActive": true,
+    "__v": 0,
+    "createdAt": {
+      "$date": "2025-10-04T10:22:13.724Z"
+    },
+    "updatedAt": {
+      "$date": "2026-01-16T06:31:32.594Z"
+    },
+    "lastLogin": {
+      "$date": "2026-01-16T06:31:32.593Z"
+    },
+    "area": "Thalassery"
+  },
+  {
+    "_id": {
+      "$oid": "68e0f555f6e4997908561c8f"
+    },
+    "unit": "Ulliyeri",
+    "ruknId": "111329",
+    "name": "Ahammed N *",
+    "contactNo": "9846085854",
+    "emailId": "ahammeneelapara@gmail.com",
+    "district": "Kozhikode",
+    "isActive": true,
+    "__v": 0,
+    "createdAt": {
+      "$date": "2025-10-04T10:22:13.724Z"
+    },
+    "updatedAt": {
+      "$date": "2026-01-11T01:37:25.291Z"
+    },
+    "area": "Ulliyeri",
+    "lastLogin": {
+      "$date": "2026-01-11T01:37:25.290Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "68e0f555f6e4997908561c90"
+    },
+    "unit": "Edakkad",
+    "ruknId": "111469",
+    "name": "Ahammed Pasha M",
+    "contactNo": "9447372777",
+    "emailId": "mapkannur@gmail.com",
+    "district": "Kannur",
+    "isActive": true,
+    "__v": 0,
+    "createdAt": {
+      "$date": "2025-10-04T10:22:13.724Z"
+    },
+    "updatedAt": {
+      "$date": "2026-01-19T14:53:17.312Z"
+    },
+    "lastLogin": {
+      "$date": "2026-01-19T14:53:17.311Z"
+    },
+    "area": "Edakkad"
+  },
+  {
+    "_id": {
+      "$oid": "68e0f555f6e4997908561c91"
+    },
+    "unit": "Morayur",
+    "ruknId": "110952",
+    "name": "Ahammed Sherif Kurungadan",
+    "contactNo": "8156856085",
+    "emailId": "kahmedshareef@gmail.com",
+    "district": "Malappuram",
+    "isActive": true,
+    "__v": 0,
+    "createdAt": {
+      "$date": "2025-10-04T10:22:13.724Z"
+    },
+    "updatedAt": {
+      "$date": "2026-01-21T05:11:18.603Z"
+    },
+    "lastLogin": {
+      "$date": "2026-01-21T05:11:18.603Z"
+    },
+    "area": "Valluvambram"
+  },
+  {
+    "_id": {
+      "$oid": "68e0f555f6e4997908561c92"
+    },
+    "unit": "Kadannamanna",
+    "ruknId": "110587",
+    "name": "Alavikuty.P",
+    "contactNo": "9846412031",
+    "emailId": "salahmohi42@gmail.com",
+    "district": "Malappuram",
+    "isActive": true,
+    "__v": 0,
+    "createdAt": {
+      "$date": "2025-10-04T10:22:13.724Z"
+    },
+    "updatedAt": {
+      "$date": "2026-02-04T12:48:57.899Z"
+    },
+    "area": "Thirurkad",
+    "lastLogin": {
+      "$date": "2026-02-04T12:48:57.898Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "68e0f555f6e4997908561c93"
+    },
+    "unit": "Paravoor",
+    "ruknId": "113367",
+    "name": "Ali  A .P.",
+    "contactNo": "8138808273",
+    "emailId": "apali58@gmail.com",
+    "district": "Ernakulam",
+    "isActive": true,
+    "__v": 0,
+    "createdAt": {
+      "$date": "2025-10-04T10:22:13.724Z"
+    },
+    "updatedAt": {
+      "$date": "2026-01-15T09:57:15.308Z"
+    },
+    "lastLogin": {
+      "$date": "2026-01-15T09:57:15.308Z"
+    },
+    "area": "Paravoor"
+  },
+  {
+    "_id": {
+      "$oid": "68e0f555f6e4997908561c94"
+    },
+    "unit": "Wandoor",
+    "ruknId": "111000",
+    "name": "Ali T",
+    "contactNo": "9495451905",
+    "emailId": "mujeebchatholy@gmail.com",
+    "district": "Malappuram",
+    "isActive": true,
+    "__v": 0,
+    "createdAt": {
+      "$date": "2025-10-04T10:22:13.725Z"
+    },
+    "updatedAt": {
+      "$date": "2026-01-19T05:30:20.305Z"
+    },
+    "lastLogin": {
+      "$date": "2026-01-19T05:30:20.305Z"
+    },
+    "area": "Wandoor"
+  },
+  {
+    "_id": {
+      "$oid": "68e0f555f6e4997908561c95"
+    },
+    "unit": "Manjali",
+    "ruknId": "109901",
+    "name": "Anas.A",
+    "contactNo": "9946664752",
+    "emailId": "anaseranakulam@gmail.com",
+    "district": "Ernakulam",
+    "isActive": true,
+    "__v": 0,
+    "createdAt": {
+      "$date": "2025-10-04T10:22:13.725Z"
+    },
+    "updatedAt": {
+      "$date": "2026-01-17T12:05:37.372Z"
+    },
+    "lastLogin": {
+      "$date": "2026-01-17T12:05:37.371Z"
+    },
+    "area": "Mannam"
+  },
+  {
+    "_id": {
+      "$oid": "68e0f555f6e4997908561c96"
+    },
+    "unit": "Hajiyarpally",
+    "ruknId": "110546",
+    "name": "Aneesurahman.P",
+    "contactNo": "9496467992",
+    "emailId": "aneesrahman7773@gmail.com",
+    "district": "Malappuram",
+    "isActive": true,
+    "__v": 0,
+    "createdAt": {
+      "$date": "2025-10-04T10:22:13.725Z"
+    },
+    "updatedAt": {
+      "$date": "2026-01-16T11:45:33.760Z"
+    },
+    "lastLogin": {
+      "$date": "2026-01-16T11:45:33.759Z"
+    },
+    "area": "Malappuram"
+  },
+  {
+    "_id": {
+      "$oid": "68e0f555f6e4997908561c97"
+    },
+    "unit": "Parappur",
+    "ruknId": "110491",
+    "name": "Anvar Sadath Mankada *",
+    "contactNo": "971505246063",
+    "emailId": "sadatmankada@gmail.com",
+    "district": "Malappuram",
+    "isActive": true,
+    "__v": 0,
+    "createdAt": {
+      "$date": "2025-10-04T10:22:13.725Z"
+    },
+    "updatedAt": {
+      "$date": "2026-01-17T11:32:13.296Z"
+    },
+    "lastLogin": {
+      "$date": "2026-01-17T11:32:13.295Z"
+    },
+    "area": "Parappur"
+  },
+  {
+    "_id": {
+      "$oid": "68e0f555f6e4997908561c98"
+    },
+    "unit": "Ayanchery",
+    "ruknId": "116133",
+    "name": "Anvar Sadath V",
+    "contactNo": "9496697796",
+    "emailId": "anvarvayeri@gmail.com",
+    "district": "Kozhikode",
+    "isActive": true,
+    "__v": 0,
+    "createdAt": {
+      "$date": "2025-10-04T10:22:13.725Z"
+    },
+    "updatedAt": {
+      "$date": "2025-12-19T09:12:07.635Z"
+    },
+    "lastLogin": {
+      "$date": "2025-10-22T13:34:31.148Z"
+    },
+    "area": "Ayanchery"
+  },
+  {
+    "_id": {
+      "$oid": "68e0f555f6e4997908561c99"
+    },
+    "unit": "Padaparamba",
+    "ruknId": "110378",
+    "name": "Asainar Op",
+    "contactNo": "9745115955",
+    "emailId": "asainarop66@gmail.com",
+    "district": "Malappuram",
+    "isActive": true,
+    "__v": 0,
+    "createdAt": {
+      "$date": "2025-10-04T10:22:13.725Z"
+    },
+    "updatedAt": {
+      "$date": "2026-01-19T02:22:26.603Z"
+    },
+    "lastLogin": {
+      "$date": "2026-01-19T02:22:26.603Z"
+    },
+    "area": "Padaparamba"
+  },
+  {
+    "_id": {
+      "$oid": "68e0f555f6e4997908561c9a"
+    },
+    "unit": "Vatanapally",
+    "ruknId": "112484",
+    "name": "Asharaf A P",
+    "contactNo": "9846555256",
+    "emailId": "ashrafap@yahoo.com",
+    "district": "Thrissur",
+    "isActive": true,
+    "__v": 0,
+    "createdAt": {
+      "$date": "2025-10-04T10:22:13.725Z"
+    },
+    "updatedAt": {
+      "$date": "2026-01-07T15:40:02.546Z"
+    },
+    "area": "Vatanapally",
+    "lastLogin": {
+      "$date": "2026-01-07T15:40:02.546Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "68e0f555f6e4997908561c9b"
+    },
+    "unit": "Vytila",
+    "ruknId": "109986",
+    "name": "Asharafali . A",
+    "contactNo": "9446116149",
+    "emailId": "ashrafptkd@gmail.com",
+    "district": "Kochi",
+    "isActive": true,
+    "__v": 0,
+    "createdAt": {
+      "$date": "2025-10-04T10:22:13.725Z"
+    },
+    "updatedAt": {
+      "$date": "2026-01-15T14:56:52.912Z"
+    },
+    "lastLogin": {
+      "$date": "2026-01-15T14:56:52.911Z"
+    },
+    "area": "Vytila"
+  },
+  {
+    "_id": {
+      "$oid": "68e0f555f6e4997908561c9c"
+    },
+    "unit": "Erattupetta",
+    "ruknId": "109648",
+    "name": "Ashraf Ps",
+    "contactNo": "7012624328",
+    "emailId": "ashrafetpa@gmail.com",
+    "district": "Kottayam",
+    "isActive": true,
+    "__v": 0,
+    "createdAt": {
+      "$date": "2025-10-04T10:22:13.725Z"
+    },
+    "updatedAt": {
+      "$date": "2026-02-10T02:55:12.195Z"
+    },
+    "lastLogin": {
+      "$date": "2026-02-10T02:55:12.194Z"
+    },
+    "area": "Erattupetta"
+  },
+  {
+    "_id": {
+      "$oid": "68e0f555f6e4997908561c9d"
+    },
+    "unit": "Kothamangalam",
+    "ruknId": "109737",
+    "name": "Assainar E.M.",
+    "contactNo": "9745106024",
+    "emailId": "assainar.em@gmail.com",
+    "district": "Ernakulam",
+    "isActive": true,
+    "__v": 0,
+    "createdAt": {
+      "$date": "2025-10-04T10:22:13.726Z"
+    },
+    "updatedAt": {
+      "$date": "2026-01-21T02:57:22.328Z"
+    },
+    "lastLogin": {
+      "$date": "2026-01-21T02:57:22.328Z"
+    },
+    "area": "Kothamangalam"
+  },
+  {
+    "_id": {
+      "$oid": "68e0f555f6e4997908561c9e"
+    },
+    "unit": "Payyoli",
+    "ruknId": "111022",
+    "name": "Assainar.T.M",
+    "contactNo": "9400470273",
+    "emailId": "tmassainar4@gmail.com",
+    "district": "Kozhikode",
+    "isActive": true,
+    "__v": 0,
+    "createdAt": {
+      "$date": "2025-10-04T10:22:13.727Z"
+    },
+    "updatedAt": {
+      "$date": "2026-01-11T02:08:42.138Z"
+    },
+    "area": "Payyoli",
+    "lastLogin": {
+      "$date": "2026-01-11T02:08:42.137Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "68e0f555f6e4997908561c9f"
+    },
+    "unit": "Padanna",
+    "ruknId": "111584",
+    "name": "Basheer Ahammed Shivapuram",
+    "contactNo": "9633714077",
+    "emailId": "basheersivapuram@gmail.com",
+    "district": "Kasaragode",
+    "isActive": true,
+    "__v": 0,
+    "createdAt": {
+      "$date": "2025-10-04T10:22:13.727Z"
+    },
+    "updatedAt": {
+      "$date": "2026-01-03T05:36:45.117Z"
+    },
+    "lastLogin": {
+      "$date": "2026-01-03T05:36:45.116Z"
+    },
+    "area": "Padanna"
+  },
+  {
+    "_id": {
+      "$oid": "68e0f555f6e4997908561ca0"
+    },
+    "unit": "Parali",
+    "ruknId": "110219",
+    "name": "Basheer Hassan",
+    "contactNo": "9496232832",
+    "emailId": "basheerhasankadur@gmail.com",
+    "district": "Palakkad",
+    "isActive": true,
+    "__v": 0,
+    "createdAt": {
+      "$date": "2025-10-04T10:22:13.727Z"
+    },
+    "updatedAt": {
+      "$date": "2026-01-07T05:50:14.480Z"
+    },
+    "lastLogin": {
+      "$date": "2026-01-07T05:50:14.479Z"
+    },
+    "area": "Parali"
+  },
+  {
+    "_id": {
+      "$oid": "68e0f555f6e4997908561ca1"
+    },
+    "unit": "Aluva",
+    "ruknId": "109814",
+    "name": "Basheer K K",
+    "contactNo": "9446021975",
+    "emailId": "kbasheerk@gmail.com",
+    "district": "Ernakulam",
+    "isActive": true,
+    "__v": 0,
+    "createdAt": {
+      "$date": "2025-10-04T10:22:13.727Z"
+    },
+    "updatedAt": {
+      "$date": "2026-01-03T13:43:58.768Z"
+    },
+    "lastLogin": {
+      "$date": "2026-01-03T13:43:58.768Z"
+    },
+    "area": "Aluva"
+  },
+  {
+    "_id": {
+      "$oid": "68e0f555f6e4997908561ca2"
+    },
+    "unit": "Mattannur",
+    "ruknId": "111482",
+    "name": "Basheer N M",
+    "contactNo": "9447087940",
+    "emailId": "basheernmirk@gmail.com",
+    "district": "Kannur",
+    "isActive": true,
+    "__v": 0,
+    "createdAt": {
+      "$date": "2025-10-04T10:22:13.727Z"
+    },
+    "updatedAt": {
+      "$date": "2025-12-19T09:12:08.024Z"
+    },
+    "lastLogin": {
+      "$date": "2025-10-20T14:34:36.878Z"
+    },
+    "area": "Mattannur"
+  },
+  {
+    "_id": {
+      "$oid": "68e0f555f6e4997908561ca3"
+    },
+    "unit": "Cherpulassery",
+    "ruknId": "113340",
+    "name": "Bushairudheen Sharqi",
+    "contactNo": "9645714596",
+    "emailId": "ne42@gmail.com",
+    "district": "Palakkad",
+    "isActive": true,
+    "__v": 0,
+    "createdAt": {
+      "$date": "2025-10-04T10:22:13.727Z"
+    },
+    "updatedAt": {
+      "$date": "2026-01-02T12:36:24.994Z"
+    },
+    "lastLogin": {
+      "$date": "2026-01-02T12:36:24.994Z"
+    },
+    "area": "Cherpulassery"
+  },
+  {
+    "_id": {
+      "$oid": "68e0f555f6e4997908561ca4"
+    },
+    "unit": "Edavilang",
+    "ruknId": "110031",
+    "name": "C K Mohamed Najeeb",
+    "contactNo": "7736170780",
+    "emailId": "ckmohammednajeeb@gmail.com",
+    "district": "Thrissur",
+    "isActive": true,
+    "__v": 0,
+    "createdAt": {
+      "$date": "2025-10-04T10:22:13.727Z"
+    },
+    "updatedAt": {
+      "$date": "2026-01-18T14:14:14.824Z"
+    },
+    "lastLogin": {
+      "$date": "2026-01-18T14:14:14.823Z"
+    },
+    "area": "Edavilang"
+  },
+  {
+    "_id": {
+      "$oid": "68e0f555f6e4997908561ca5"
+    },
+    "unit": "Kokkur",
+    "ruknId": "110383",
+    "name": "Cp Mohammed",
+    "contactNo": "9946304357",
+    "emailId": "cpmumeri@gmail.com",
+    "district": "Malappuram",
+    "isActive": true,
+    "__v": 0,
+    "createdAt": {
+      "$date": "2025-10-04T10:22:13.727Z"
+    },
+    "updatedAt": {
+      "$date": "2025-12-19T09:12:08.138Z"
+    },
+    "area": "Edappal"
+  },
+  {
+    "_id": {
+      "$oid": "68e0f555f6e4997908561ca6"
+    },
+    "unit": "Roaduvila",
+    "ruknId": "109618",
+    "name": "Dr. K Abdul Vahid",
+    "contactNo": "9061537801",
+    "emailId": "dr.vahidk@gmail.com",
+    "district": "Kollam",
+    "isActive": true,
+    "__v": 0,
+    "createdAt": {
+      "$date": "2025-10-04T10:22:13.727Z"
+    },
+    "updatedAt": {
+      "$date": "2026-01-05T12:14:02.261Z"
+    },
+    "lastLogin": {
+      "$date": "2026-01-05T12:14:02.260Z"
+    },
+    "area": "Chadayamangalam"
+  },
+  {
+    "_id": {
+      "$oid": "68e0f555f6e4997908561ca7"
+    },
+    "unit": "Changaramkulam",
+    "ruknId": "110388",
+    "name": "Dr.Siraj",
+    "contactNo": "9447150094",
+    "emailId": "ssainudeen00@gmail.com",
+    "district": "Malappuram",
+    "isActive": true,
+    "__v": 0,
+    "createdAt": {
+      "$date": "2025-10-04T10:22:13.727Z"
+    },
+    "updatedAt": {
+      "$date": "2026-01-15T03:10:18.629Z"
+    },
+    "lastLogin": {
+      "$date": "2026-01-15T03:10:18.629Z"
+    },
+    "area": "Edappal"
+  },
+  {
+    "_id": {
+      "$oid": "68e0f555f6e4997908561ca8"
+    },
+    "unit": "Kottayam",
+    "ruknId": "109642",
+    "name": "E A Basheer Farooqui",
+    "contactNo": "9447912076",
+    "emailId": "2afsalk568@gmail.com",
+    "district": "Kottayam",
+    "isActive": true,
+    "__v": 0,
+    "createdAt": {
+      "$date": "2025-10-04T10:22:13.728Z"
+    },
+    "updatedAt": {
+      "$date": "2025-10-25T05:01:34.617Z"
+    },
+    "lastLogin": {
+      "$date": "2025-10-25T05:01:34.615Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "68e0f555f6e4997908561ca9"
+    },
+    "unit": "Peringala",
+    "ruknId": "109779",
+    "name": "Ebrahim Kk",
+    "contactNo": "9497680880",
+    "emailId": "ebrahimettat@gmail.com",
+    "district": "Ernakulam",
+    "isActive": true,
+    "__v": 0,
+    "createdAt": {
+      "$date": "2025-10-04T10:22:13.728Z"
+    },
+    "updatedAt": {
+      "$date": "2026-01-16T16:31:58.101Z"
+    },
+    "lastLogin": {
+      "$date": "2026-01-16T16:31:58.101Z"
+    },
+    "area": "Kunnathunad"
+  },
+  {
+    "_id": {
+      "$oid": "68e0f555f6e4997908561caa"
+    },
+    "unit": "Changaroth",
+    "ruknId": "111325",
+    "name": "Ebrahim P K",
+    "contactNo": "9495536677",
+    "emailId": "palery@gmail.com",
+    "district": "Kozhikode",
+    "isActive": true,
+    "__v": 0,
+    "createdAt": {
+      "$date": "2025-10-04T10:22:13.728Z"
+    },
+    "updatedAt": {
+      "$date": "2026-01-14T06:11:26.827Z"
+    },
+    "lastLogin": {
+      "$date": "2026-01-14T06:11:26.826Z"
+    },
+    "area": "Changaroth"
+  },
+  {
+    "_id": {
+      "$oid": "68e0f555f6e4997908561cab"
+    },
+    "unit": "Puthukkod",
+    "ruknId": "110167",
+    "name": "Firos A S",
+    "contactNo": "9946331601",
+    "emailId": "ne85@gmail.com",
+    "district": "Palakkad",
+    "isActive": true,
+    "__v": 0,
+    "createdAt": {
+      "$date": "2025-10-04T10:22:13.728Z"
+    },
+    "updatedAt": {
+      "$date": "2026-01-24T16:01:36.158Z"
+    },
+    "lastLogin": {
+      "$date": "2026-01-24T16:01:36.158Z"
+    },
+    "area": "Puthukkod"
+  },
+  {
+    "_id": {
+      "$oid": "68e0f555f6e4997908561cac"
+    },
+    "unit": "Guruvayur",
+    "ruknId": "110102",
+    "name": "Hamsa A V",
+    "contactNo": "9447855415",
+    "emailId": "hamzamass25@gmail.com",
+    "district": "Thrissur",
+    "isActive": true,
+    "__v": 0,
+    "createdAt": {
+      "$date": "2025-10-04T10:22:13.728Z"
+    },
+    "updatedAt": {
+      "$date": "2026-01-05T05:24:11.210Z"
+    },
+    "lastLogin": {
+      "$date": "2026-01-05T05:24:11.209Z"
+    },
+    "area": "Guruvayur"
+  },
+  {
+    "_id": {
+      "$oid": "68e0f555f6e4997908561cad"
+    },
+    "unit": "Kannamangalam",
+    "ruknId": "116969",
+    "name": "Hamza Areekan",
+    "contactNo": "9495609702",
+    "emailId": "hamzaareekan@gmail.com",
+    "district": "Malappuram",
+    "isActive": true,
+    "__v": 0,
+    "createdAt": {
+      "$date": "2025-10-04T10:22:13.728Z"
+    },
+    "updatedAt": {
+      "$date": "2026-01-24T15:19:00.760Z"
+    },
+    "lastLogin": {
+      "$date": "2026-01-24T15:19:00.759Z"
+    },
+    "area": "A R Nagar"
+  },
+  {
+    "_id": {
+      "$oid": "68e0f555f6e4997908561cae"
+    },
+    "unit": "Nadakkavu",
+    "ruknId": "115984",
+    "name": "Haneefa Haji P T",
+    "contactNo": "9847102022",
+    "emailId": "haneefahajipt@gmail.com",
+    "district": "Kozhikode (City)",
+    "isActive": true,
+    "__v": 0,
+    "createdAt": {
+      "$date": "2025-10-04T10:22:13.728Z"
+    },
+    "updatedAt": {
+      "$date": "2026-01-31T02:02:29.381Z"
+    },
+    "lastLogin": {
+      "$date": "2026-01-31T02:02:29.381Z"
+    },
+    "area": ""
+  },
+  {
+    "_id": {
+      "$oid": "68e0f555f6e4997908561caf"
+    },
+    "unit": "Palakkad",
+    "ruknId": "112480",
+    "name": "Haris P M",
+    "contactNo": "9745738848",
+    "emailId": "ne50@gmail.com",
+    "district": "Palakkad",
+    "isActive": true,
+    "__v": 0,
+    "createdAt": {
+      "$date": "2025-10-04T10:22:13.728Z"
+    },
+    "updatedAt": {
+      "$date": "2026-01-09T13:34:57.652Z"
+    },
+    "lastLogin": {
+      "$date": "2026-01-09T13:34:57.651Z"
+    },
+    "area": "Palakkad"
+  },
+  {
+    "_id": {
+      "$oid": "68e0f555f6e4997908561cb0"
+    },
+    "unit": "Valapatanam",
+    "ruknId": "111448",
+    "name": "Harris Chundagapoyil Puthiyapurayil",
+    "contactNo": "8089349747",
+    "emailId": "harriscp@gmail.com",
+    "district": "Kannur",
+    "isActive": true,
+    "__v": 0,
+    "createdAt": {
+      "$date": "2025-10-04T10:22:13.728Z"
+    },
+    "updatedAt": {
+      "$date": "2026-01-09T09:32:17.639Z"
+    },
+    "lastLogin": {
+      "$date": "2026-01-09T09:32:17.639Z"
+    },
+    "area": "Valapatanam"
+  },
+  {
+    "_id": {
+      "$oid": "68e0f555f6e4997908561cb1"
+    },
+    "unit": "Edayur",
+    "ruknId": "110902",
+    "name": "Hassan .P",
+    "contactNo": "9946050541",
+    "emailId": "hasanedr@gmail.com",
+    "district": "Malappuram",
+    "isActive": true,
+    "__v": 0,
+    "createdAt": {
+      "$date": "2025-10-04T10:22:13.728Z"
+    },
+    "updatedAt": {
+      "$date": "2026-01-06T16:19:09.438Z"
+    },
+    "lastLogin": {
+      "$date": "2026-01-06T16:19:09.438Z"
+    },
+    "area": "Valanchery"
+  },
+  {
+    "_id": {
+      "$oid": "68e0f555f6e4997908561cb2"
+    },
+    "unit": "Chittur",
+    "ruknId": "110152",
+    "name": "Hydru N V",
+    "contactNo": "9446876027",
+    "emailId": "hydruseli@gmail.c",
+    "district": "Palakkad",
+    "isActive": true,
+    "__v": 0,
+    "createdAt": {
+      "$date": "2025-10-04T10:22:13.728Z"
+    },
+    "updatedAt": {
+      "$date": "2026-01-19T03:10:51.747Z"
+    },
+    "lastLogin": {
+      "$date": "2026-01-19T03:10:51.747Z"
+    },
+    "area": "Chittur"
+  },
+  {
+    "_id": {
+      "$oid": "68e0f555f6e4997908561cb3"
+    },
+    "unit": "Palluruthy",
+    "ruknId": "109973",
+    "name": "I M Saleem",
+    "contactNo": "9946366151",
+    "emailId": "imsaleemekm@gmail.com",
+    "district": "Kochi",
+    "isActive": true,
+    "__v": 0,
+    "createdAt": {
+      "$date": "2025-10-04T10:22:13.729Z"
+    },
+    "updatedAt": {
+      "$date": "2026-01-16T09:17:16.497Z"
+    },
+    "lastLogin": {
+      "$date": "2026-01-16T09:17:16.496Z"
+    },
+    "area": "Palluruthy"
+  },
+  {
+    "_id": {
+      "$oid": "68e0f555f6e4997908561cb4"
+    },
+    "unit": "Edakkazhiyur",
+    "ruknId": "110139",
+    "name": "I.Mohammad Ali",
+    "contactNo": "9446278419",
+    "emailId": "mohamedaliikapadath@gmail.com",
+    "district": "Thrissur",
+    "isActive": true,
+    "__v": 0,
+    "createdAt": {
+      "$date": "2025-10-04T10:22:13.729Z"
+    },
+    "updatedAt": {
+      "$date": "2026-01-20T11:38:02.785Z"
+    },
+    "lastLogin": {
+      "$date": "2026-01-20T11:38:02.785Z"
+    },
+    "area": "Edakkazhiyur"
+  },
+  {
+    "_id": {
+      "$oid": "68e0f555f6e4997908561cb5"
+    },
+    "unit": "Karuvannur",
+    "ruknId": "113352",
+    "name": "Ibrahim K K",
+    "contactNo": "9605553877",
+    "emailId": "kkikutty@gmail.com",
+    "district": "Thrissur",
+    "isActive": true,
+    "__v": 0,
+    "createdAt": {
+      "$date": "2025-10-04T10:22:13.729Z"
+    },
+    "updatedAt": {
+      "$date": "2026-01-07T15:53:34.434Z"
+    },
+    "area": "Karuvannur",
+    "lastLogin": {
+      "$date": "2026-01-07T15:53:34.434Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "68e0f555f6e4997908561cb6"
+    },
+    "unit": "Narikkuni",
+    "ruknId": "111051",
+    "name": "Ibrahim K T",
+    "contactNo": "9447338523",
+    "emailId": "lbrahimthss@gmail.com",
+    "district": "Kozhikode",
+    "isActive": true,
+    "__v": 0,
+    "createdAt": {
+      "$date": "2025-10-04T10:22:13.729Z"
+    },
+    "updatedAt": {
+      "$date": "2026-01-14T14:07:35.241Z"
+    },
+    "lastLogin": {
+      "$date": "2026-01-14T14:07:35.241Z"
+    },
+    "area": "Narikkuni"
+  },
+  {
+    "_id": {
+      "$oid": "68e0f555f6e4997908561cb7"
+    },
+    "unit": "Kuttamassery",
+    "ruknId": "113356",
+    "name": "Ibrahim P Z",
+    "contactNo": "9846046463",
+    "emailId": "ibrahimpz@gmail.com",
+    "district": "Ernakulam",
+    "isActive": true,
+    "__v": 0,
+    "createdAt": {
+      "$date": "2025-10-04T10:22:13.729Z"
+    },
+    "updatedAt": {
+      "$date": "2026-01-13T07:43:42.425Z"
+    },
+    "lastLogin": {
+      "$date": "2026-01-13T07:43:42.425Z"
+    },
+    "area": "Keezhmad"
+  },
+  {
+    "_id": {
+      "$oid": "68e0f555f6e4997908561cb8"
+    },
+    "unit": "Balussery",
+    "ruknId": "111279",
+    "name": "Ibrahimkutty . M",
+    "contactNo": "9605342435",
+    "emailId": "ibrahimmayadi3@gmail.com",
+    "district": "Kozhikode",
+    "isActive": true,
+    "__v": 0,
+    "createdAt": {
+      "$date": "2025-10-04T10:22:13.729Z"
+    },
+    "updatedAt": {
+      "$date": "2026-01-14T15:52:55.445Z"
+    },
+    "lastLogin": {
+      "$date": "2026-01-14T15:52:55.445Z"
+    },
+    "area": "Balussery"
+  },
+  {
+    "_id": {
+      "$oid": "68e0f555f6e4997908561cb9"
+    },
+    "unit": "Mulliakurissi",
+    "ruknId": "110781",
+    "name": "Ishaq Ali K V",
+    "contactNo": "9846332670",
+    "emailId": "ishaqalimoidu@gmail.com",
+    "district": "Malappuram",
+    "isActive": true,
+    "__v": 0,
+    "createdAt": {
+      "$date": "2025-10-04T10:22:13.729Z"
+    },
+    "updatedAt": {
+      "$date": "2026-01-03T12:03:14.897Z"
+    },
+    "area": "Santhapuram",
+    "lastLogin": {
+      "$date": "2026-01-03T12:03:14.897Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "68e0f555f6e4997908561cba"
+    },
+    "unit": "Kumbala",
+    "ruknId": "111561",
+    "name": "Ismail K K",
+    "contactNo": "9847960394",
+    "emailId": "ismailsoorambail@gmail.com",
+    "district": "Kasaragode",
+    "isActive": true,
+    "__v": 0,
+    "createdAt": {
+      "$date": "2025-10-04T10:22:13.729Z"
+    },
+    "updatedAt": {
+      "$date": "2026-01-04T15:35:39.931Z"
+    },
+    "lastLogin": {
+      "$date": "2026-01-04T15:35:39.931Z"
+    },
+    "area": "Kumbala"
+  },
+  {
+    "_id": {
+      "$oid": "68e0f555f6e4997908561cbb"
+    },
+    "unit": "Tanalur",
+    "ruknId": "117521",
+    "name": "Jabir T T",
+    "contactNo": "9995210850",
+    "emailId": "g@s86gmail.com",
+    "district": "Malappuram",
+    "isActive": true,
+    "__v": 0,
+    "createdAt": {
+      "$date": "2025-10-04T10:22:13.729Z"
+    },
+    "updatedAt": {
+      "$date": "2026-01-04T12:21:15.424Z"
+    },
+    "area": "Tanalur",
+    "lastLogin": {
+      "$date": "2026-01-04T12:21:15.424Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "68e0f555f6e4997908561cbc"
+    },
+    "unit": "Azhikode",
+    "ruknId": "113149",
+    "name": "K M Sidhique",
+    "contactNo": "9496333288",
+    "emailId": "sidhiquepazhangadan@gmail.com",
+    "district": "Thrissur",
+    "isActive": true,
+    "__v": 0,
+    "createdAt": {
+      "$date": "2025-10-04T10:22:13.729Z"
+    },
+    "updatedAt": {
+      "$date": "2026-01-12T07:04:43.249Z"
+    },
+    "lastLogin": {
+      "$date": "2026-01-12T07:04:43.249Z"
+    },
+    "area": "Eriyad"
+  },
+  {
+    "_id": {
+      "$oid": "68e0f555f6e4997908561cbd"
+    },
+    "unit": "A R Nagar",
+    "ruknId": "110994",
+    "name": "K T    Hussain",
+    "contactNo": "9037948840",
+    "emailId": "ktmhkuttoor@gmail.com",
+    "district": "Malappuram",
+    "isActive": true,
+    "__v": 0,
+    "createdAt": {
+      "$date": "2025-10-04T10:22:13.729Z"
+    },
+    "updatedAt": {
+      "$date": "2026-01-09T13:27:35.831Z"
+    },
+    "lastLogin": {
+      "$date": "2026-01-09T13:27:35.831Z"
+    },
+    "area": "A R Nagar"
+  },
+  {
+    "_id": {
+      "$oid": "68e0f555f6e4997908561cbe"
+    },
+    "unit": "Thaikattukara",
+    "ruknId": "109824",
+    "name": "K. H. Ibrahimkutty",
+    "contactNo": "9747249650",
+    "emailId": "aboonajadh@gmail.com",
+    "district": "Ernakulam",
+    "isActive": true,
+    "__v": 0,
+    "createdAt": {
+      "$date": "2025-10-04T10:22:13.729Z"
+    },
+    "updatedAt": {
+      "$date": "2026-01-30T04:27:39.016Z"
+    },
+    "lastLogin": {
+      "$date": "2026-01-30T04:27:39.016Z"
+    },
+    "area": "Aluva"
+  },
+  {
+    "_id": {
+      "$oid": "68e0f555f6e4997908561cbf"
+    },
+    "unit": "Eriyad",
+    "ruknId": "110019",
+    "name": "K. M. Veerankutty",
+    "contactNo": "9400108802",
+    "emailId": "sabeedha@gmail.com",
+    "district": "Thrissur",
+    "isActive": true,
+    "__v": 0,
+    "createdAt": {
+      "$date": "2025-10-04T10:22:13.732Z"
+    },
+    "updatedAt": {
+      "$date": "2026-01-10T14:12:03.169Z"
+    },
+    "area": "Eriyad",
+    "lastLogin": {
+      "$date": "2026-01-10T14:12:03.168Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "68e0f555f6e4997908561cc0"
+    },
+    "unit": "Edappally",
+    "ruknId": "109934",
+    "name": "K.A.Muhamad",
+    "contactNo": "9447134212",
+    "emailId": "muhamadkannachankudy@gmail.com",
+    "district": "Kochi",
+    "isActive": true,
+    "__v": 0,
+    "createdAt": {
+      "$date": "2025-10-04T10:22:13.732Z"
+    },
+    "updatedAt": {
+      "$date": "2026-01-20T11:53:00.318Z"
+    },
+    "lastLogin": {
+      "$date": "2026-01-20T11:53:00.317Z"
+    },
+    "area": "Thrikkakara"
+  },
+  {
+    "_id": {
+      "$oid": "68e0f555f6e4997908561cc1"
+    },
+    "unit": "Ernakulam North",
+    "ruknId": "109944",
+    "name": "K.M.Abduiraheem",
+    "contactNo": "9447251738",
+    "emailId": "abduraheem906@gmail.com",
+    "district": "Kochi",
+    "isActive": true,
+    "__v": 0,
+    "createdAt": {
+      "$date": "2025-10-04T10:22:13.732Z"
+    },
+    "updatedAt": {
+      "$date": "2026-01-07T16:07:19.517Z"
+    },
+    "lastLogin": {
+      "$date": "2026-01-07T16:07:19.516Z"
+    },
+    "area": "Ernakulam"
+  },
+  {
+    "_id": {
+      "$oid": "68e0f555f6e4997908561cc2"
+    },
+    "unit": "Kanhangad",
+    "ruknId": "111579",
+    "name": "K.Mohammed Shafi",
+    "contactNo": "8129585460",
+    "emailId": "shafikudroli@gmail.com",
+    "district": "Kasaragode",
+    "isActive": true,
+    "__v": 0,
+    "createdAt": {
+      "$date": "2025-10-04T10:22:13.733Z"
+    },
+    "updatedAt": {
+      "$date": "2026-01-04T10:58:39.680Z"
+    },
+    "lastLogin": {
+      "$date": "2026-01-04T10:58:39.680Z"
+    },
+    "area": "Kanhangad"
+  },
+  {
+    "_id": {
+      "$oid": "68e0f555f6e4997908561cc3"
+    },
+    "unit": "Chirayinkeezh",
+    "ruknId": "109525",
+    "name": "Kabir.M",
+    "contactNo": "9446753505",
+    "emailId": "adhilar.tvm2000@gmail.com",
+    "district": "Thiruvananthapuram",
+    "isActive": true,
+    "__v": 0,
+    "createdAt": {
+      "$date": "2025-10-04T10:22:13.733Z"
+    },
+    "updatedAt": {
+      "$date": "2026-01-03T15:57:57.032Z"
+    },
+    "lastLogin": {
+      "$date": "2026-01-03T15:57:57.031Z"
+    },
+    "area": "Chirayinkeezh"
+  },
+  {
+    "_id": {
+      "$oid": "68e0f555f6e4997908561cc4"
+    },
+    "unit": "Kamaleswaram",
+    "ruknId": "113372",
+    "name": "Katharudheen S",
+    "contactNo": "9895102300",
+    "emailId": "1arautoparts7@gmail.com",
+    "district": "Thiruvananthapuram",
+    "isActive": true,
+    "__v": 0,
+    "createdAt": {
+      "$date": "2025-10-04T10:22:13.733Z"
+    },
+    "updatedAt": {
+      "$date": "2025-12-19T09:12:09.236Z"
+    },
+    "lastLogin": {
+      "$date": "2025-10-14T11:34:12.437Z"
+    },
+    "area": "Thiruvananthapuram West"
+  },
+  {
+    "_id": {
+      "$oid": "68e0f555f6e4997908561cc5"
+    },
+    "unit": "Thrithala",
+    "ruknId": "110206",
+    "name": "Kattetheyil Umarudheen",
+    "contactNo": "8606277913",
+    "emailId": "umarudheenkattetheyil@gmail.com",
+    "district": "Palakkad",
+    "isActive": true,
+    "__v": 0,
+    "createdAt": {
+      "$date": "2025-10-04T10:22:13.733Z"
+    },
+    "updatedAt": {
+      "$date": "2026-01-16T12:20:19.268Z"
+    },
+    "area": "Thrithala",
+    "lastLogin": {
+      "$date": "2026-01-16T12:20:19.268Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "68e0f555f6e4997908561cc6"
+    },
+    "unit": "Palath",
+    "ruknId": "111086",
+    "name": "Kayyalakkel Abdurahiman",
+    "contactNo": "9400484962",
+    "emailId": "edacherry@gmail.com",
+    "district": "Kozhikode",
+    "isActive": true,
+    "__v": 0,
+    "createdAt": {
+      "$date": "2025-10-04T10:22:13.733Z"
+    },
+    "updatedAt": {
+      "$date": "2026-01-26T05:11:16.268Z"
+    },
+    "lastLogin": {
+      "$date": "2026-01-26T05:11:16.267Z"
+    },
+    "area": "Palath"
+  },
+  {
+    "_id": {
+      "$oid": "68e0f555f6e4997908561cc7"
+    },
+    "unit": "Edappal",
+    "ruknId": "110401",
+    "name": "Korakuzhiyil Hussain",
+    "contactNo": "9947861886",
+    "emailId": "deenar1975@gmail.com",
+    "district": "Malappuram",
+    "isActive": true,
+    "__v": 0,
+    "createdAt": {
+      "$date": "2025-10-04T10:22:13.733Z"
+    },
+    "updatedAt": {
+      "$date": "2026-02-07T02:30:35.850Z"
+    },
+    "lastLogin": {
+      "$date": "2026-02-07T02:30:35.849Z"
+    },
+    "area": "Edappal"
+  },
+  {
+    "_id": {
+      "$oid": "68e0f555f6e4997908561cc8"
+    },
+    "unit": "Kodur",
+    "ruknId": "110514",
+    "name": "Koyakutty.M",
+    "contactNo": "9656256732",
+    "emailId": "koyakuttym68@gmail.com",
+    "district": "Malappuram",
+    "isActive": true,
+    "__v": 0,
+    "createdAt": {
+      "$date": "2025-10-04T10:22:13.733Z"
+    },
+    "updatedAt": {
+      "$date": "2026-01-03T09:40:28.031Z"
+    },
+    "lastLogin": {
+      "$date": "2026-01-03T09:40:28.030Z"
+    },
+    "area": "Malappuram"
+  },
+  {
+    "_id": {
+      "$oid": "68e0f555f6e4997908561cc9"
+    },
+    "unit": "Perinthalmanna",
+    "ruknId": "115188",
+    "name": "Kp Aboobacker",
+    "contactNo": "9744498110",
+    "emailId": "abooliyana@gmail.com",
+    "district": "Malappuram",
+    "isActive": true,
+    "__v": 0,
+    "createdAt": {
+      "$date": "2025-10-04T10:22:13.733Z"
+    },
+    "updatedAt": {
+      "$date": "2026-01-29T02:17:51.058Z"
+    },
+    "lastLogin": {
+      "$date": "2026-01-29T02:17:51.057Z"
+    },
+    "area": "Perinthalmanna"
+  },
+  {
+    "_id": {
+      "$oid": "68e0f555f6e4997908561cca"
+    },
+    "unit": "Kondotty",
+    "ruknId": "110433",
+    "name": "Kunhahmed Parambadan",
+    "contactNo": "9249433662",
+    "emailId": "kunhahmedparambadan@gmail.com",
+    "district": "Malappuram",
+    "isActive": true,
+    "__v": 0,
+    "createdAt": {
+      "$date": "2025-10-04T10:22:13.733Z"
+    },
+    "updatedAt": {
+      "$date": "2026-01-29T07:29:26.239Z"
+    },
+    "lastLogin": {
+      "$date": "2026-01-29T07:29:26.238Z"
+    },
+    "area": "Kondotty"
+  },
+  {
+    "_id": {
+      "$oid": "68e0f555f6e4997908561ccb"
+    },
+    "unit": "Nadapuram",
+    "ruknId": "111098",
+    "name": "Kunhali V V",
+    "contactNo": "9446732257",
+    "emailId": "vvkunjalimaster@gmail.com",
+    "district": "Kozhikode",
+    "isActive": true,
+    "__v": 0,
+    "createdAt": {
+      "$date": "2025-10-04T10:22:13.733Z"
+    },
+    "updatedAt": {
+      "$date": "2026-01-12T06:08:01.753Z"
+    },
+    "lastLogin": {
+      "$date": "2026-01-12T06:08:01.753Z"
+    },
+    "area": "Nadapuram"
+  },
+  {
+    "_id": {
+      "$oid": "68e0f555f6e4997908561ccc"
+    },
+    "unit": "Randathani",
+    "ruknId": "114401",
+    "name": "Kunhi Mohammed K P",
+    "contactNo": "9446535307",
+    "emailId": "kkunhimohamed@gmail.com",
+    "district": "Malappuram",
+    "isActive": true,
+    "__v": 0,
+    "createdAt": {
+      "$date": "2025-10-04T10:22:13.734Z"
+    },
+    "updatedAt": {
+      "$date": "2026-01-06T05:06:07.635Z"
+    },
+    "lastLogin": {
+      "$date": "2026-01-06T05:06:07.634Z"
+    },
+    "area": "Puthanathani"
+  },
+  {
+    "_id": {
+      "$oid": "68e0f555f6e4997908561ccd"
+    },
+    "unit": "Maranchery",
+    "ruknId": "110622",
+    "name": "Kunhimarakkar",
+    "contactNo": "9645703206",
+    "emailId": "kunhimarakkarvk@gmail.com",
+    "district": "Malappuram",
+    "isActive": true,
+    "__v": 0,
+    "createdAt": {
+      "$date": "2025-10-04T10:22:13.734Z"
+    },
+    "updatedAt": {
+      "$date": "2026-01-18T12:15:08.298Z"
+    },
+    "area": "Maranchery",
+    "lastLogin": {
+      "$date": "2026-01-18T12:15:08.297Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "68e0f555f6e4997908561cce"
+    },
+    "unit": "Makkarapparamba",
+    "ruknId": "110359",
+    "name": "Kunhimuhammed M",
+    "contactNo": "7994298643",
+    "emailId": "kmmuringekkal@gmail.com",
+    "district": "Malappuram",
+    "isActive": true,
+    "__v": 0,
+    "createdAt": {
+      "$date": "2025-10-04T10:22:13.734Z"
+    },
+    "updatedAt": {
+      "$date": "2026-01-14T17:00:28.986Z"
+    },
+    "lastLogin": {
+      "$date": "2026-01-14T17:00:28.986Z"
+    },
+    "area": "Makkarapparamba"
+  },
+  {
+    "_id": {
+      "$oid": "68e0f555f6e4997908561ccf"
+    },
+    "unit": "Chadayamangalam",
+    "ruknId": "109606",
+    "name": "M Salim",
+    "contactNo": "8086872959",
+    "emailId": "salim34akkal@gmail.com",
+    "district": "Kollam",
+    "isActive": true,
+    "__v": 0,
+    "createdAt": {
+      "$date": "2025-10-04T10:22:13.734Z"
+    },
+    "updatedAt": {
+      "$date": "2026-01-04T07:27:44.102Z"
+    },
+    "lastLogin": {
+      "$date": "2026-01-04T07:27:44.101Z"
+    },
+    "area": "Chadayamangalam"
+  },
+  {
+    "_id": {
+      "$oid": "68e0f555f6e4997908561cd0"
+    },
+    "unit": "Alathur",
+    "ruknId": "110174",
+    "name": "M. Abdul Jabbar",
+    "contactNo": "8089592405",
+    "emailId": "skylandtt19@gmail.com",
+    "district": "Palakkad",
+    "isActive": true,
+    "__v": 0,
+    "createdAt": {
+      "$date": "2025-10-04T10:22:13.734Z"
+    },
+    "updatedAt": {
+      "$date": "2026-01-10T05:12:03.644Z"
+    },
+    "lastLogin": {
+      "$date": "2026-01-10T05:12:03.644Z"
+    },
+    "area": "Alathur"
+  },
+  {
+    "_id": {
+      "$oid": "68e0f555f6e4997908561cd1"
+    },
+    "unit": "Thamarassery",
+    "ruknId": "111296",
+    "name": "M.A. Mohammed Yusuf",
+    "contactNo": "9846313215",
+    "emailId": "mayalappuzha@gmail.com",
+    "district": "Kozhikode",
+    "isActive": true,
+    "__v": 0,
+    "createdAt": {
+      "$date": "2025-10-04T10:22:13.734Z"
+    },
+    "updatedAt": {
+      "$date": "2026-01-03T03:06:25.738Z"
+    },
+    "lastLogin": {
+      "$date": "2026-01-03T03:06:25.738Z"
+    },
+    "area": "Thamarassery"
+  },
+  {
+    "_id": {
+      "$oid": "68e0f555f6e4997908561cd2"
+    },
+    "unit": "Vypin North",
+    "ruknId": "112737",
+    "name": "Mehboob Ks",
+    "contactNo": "9847777848",
+    "emailId": "babuji.ks@gmail.com",
+    "district": "Kochi",
+    "isActive": true,
+    "__v": 0,
+    "createdAt": {
+      "$date": "2025-10-04T10:22:13.734Z"
+    },
+    "updatedAt": {
+      "$date": "2026-01-13T02:23:34.790Z"
+    },
+    "lastLogin": {
+      "$date": "2026-01-13T02:23:34.790Z"
+    },
+    "area": "Vypin"
+  },
+  {
+    "_id": {
+      "$oid": "68e0f555f6e4997908561cd3"
+    },
+    "unit": "Ottappalam",
+    "ruknId": "110271",
+    "name": "Mohamed Ali V P",
+    "contactNo": "9946740876",
+    "emailId": "malisbotp@gmail.com",
+    "district": "Palakkad",
+    "isActive": true,
+    "__v": 0,
+    "createdAt": {
+      "$date": "2025-10-04T10:22:13.734Z"
+    },
+    "updatedAt": {
+      "$date": "2026-01-10T14:03:25.818Z"
+    },
+    "area": "Ottappalam",
+    "lastLogin": {
+      "$date": "2026-01-10T14:03:25.818Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "68e0f555f6e4997908561cd4"
+    },
+    "unit": "Kunnummal",
+    "ruknId": "110510",
+    "name": "Mohamed Basheer Changampalli",
+    "contactNo": "7736242848",
+    "emailId": "chmbasheer@gmail.com",
+    "district": "Malappuram",
+    "isActive": true,
+    "__v": 0,
+    "createdAt": {
+      "$date": "2025-10-04T10:22:13.734Z"
+    },
+    "updatedAt": {
+      "$date": "2026-01-12T08:07:27.014Z"
+    },
+    "lastLogin": {
+      "$date": "2026-01-12T08:07:27.013Z"
+    },
+    "area": "Malappuram"
+  },
+  {
+    "_id": {
+      "$oid": "68e0f555f6e4997908561cd5"
+    },
+    "unit": "Koottilangadi",
+    "ruknId": "110346",
+    "name": "Mohamed Musthafa C",
+    "contactNo": "7012545656",
+    "emailId": "musthafa.husain@gmail.com",
+    "district": "Malappuram",
+    "isActive": true,
+    "__v": 0,
+    "createdAt": {
+      "$date": "2025-10-04T10:22:13.734Z"
+    },
+    "updatedAt": {
+      "$date": "2026-02-04T08:54:43.660Z"
+    },
+    "lastLogin": {
+      "$date": "2026-02-04T08:54:43.660Z"
+    },
+    "area": "Makkarapparamba"
+  },
+  {
+    "_id": {
+      "$oid": "68e0f555f6e4997908561cd6"
+    },
+    "unit": "Pattambi",
+    "ruknId": "110160",
+    "name": "Mohamed Musthafa. P",
+    "contactNo": "9946461297",
+    "emailId": "muspanakkattil@gmail.com",
+    "district": "Palakkad",
+    "isActive": true,
+    "__v": 0,
+    "createdAt": {
+      "$date": "2025-10-04T10:22:13.734Z"
+    },
+    "updatedAt": {
+      "$date": "2026-01-09T12:46:27.745Z"
+    },
+    "lastLogin": {
+      "$date": "2026-01-09T12:46:27.744Z"
+    },
+    "area": "Pattambi"
+  },
+  {
+    "_id": {
+      "$oid": "68e0f555f6e4997908561cd7"
+    },
+    "unit": "Kodungallur",
+    "ruknId": "110009",
+    "name": "Mohamed Rasheed E A",
+    "contactNo": "8086470811",
+    "emailId": "rashhuda@gmail.com",
+    "district": "Thrissur",
+    "isActive": true,
+    "__v": 0,
+    "createdAt": {
+      "$date": "2025-10-04T10:22:13.734Z"
+    },
+    "updatedAt": {
+      "$date": "2026-02-07T02:42:18.631Z"
+    },
+    "lastLogin": {
+      "$date": "2026-02-07T02:42:18.631Z"
+    },
+    "area": "Kodungallur"
+  },
+  {
+    "_id": {
+      "$oid": "68e0f555f6e4997908561cd8"
+    },
+    "unit": "Alathiyur",
+    "ruknId": "110300",
+    "name": "Mohammad Ali",
+    "contactNo": "9846920067",
+    "emailId": "7078@gmail.com",
+    "district": "Malappuram",
+    "isActive": true,
+    "__v": 0,
+    "createdAt": {
+      "$date": "2025-10-04T10:22:13.734Z"
+    },
+    "updatedAt": {
+      "$date": "2026-01-12T16:18:22.073Z"
+    },
+    "lastLogin": {
+      "$date": "2026-01-12T16:18:22.073Z"
+    },
+    "area": "Alathiyur"
+  },
+  {
+    "_id": {
+      "$oid": "68e0f555f6e4997908561cd9"
+    },
+    "unit": "Valanchery",
+    "ruknId": "110926",
+    "name": "Mohammadali .U",
+    "contactNo": "9846693573",
+    "emailId": "umalivly@gmail.com",
+    "district": "Malappuram",
+    "isActive": true,
+    "__v": 0,
+    "createdAt": {
+      "$date": "2025-10-04T10:22:13.734Z"
+    },
+    "updatedAt": {
+      "$date": "2026-01-10T11:14:29.525Z"
+    },
+    "lastLogin": {
+      "$date": "2026-01-10T11:14:29.524Z"
+    },
+    "area": "Valanchery"
+  },
+  {
+    "_id": {
+      "$oid": "68e0f555f6e4997908561cda"
+    },
+    "unit": "Chennamangallur",
+    "ruknId": "113967",
+    "name": "Mohammed Abdurahiman K T",
+    "contactNo": "9846086915",
+    "emailId": "ktmabdurahiman@gmail.com",
+    "district": "Kozhikode",
+    "isActive": true,
+    "__v": 0,
+    "createdAt": {
+      "$date": "2025-10-04T10:22:13.735Z"
+    },
+    "updatedAt": {
+      "$date": "2026-01-18T15:15:47.441Z"
+    },
+    "lastLogin": {
+      "$date": "2026-01-18T15:15:47.440Z"
+    },
+    "area": "Mukkam"
+  },
+  {
+    "_id": {
+      "$oid": "68e0f555f6e4997908561cdb"
+    },
+    "unit": "Vazhakkad",
+    "ruknId": "113306",
+    "name": "Mohammed Abdurahman K",
+    "contactNo": "9895200076",
+    "emailId": "kmamashkoorvkd@gmail.com",
+    "district": "Malappuram",
+    "isActive": true,
+    "__v": 0,
+    "createdAt": {
+      "$date": "2025-10-04T10:22:13.735Z"
+    },
+    "updatedAt": {
+      "$date": "2026-01-30T09:03:03.648Z"
+    },
+    "lastLogin": {
+      "$date": "2026-01-30T09:03:03.647Z"
+    },
+    "area": "Vazhakkad"
+  },
+  {
+    "_id": {
+      "$oid": "68e0f555f6e4997908561cdc"
+    },
+    "unit": "Mankada",
+    "ruknId": "110571",
+    "name": "Mohammed Ali Moochikkal",
+    "contactNo": "9447678865",
+    "emailId": "malimankada999@gmail.com",
+    "district": "Malappuram",
+    "isActive": true,
+    "__v": 0,
+    "createdAt": {
+      "$date": "2025-10-04T10:22:13.735Z"
+    },
+    "updatedAt": {
+      "$date": "2026-01-10T15:36:56.563Z"
+    },
+    "lastLogin": {
+      "$date": "2026-01-10T15:36:56.563Z"
+    },
+    "area": "Tirurkad"
+  },
+  {
+    "_id": {
+      "$oid": "68e0f555f6e4997908561cdd"
+    },
+    "unit": "Koyilandi",
+    "ruknId": "111038",
+    "name": "Mohammed Haneefa P.P.",
+    "contactNo": "8089828247",
+    "emailId": "mhaneefa50@gmail.com",
+    "district": "Kozhikode",
+    "isActive": true,
+    "__v": 0,
+    "createdAt": {
+      "$date": "2025-10-04T10:22:13.735Z"
+    },
+    "updatedAt": {
+      "$date": "2026-01-16T03:53:37.146Z"
+    },
+    "area": "Koyilandi",
+    "lastLogin": {
+      "$date": "2026-01-16T03:53:37.146Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "68e0f555f6e4997908561cde"
+    },
+    "unit": "Vaduthala",
+    "ruknId": "109716",
+    "name": "Mohammed Husain K.A",
+    "contactNo": "9846765287",
+    "emailId": "kahusain111@gmail.com",
+    "district": "Alappuzha",
+    "isActive": true,
+    "__v": 0,
+    "createdAt": {
+      "$date": "2025-10-04T10:22:13.735Z"
+    },
+    "updatedAt": {
+      "$date": "2026-01-13T06:58:04.787Z"
+    },
+    "lastLogin": {
+      "$date": "2026-01-13T06:58:04.787Z"
+    },
+    "area": "Cherthala"
+  },
+  {
+    "_id": {
+      "$oid": "68e0f555f6e4997908561cdf"
+    },
+    "unit": "Wadakkanchery",
+    "ruknId": "112495",
+    "name": "Mohammed Kutty E M",
+    "contactNo": "9947996763",
+    "emailId": "mkedayath@gmail.com",
+    "district": "Thrissur",
+    "isActive": true,
+    "__v": 0,
+    "createdAt": {
+      "$date": "2025-10-04T10:22:13.735Z"
+    },
+    "updatedAt": {
+      "$date": "2026-01-12T08:41:06.562Z"
+    },
+    "lastLogin": {
+      "$date": "2026-01-12T08:41:06.562Z"
+    },
+    "area": "Wadakkanchery"
+  },
+  {
+    "_id": {
+      "$oid": "68e0f555f6e4997908561ce0"
+    },
+    "unit": "Thirurkad",
+    "ruknId": "110789",
+    "name": "Mohammed Shareef V P",
+    "contactNo": "9747614461",
+    "emailId": "shareefvalamboor65@gmail.com",
+    "district": "Malappuram",
+    "isActive": true,
+    "__v": 0,
+    "createdAt": {
+      "$date": "2025-10-04T10:22:13.735Z"
+    },
+    "updatedAt": {
+      "$date": "2026-01-03T05:46:22.552Z"
+    },
+    "lastLogin": {
+      "$date": "2026-01-03T05:46:22.552Z"
+    },
+    "area": "Thirurkad"
+  },
+  {
+    "_id": {
+      "$oid": "68e0f555f6e4997908561ce1"
+    },
+    "unit": "Fort Kochi",
+    "ruknId": "109957",
+    "name": "Mohd Jamal.  O A",
+    "contactNo": "9746393424",
+    "emailId": "okeypack@gmail.com",
+    "district": "Kochi",
+    "isActive": true,
+    "__v": 0,
+    "createdAt": {
+      "$date": "2025-10-04T10:22:13.735Z"
+    },
+    "updatedAt": {
+      "$date": "2026-02-12T22:34:24.407Z"
+    },
+    "lastLogin": {
+      "$date": "2026-02-12T22:34:24.406Z"
+    },
+    "area": "Kochi"
+  },
+  {
+    "_id": {
+      "$oid": "68e0f555f6e4997908561ce2"
+    },
+    "unit": "Salamath Nagar",
+    "ruknId": "110877",
+    "name": "Moideen Koya P",
+    "contactNo": "9947221172",
+    "emailId": "m.koyapallikkal@gmail.com",
+    "district": "Malappuram",
+    "isActive": true,
+    "__v": 0,
+    "createdAt": {
+      "$date": "2025-10-04T10:22:13.735Z"
+    },
+    "updatedAt": {
+      "$date": "2026-01-13T05:30:30.994Z"
+    },
+    "lastLogin": {
+      "$date": "2026-01-13T05:30:30.994Z"
+    },
+    "area": "University"
+  },
+  {
+    "_id": {
+      "$oid": "68e0f555f6e4997908561ce3"
+    },
+    "unit": "Kasaragod",
+    "ruknId": "114210",
+    "name": "Moideen Kunhi C A",
+    "contactNo": "9947298565",
+    "emailId": "",
+    "district": "Kasaragode",
+    "isActive": true,
+    "__v": 0,
+    "createdAt": {
+      "$date": "2025-10-04T10:22:13.735Z"
+    },
+    "updatedAt": {
+      "$date": "2025-12-19T09:12:10.447Z"
+    },
+    "lastLogin": {
+      "$date": "2025-10-15T03:54:01.976Z"
+    },
+    "area": "Kasaragod"
+  },
+  {
+    "_id": {
+      "$oid": "68e0f555f6e4997908561ce4"
+    },
+    "unit": "Pandikkad",
+    "ruknId": "110628",
+    "name": "Moosa Kutty Pattath",
+    "contactNo": "9495140155",
+    "emailId": "mkutty555@gmail.com",
+    "district": "Malappuram",
+    "isActive": true,
+    "__v": 0,
+    "createdAt": {
+      "$date": "2025-10-04T10:22:13.735Z"
+    },
+    "updatedAt": {
+      "$date": "2026-01-13T04:46:56.835Z"
+    },
+    "lastLogin": {
+      "$date": "2026-01-13T04:46:56.834Z"
+    },
+    "area": "Pandikkad"
+  },
+  {
+    "_id": {
+      "$oid": "68e0f555f6e4997908561ce5"
+    },
+    "unit": "Othukungal",
+    "ruknId": "114136",
+    "name": "Moosa T K",
+    "contactNo": "7025850130",
+    "emailId": "moosatk70@gmail.com",
+    "district": "Malappuram",
+    "isActive": true,
+    "__v": 0,
+    "createdAt": {
+      "$date": "2025-10-04T10:22:13.735Z"
+    },
+    "updatedAt": {
+      "$date": "2026-01-15T10:57:07.884Z"
+    },
+    "lastLogin": {
+      "$date": "2026-01-15T10:57:07.883Z"
+    },
+    "area": "Parappur"
+  },
+  {
+    "_id": {
+      "$oid": "68e0f555f6e4997908561ce6"
+    },
+    "unit": "Chelannur",
+    "ruknId": "111039",
+    "name": "Moosakoya V. T.",
+    "contactNo": "9895775998",
+    "emailId": "moosakoyavt@gmail.com",
+    "district": "Kozhikode",
+    "isActive": true,
+    "__v": 0,
+    "createdAt": {
+      "$date": "2025-10-04T10:22:13.735Z"
+    },
+    "updatedAt": {
+      "$date": "2026-01-16T13:23:25.055Z"
+    },
+    "area": "Chelannur",
+    "lastLogin": {
+      "$date": "2026-01-16T13:23:25.055Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "68e0f555f6e4997908561ce7"
+    },
+    "unit": "Vaniyambalam",
+    "ruknId": "111006",
+    "name": "Muhamed Akbar K",
+    "contactNo": "7034656658",
+    "emailId": "akbarvaniyambalam@gmail.com",
+    "district": "Malappuram",
+    "isActive": true,
+    "__v": 0,
+    "createdAt": {
+      "$date": "2025-10-04T10:22:13.736Z"
+    },
+    "updatedAt": {
+      "$date": "2026-01-15T16:47:59.752Z"
+    },
+    "lastLogin": {
+      "$date": "2026-01-15T16:47:59.752Z"
+    },
+    "area": "Wandoor"
+  },
+  {
+    "_id": {
+      "$oid": "68e0f555f6e4997908561ce8"
+    },
+    "unit": "Kannur City",
+    "ruknId": "111457",
+    "name": "Muhamed Haneef Kowayil",
+    "contactNo": "9496197140",
+    "emailId": "mdhaneefk@gmail.com",
+    "district": "Kannur",
+    "isActive": true,
+    "__v": 0,
+    "createdAt": {
+      "$date": "2025-10-04T10:22:13.736Z"
+    },
+    "updatedAt": {
+      "$date": "2026-01-11T11:16:26.771Z"
+    },
+    "lastLogin": {
+      "$date": "2026-01-11T11:16:26.770Z"
+    },
+    "area": "Kannur"
+  },
+  {
+    "_id": {
+      "$oid": "68e0f555f6e4997908561ce9"
+    },
+    "unit": "Ambalapuzha",
+    "ruknId": "109686",
+    "name": "Muhammad Bilal",
+    "contactNo": "9846010163",
+    "emailId": "muhammedbilal1961@gmail.com",
+    "district": "Alappuzha",
+    "isActive": true,
+    "__v": 0,
+    "createdAt": {
+      "$date": "2025-10-04T10:22:13.736Z"
+    },
+    "updatedAt": {
+      "$date": "2026-01-10T06:00:45.744Z"
+    },
+    "lastLogin": {
+      "$date": "2026-01-10T06:00:45.744Z"
+    },
+    "area": "Ambalapuzha"
+  },
+  {
+    "_id": {
+      "$oid": "68e0f555f6e4997908561cea"
+    },
+    "unit": "Medical College",
+    "ruknId": "111363",
+    "name": "Muhammad Najeeb C H",
+    "contactNo": "9633990078",
+    "emailId": "najeebch@yahoo.com",
+    "district": "Kozhikode (City)",
+    "isActive": true,
+    "__v": 0,
+    "createdAt": {
+      "$date": "2025-10-04T10:22:13.736Z"
+    },
+    "updatedAt": {
+      "$date": "2026-01-21T12:53:21.501Z"
+    },
+    "lastLogin": {
+      "$date": "2026-01-21T12:53:21.501Z"
+    },
+    "area": "Medical College"
+  },
+  {
+    "_id": {
+      "$oid": "68e0f555f6e4997908561ceb"
+    },
+    "unit": "Vadakkekad",
+    "ruknId": "110064",
+    "name": "Muhammadali K.H.",
+    "contactNo": "9544052864",
+    "emailId": "mohammedalikh001@gmail.com",
+    "district": "Thrissur",
+    "isActive": true,
+    "__v": 0,
+    "createdAt": {
+      "$date": "2025-10-04T10:22:13.736Z"
+    },
+    "updatedAt": {
+      "$date": "2026-01-04T04:57:24.709Z"
+    },
+    "lastLogin": {
+      "$date": "2026-01-04T04:57:24.708Z"
+    },
+    "area": "Vadakkekad"
+  },
+  {
+    "_id": {
+      "$oid": "68e0f555f6e4997908561cec"
+    },
+    "unit": "Iritty",
+    "ruknId": "111489",
+    "name": "Muhammed Ali T.K",
+    "contactNo": "9744321536",
+    "emailId": "tkmali636@gmail.com",
+    "district": "Kannur",
+    "isActive": true,
+    "__v": 0,
+    "createdAt": {
+      "$date": "2025-10-04T10:22:13.736Z"
+    },
+    "updatedAt": {
+      "$date": "2026-01-22T15:02:44.107Z"
+    },
+    "lastLogin": {
+      "$date": "2026-01-22T15:02:44.106Z"
+    },
+    "area": "Iritty"
+  },
+  {
+    "_id": {
+      "$oid": "68e0f555f6e4997908561ced"
+    },
+    "unit": "N I T",
+    "ruknId": "111256",
+    "name": "Muhammed Ali.K.C",
+    "contactNo": "9745944404",
+    "emailId": "kcmcmr@gmail.com",
+    "district": "Kozhikode",
+    "isActive": true,
+    "__v": 0,
+    "createdAt": {
+      "$date": "2025-10-04T10:22:13.736Z"
+    },
+    "updatedAt": {
+      "$date": "2026-01-15T05:29:34.024Z"
+    },
+    "lastLogin": {
+      "$date": "2026-01-15T05:29:34.023Z"
+    },
+    "area": "N I T"
+  },
+  {
+    "_id": {
+      "$oid": "68e0f555f6e4997908561cee"
+    },
+    "unit": "Rahmaniya",
+    "ruknId": "110653",
+    "name": "Muhammed Asharaf K",
+    "contactNo": "9496906959",
+    "emailId": "muhammedashraf61@gmail.com",
+    "district": "Malappuram",
+    "isActive": true,
+    "__v": 0,
+    "createdAt": {
+      "$date": "2025-10-04T10:22:13.736Z"
+    },
+    "updatedAt": {
+      "$date": "2026-01-11T04:17:52.602Z"
+    },
+    "lastLogin": {
+      "$date": "2026-01-11T04:17:52.602Z"
+    },
+    "area": "Mampad"
+  },
+  {
+    "_id": {
+      "$oid": "68e0f555f6e4997908561cef"
+    },
+    "unit": "Vengara",
+    "ruknId": "110971",
+    "name": "Muhammed Ashraf  P",
+    "contactNo": "9847805838",
+    "emailId": "ashrafoorakam5838@gmail.com",
+    "district": "Malappuram",
+    "isActive": true,
+    "__v": 0,
+    "createdAt": {
+      "$date": "2025-10-04T10:22:13.736Z"
+    },
+    "updatedAt": {
+      "$date": "2026-02-03T15:13:17.224Z"
+    },
+    "lastLogin": {
+      "$date": "2026-02-03T15:13:17.224Z"
+    },
+    "area": "Vengara"
+  },
+  {
+    "_id": {
+      "$oid": "68e0f555f6e4997908561cf0"
+    },
+    "unit": "Kavassery",
+    "ruknId": "110163",
+    "name": "Muhammed Haneefa",
+    "contactNo": "9400802288",
+    "emailId": "ne47@gmail.com",
+    "district": "Palakkad",
+    "isActive": true,
+    "__v": 0,
+    "createdAt": {
+      "$date": "2025-10-04T10:22:13.736Z"
+    },
+    "updatedAt": {
+      "$date": "2026-01-06T10:11:22.896Z"
+    },
+    "area": "Kavassery",
+    "lastLogin": {
+      "$date": "2026-01-06T10:11:22.896Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "68e0f555f6e4997908561cf1"
+    },
+    "unit": "Farook College",
+    "ruknId": "111215",
+    "name": "Muhammed Ibraheem Vettiyadan",
+    "contactNo": "9645001920",
+    "emailId": "vmibrahim@gmail.com",
+    "district": "Kozhikode",
+    "isActive": true,
+    "__v": 0,
+    "createdAt": {
+      "$date": "2025-10-04T10:22:13.736Z"
+    },
+    "updatedAt": {
+      "$date": "2025-12-19T09:12:10.984Z"
+    },
+    "lastLogin": {
+      "$date": "2025-10-19T16:59:31.289Z"
+    },
+    "area": "Ramanattukara"
+  },
+  {
+    "_id": {
+      "$oid": "68e0f555f6e4997908561cf2"
+    },
+    "unit": "Feroke",
+    "ruknId": "110694",
+    "name": "Muhammed Koya.C",
+    "contactNo": "9497080460",
+    "emailId": "3thaslupgikn@gmail.com",
+    "district": "Kozhikode",
+    "isActive": true,
+    "__v": 0,
+    "createdAt": {
+      "$date": "2025-10-04T10:22:13.736Z"
+    },
+    "updatedAt": {
+      "$date": "2026-01-07T04:45:49.195Z"
+    },
+    "lastLogin": {
+      "$date": "2026-01-07T04:45:49.195Z"
+    },
+    "area": "Feroke"
+  },
+  {
+    "_id": {
+      "$oid": "68e0f555f6e4997908561cf3"
+    },
+    "unit": "Kunnakkavu",
+    "ruknId": "112277",
+    "name": "Muhammed Nishad K",
+    "contactNo": "9847790965",
+    "emailId": "mnishadk@gmail.com",
+    "district": "Malappuram",
+    "isActive": true,
+    "__v": 0,
+    "createdAt": {
+      "$date": "2025-10-04T10:22:13.737Z"
+    },
+    "updatedAt": {
+      "$date": "2026-01-12T06:51:11.200Z"
+    },
+    "area": "Perinthalmanna",
+    "lastLogin": {
+      "$date": "2026-01-12T06:51:11.199Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "68e0f555f6e4997908561cf4"
+    },
+    "unit": "Mundumuzhi",
+    "ruknId": "110956",
+    "name": "Muhammed P T",
+    "contactNo": "9544094688",
+    "emailId": "yempeetee@gmail.com",
+    "district": "Malappuram",
+    "isActive": true,
+    "__v": 0,
+    "createdAt": {
+      "$date": "2025-10-04T10:22:13.737Z"
+    },
+    "updatedAt": {
+      "$date": "2026-01-13T13:58:11.627Z"
+    },
+    "lastLogin": {
+      "$date": "2026-01-13T13:58:11.627Z"
+    },
+    "area": "Vazhakkad"
+  },
+  {
+    "_id": {
+      "$oid": "68e0f555f6e4997908561cf5"
+    },
+    "unit": "Madayi",
+    "ruknId": "111427",
+    "name": "Muhammed Sajid Pk",
+    "contactNo": "9446706868",
+    "emailId": "pkmdsajid@gmail.com",
+    "district": "Kannur",
+    "isActive": true,
+    "__v": 0,
+    "createdAt": {
+      "$date": "2025-10-04T10:22:13.737Z"
+    },
+    "updatedAt": {
+      "$date": "2026-01-24T17:48:28.176Z"
+    },
+    "lastLogin": {
+      "$date": "2026-01-24T17:48:28.176Z"
+    },
+    "area": "Madayi"
+  },
+  {
+    "_id": {
+      "$oid": "68e0f555f6e4997908561cf6"
+    },
+    "unit": "Ramanattukara",
+    "ruknId": "111221",
+    "name": "Muhammed Shajinas. T",
+    "contactNo": "8606178878",
+    "emailId": "shajinast@gmail.com",
+    "district": "Kozhikode",
+    "isActive": true,
+    "__v": 0,
+    "createdAt": {
+      "$date": "2025-10-04T10:22:13.737Z"
+    },
+    "updatedAt": {
+      "$date": "2026-01-14T03:41:24.913Z"
+    },
+    "lastLogin": {
+      "$date": "2026-01-14T03:41:24.913Z"
+    },
+    "area": "Ramanattukara"
+  },
+  {
+    "_id": {
+      "$oid": "68e0f555f6e4997908561cf7"
+    },
+    "unit": "Peringathur",
+    "ruknId": "118423",
+    "name": "Muhammed Shameer",
+    "contactNo": "9645392982",
+    "emailId": "shameer440561@gmail.com",
+    "district": "Kannur",
+    "isActive": true,
+    "__v": 0,
+    "createdAt": {
+      "$date": "2025-10-04T10:22:13.737Z"
+    },
+    "updatedAt": {
+      "$date": "2026-01-06T10:48:49.129Z"
+    },
+    "lastLogin": {
+      "$date": "2026-01-06T10:48:49.128Z"
+    },
+    "area": "Panoor"
+  },
+  {
+    "_id": {
+      "$oid": "68e0f555f6e4997908561cf8"
+    },
+    "unit": "Edarikkode",
+    "ruknId": "110482",
+    "name": "Muhammed Yasir N M",
+    "contactNo": "9526288511",
+    "emailId": "mohamedyasirnm@gmail.com",
+    "district": "Malappuram",
+    "isActive": true,
+    "__v": 0,
+    "createdAt": {
+      "$date": "2025-10-04T10:22:13.737Z"
+    },
+    "updatedAt": {
+      "$date": "2026-01-02T14:34:13.366Z"
+    },
+    "lastLogin": {
+      "$date": "2026-01-02T14:34:13.365Z"
+    },
+    "area": "Kottakkal"
+  },
+  {
+    "_id": {
+      "$oid": "68e0f555f6e4997908561cf9"
+    },
+    "unit": "Kayamkulam",
+    "ruknId": "113120",
+    "name": "Mujeeburahman S",
+    "contactNo": "9946667706",
+    "emailId": "mujeebrahman.kit@gmail.com",
+    "district": "Alappuzha",
+    "isActive": true,
+    "__v": 0,
+    "createdAt": {
+      "$date": "2025-10-04T10:22:13.737Z"
+    },
+    "updatedAt": {
+      "$date": "2025-12-19T09:12:11.286Z"
+    },
+    "area": "Kayamkulam"
+  },
+  {
+    "_id": {
+      "$oid": "68e0f555f6e4997908561cfa"
+    },
+    "unit": "Nilambur",
+    "ruknId": "110673",
+    "name": "Mujeeburahman V.P",
+    "contactNo": "9446158810",
+    "emailId": "ab@gmail.com",
+    "district": "Malappuram",
+    "isActive": true,
+    "__v": 0,
+    "createdAt": {
+      "$date": "2025-10-04T10:22:13.737Z"
+    },
+    "updatedAt": {
+      "$date": "2026-01-11T10:23:56.084Z"
+    },
+    "lastLogin": {
+      "$date": "2026-01-11T10:23:56.083Z"
+    },
+    "area": "Nilambur"
+  },
+  {
+    "_id": {
+      "$oid": "68e0f555f6e4997908561cfb"
+    },
+    "unit": "Edathala",
+    "ruknId": "113869",
+    "name": "Musthafa M M",
+    "contactNo": "9562999329",
+    "emailId": "musthafa.powerplus@gmail.com",
+    "district": "Ernakulam",
+    "isActive": true,
+    "__v": 0,
+    "createdAt": {
+      "$date": "2025-10-04T10:22:13.737Z"
+    },
+    "updatedAt": {
+      "$date": "2026-01-24T09:58:10.234Z"
+    },
+    "lastLogin": {
+      "$date": "2026-01-24T09:58:10.234Z"
+    },
+    "area": "Edathala"
+  },
+  {
+    "_id": {
+      "$oid": "68e0f555f6e4997908561cfc"
+    },
+    "unit": "University",
+    "ruknId": "114264",
+    "name": "Najeeb K",
+    "contactNo": "9947407238",
+    "emailId": "ne36@gmail.com",
+    "district": "Malappuram",
+    "isActive": true,
+    "__v": 0,
+    "createdAt": {
+      "$date": "2025-10-04T10:22:13.737Z"
+    },
+    "updatedAt": {
+      "$date": "2025-12-19T09:12:11.399Z"
+    },
+    "area": "University"
+  },
+  {
+    "_id": {
+      "$oid": "68e0f555f6e4997908561cfd"
+    },
+    "unit": "Vailathur",
+    "ruknId": "110481",
+    "name": "Nasar Abdulla Cherukara",
+    "contactNo": "9447214801",
+    "emailId": "1nasarcherukara@gmail.com",
+    "district": "Malappuram",
+    "isActive": true,
+    "__v": 0,
+    "createdAt": {
+      "$date": "2025-10-04T10:22:13.737Z"
+    },
+    "updatedAt": {
+      "$date": "2026-01-19T06:11:12.085Z"
+    },
+    "lastLogin": {
+      "$date": "2026-01-19T06:11:12.084Z"
+    },
+    "area": "Vailathur"
+  },
+  {
+    "_id": {
+      "$oid": "68e0f555f6e4997908561cfe"
+    },
+    "unit": "Aroor",
+    "ruknId": "118177",
+    "name": "Nasar E",
+    "contactNo": "9847481101",
+    "emailId": "nasaresmail6@gmail.com",
+    "district": "Alappuzha",
+    "isActive": true,
+    "__v": 0,
+    "createdAt": {
+      "$date": "2025-10-04T10:22:13.738Z"
+    },
+    "updatedAt": {
+      "$date": "2026-01-12T10:31:34.192Z"
+    },
+    "lastLogin": {
+      "$date": "2026-01-12T10:31:34.191Z"
+    },
+    "area": "Aroor"
+  },
+  {
+    "_id": {
+      "$oid": "68e0f555f6e4997908561cff"
+    },
+    "unit": "Pallikkara",
+    "ruknId": "109762",
+    "name": "Naushad",
+    "contactNo": "9946337674",
+    "emailId": "noushadseenath@gmail.com",
+    "district": "Ernakulam",
+    "isActive": true,
+    "__v": 0,
+    "createdAt": {
+      "$date": "2025-10-04T10:22:13.738Z"
+    },
+    "updatedAt": {
+      "$date": "2026-01-15T12:11:53.611Z"
+    },
+    "lastLogin": {
+      "$date": "2026-01-15T12:11:53.610Z"
+    },
+    "area": "Kunnathunad"
+  },
+  {
+    "_id": {
+      "$oid": "68e0f555f6e4997908561d00"
+    },
+    "unit": "Changanassery",
+    "ruknId": "109639",
+    "name": "Noushad P A",
+    "contactNo": "7736892027",
+    "emailId": "afsalknpa@gmail.com",
+    "district": "Kottayam",
+    "isActive": true,
+    "__v": 0,
+    "createdAt": {
+      "$date": "2025-10-04T10:22:13.738Z"
+    },
+    "updatedAt": {
+      "$date": "2025-12-19T09:12:11.549Z"
+    },
+    "area": "Changanassery"
+  },
+  {
+    "_id": {
+      "$oid": "68e0f555f6e4997908561d01"
+    },
+    "unit": "Kozhikode North",
+    "ruknId": "111378",
+    "name": "Noushad Pk",
+    "contactNo": "9947873398",
+    "emailId": "noushadpkn@gmail.com",
+    "district": "Kozhikode (City)",
+    "isActive": true,
+    "__v": 0,
+    "createdAt": {
+      "$date": "2025-10-04T10:22:13.740Z"
+    },
+    "updatedAt": {
+      "$date": "2026-01-13T06:47:52.159Z"
+    },
+    "lastLogin": {
+      "$date": "2026-01-13T06:47:52.159Z"
+    },
+    "area": "Kozhikode North"
+  },
+  {
+    "_id": {
+      "$oid": "68e0f555f6e4997908561d02"
+    },
+    "unit": "Thodupuzha",
+    "ruknId": "109630",
+    "name": "P P Kunjumuhammed",
+    "contactNo": "9447086564",
+    "emailId": "kunjumuhamedidk@gmail.com",
+    "district": "Idukki",
+    "isActive": true,
+    "__v": 0,
+    "createdAt": {
+      "$date": "2025-10-04T10:22:13.740Z"
+    },
+    "updatedAt": {
+      "$date": "2026-01-12T04:05:59.339Z"
+    },
+    "lastLogin": {
+      "$date": "2026-01-12T04:05:59.339Z"
+    },
+    "area": "Thodupuzha"
+  },
+  {
+    "_id": {
+      "$oid": "68e0f555f6e4997908561d03"
+    },
+    "unit": "Nedumangad",
+    "ruknId": "109554",
+    "name": "P. Naseemudeen",
+    "contactNo": "9447858381",
+    "emailId": "pnaseem@gmail.com",
+    "district": "Thiruvananthapuram",
+    "isActive": true,
+    "__v": 0,
+    "createdAt": {
+      "$date": "2025-10-04T10:22:13.740Z"
+    },
+    "updatedAt": {
+      "$date": "2026-01-18T11:56:08.356Z"
+    },
+    "lastLogin": {
+      "$date": "2026-01-18T11:56:08.355Z"
+    },
+    "area": "Nedumangad"
+  },
+  {
+    "_id": {
+      "$oid": "68e0f555f6e4997908561d04"
+    },
+    "unit": "Mathilakam",
+    "ruknId": "110043",
+    "name": "P.A Vahid",
+    "contactNo": "9544914656",
+    "emailId": "wahidmathilakam@gmail.com",
+    "district": "Thrissur",
+    "isActive": true,
+    "__v": 0,
+    "createdAt": {
+      "$date": "2025-10-04T10:22:13.740Z"
+    },
+    "updatedAt": {
+      "$date": "2025-12-19T09:12:11.703Z"
+    },
+    "lastLogin": {
+      "$date": "2025-10-20T12:51:39.215Z"
+    },
+    "area": "Mathilakam"
+  },
+  {
+    "_id": {
+      "$oid": "68e0f555f6e4997908561d05"
+    },
+    "unit": "Ponnani",
+    "ruknId": "110732",
+    "name": "P.K.Abdul Azeez",
+    "contactNo": "9946202942",
+    "emailId": "pkabdulazeez@gmail.com",
+    "district": "Malappuram",
+    "isActive": true,
+    "__v": 0,
+    "createdAt": {
+      "$date": "2025-10-04T10:22:13.740Z"
+    },
+    "updatedAt": {
+      "$date": "2026-01-07T14:07:01.188Z"
+    },
+    "lastLogin": {
+      "$date": "2026-01-07T14:07:01.188Z"
+    },
+    "area": "Ponnani"
+  },
+  {
+    "_id": {
+      "$oid": "68e0f555f6e4997908561d06"
+    },
+    "unit": "Elanad",
+    "ruknId": "110001",
+    "name": "Pa Musthafa",
+    "contactNo": "9847047042",
+    "emailId": "mapattani8@gmail.com",
+    "district": "Thrissur",
+    "isActive": true,
+    "__v": 0,
+    "createdAt": {
+      "$date": "2025-10-04T10:22:13.741Z"
+    },
+    "updatedAt": {
+      "$date": "2026-01-09T16:31:48.699Z"
+    },
+    "lastLogin": {
+      "$date": "2026-01-09T16:31:48.699Z"
+    },
+    "area": "Chelakkara"
+  },
+  {
+    "_id": {
+      "$oid": "68e0f555f6e4997908561d07"
+    },
+    "unit": "New Mahe",
+    "ruknId": "111535",
+    "name": "Pp Abdurahman Peringadi",
+    "contactNo": "9961130807",
+    "emailId": "pparperingadi@gmail.com",
+    "district": "Kannur",
+    "isActive": true,
+    "__v": 0,
+    "createdAt": {
+      "$date": "2025-10-04T10:22:13.741Z"
+    },
+    "updatedAt": {
+      "$date": "2025-12-19T09:12:11.819Z"
+    },
+    "lastLogin": {
+      "$date": "2025-10-22T05:31:19.335Z"
+    },
+    "area": "New Mahe"
+  },
+  {
+    "_id": {
+      "$oid": "68e0f555f6e4997908561d08"
+    },
+    "unit": "Kathiyalam",
+    "ruknId": "113864",
+    "name": "R A Sabiq",
+    "contactNo": "9495881678",
+    "emailId": "sabicksha@gmail.com",
+    "district": "Thrissur",
+    "isActive": true,
+    "__v": 0,
+    "createdAt": {
+      "$date": "2025-10-04T10:22:13.741Z"
+    },
+    "updatedAt": {
+      "$date": "2025-12-19T09:12:11.856Z"
+    },
+    "area": "Edavilang"
+  },
+  {
+    "_id": {
+      "$oid": "68e0f555f6e4997908561d09"
+    },
+    "unit": "Moozhikkal",
+    "ruknId": "111335",
+    "name": "Rafeeq Rahman Malol",
+    "contactNo": "9995017263",
+    "emailId": "rafeeqrahman.m@gmail.com",
+    "district": "Kozhikode (City)",
+    "isActive": true,
+    "__v": 0,
+    "createdAt": {
+      "$date": "2025-10-04T10:22:13.741Z"
+    },
+    "updatedAt": {
+      "$date": "2026-01-13T11:33:05.198Z"
+    },
+    "lastLogin": {
+      "$date": "2026-01-13T11:33:05.197Z"
+    },
+    "area": "Kozhikode East"
+  },
+  {
+    "_id": {
+      "$oid": "68e0f555f6e4997908561d0a"
+    },
+    "unit": "Palode",
+    "ruknId": "109518",
+    "name": "Rahim.E",
+    "contactNo": "9946314377",
+    "emailId": "rahimkallara1973@gmail.com",
+    "district": "Thiruvananthapuram",
+    "isActive": true,
+    "__v": 0,
+    "createdAt": {
+      "$date": "2025-10-04T10:22:13.741Z"
+    },
+    "updatedAt": {
+      "$date": "2025-12-19T09:12:11.933Z"
+    },
+    "lastLogin": {
+      "$date": "2025-10-21T16:15:51.461Z"
+    },
+    "area": "Palode"
+  },
+  {
+    "_id": {
+      "$oid": "68e0f555f6e4997908561d0b"
+    },
+    "unit": "Karunagapally",
+    "ruknId": "109582",
+    "name": "Rasheed Mytheen Kunju",
+    "contactNo": "9447860442",
+    "emailId": "rasheedppm@yahoo.com",
+    "district": "Kollam",
+    "isActive": true,
+    "__v": 0,
+    "createdAt": {
+      "$date": "2025-10-04T10:22:13.741Z"
+    },
+    "updatedAt": {
+      "$date": "2026-01-10T01:44:31.257Z"
+    },
+    "lastLogin": {
+      "$date": "2026-01-10T01:44:31.256Z"
+    },
+    "area": "Karunagapally"
+  },
+  {
+    "_id": {
+      "$oid": "68e0f555f6e4997908561d0c"
+    },
+    "unit": "Mannam",
+    "ruknId": "109870",
+    "name": "S.M.Sainudheen",
+    "contactNo": "9946665181",
+    "emailId": "smsainudheen@gmail.com",
+    "district": "Ernakulam",
+    "isActive": true,
+    "__v": 0,
+    "createdAt": {
+      "$date": "2025-10-04T10:22:13.741Z"
+    },
+    "updatedAt": {
+      "$date": "2026-01-07T05:23:58.770Z"
+    },
+    "lastLogin": {
+      "$date": "2026-01-07T05:23:58.769Z"
+    },
+    "area": "Mannam"
+  },
+  {
+    "_id": {
+      "$oid": "68e0f555f6e4997908561d0d"
+    },
+    "unit": "Attingal",
+    "ruknId": "109491",
+    "name": "S.Salahudeen",
+    "contactNo": "9495583278",
+    "emailId": "salahudeentvhouse@gmail.com",
+    "district": "Thiruvananthapuram",
+    "isActive": true,
+    "__v": 0,
+    "createdAt": {
+      "$date": "2025-10-04T10:22:13.742Z"
+    },
+    "updatedAt": {
+      "$date": "2025-12-19T09:12:12.050Z"
+    },
+    "lastLogin": {
+      "$date": "2025-10-21T02:04:37.269Z"
+    },
+    "area": "Attingal"
+  },
+  {
+    "_id": {
+      "$oid": "68e0f555f6e4997908561d0e"
+    },
+    "unit": "Nedumbassery",
+    "ruknId": "109918",
+    "name": "Sabu P.M *",
+    "contactNo": "9446953315",
+    "emailId": "pmsabu@gmail.com",
+    "district": "Ernakulam",
+    "isActive": true,
+    "__v": 0,
+    "createdAt": {
+      "$date": "2025-10-04T10:22:13.742Z"
+    },
+    "updatedAt": {
+      "$date": "2026-01-15T10:51:36.638Z"
+    },
+    "lastLogin": {
+      "$date": "2026-01-15T10:51:36.638Z"
+    },
+    "area": "Nedumbassery"
+  },
+  {
+    "_id": {
+      "$oid": "68e0f555f6e4997908561d0f"
+    },
+    "unit": "Trikkaripur",
+    "ruknId": "111582",
+    "name": "Saeed Omar",
+    "contactNo": "9495116954",
+    "emailId": "saeedomar1958@gmail.com",
+    "district": "Kasaragode",
+    "isActive": true,
+    "__v": 0,
+    "createdAt": {
+      "$date": "2025-10-04T10:22:13.742Z"
+    },
+    "updatedAt": {
+      "$date": "2026-01-03T11:55:57.697Z"
+    },
+    "lastLogin": {
+      "$date": "2026-01-03T11:55:57.697Z"
+    },
+    "area": "Trikkaripur"
+  },
+  {
+    "_id": {
+      "$oid": "68e0f555f6e4997908561d10"
+    },
+    "unit": "Santhapuram Kanhirappally",
+    "ruknId": "110785",
+    "name": "Safir V M",
+    "contactNo": "9544885004",
+    "emailId": "vmsafir27@gmail.com",
+    "district": "Malappuram",
+    "isActive": true,
+    "__v": 0,
+    "createdAt": {
+      "$date": "2025-10-04T10:22:13.742Z"
+    },
+    "updatedAt": {
+      "$date": "2026-01-06T05:25:52.508Z"
+    },
+    "area": "Santhapuram",
+    "lastLogin": {
+      "$date": "2026-01-06T05:25:52.507Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "68e0f555f6e4997908561d11"
+    },
+    "unit": "Anakkayam",
+    "ruknId": "110633",
+    "name": "Sainuddeen K.M",
+    "contactNo": "9495386901",
+    "emailId": "sainukm@gmail.com",
+    "district": "Malappuram",
+    "isActive": true,
+    "__v": 0,
+    "createdAt": {
+      "$date": "2025-10-04T10:22:13.742Z"
+    },
+    "updatedAt": {
+      "$date": "2026-01-21T14:54:52.169Z"
+    },
+    "lastLogin": {
+      "$date": "2026-01-21T14:54:52.168Z"
+    },
+    "area": "Manjeri"
+  },
+  {
+    "_id": {
+      "$oid": "68e0f555f6e4997908561d12"
+    },
+    "unit": "Kulathupuzha",
+    "ruknId": "109601",
+    "name": "Sainudeen A",
+    "contactNo": "9946041186",
+    "emailId": "masmpm@gmail.com",
+    "district": "Kollam",
+    "isActive": true,
+    "__v": 0,
+    "createdAt": {
+      "$date": "2025-10-04T10:22:13.742Z"
+    },
+    "updatedAt": {
+      "$date": "2025-12-19T09:12:12.243Z"
+    },
+    "area": "Kulathupuzha"
+  },
+  {
+    "_id": {
+      "$oid": "68e0f555f6e4997908561d13"
+    },
+    "unit": "Anchal",
+    "ruknId": "109621",
+    "name": "Sajeed Khalid",
+    "contactNo": "8891163485",
+    "emailId": "sajeedacl@gmail.com",
+    "district": "Kollam",
+    "isActive": true,
+    "__v": 0,
+    "createdAt": {
+      "$date": "2025-10-04T10:22:13.742Z"
+    },
+    "updatedAt": {
+      "$date": "2026-01-20T12:49:56.281Z"
+    },
+    "lastLogin": {
+      "$date": "2026-01-20T12:49:56.281Z"
+    },
+    "area": "Anchal"
+  },
+  {
+    "_id": {
+      "$oid": "68e0f555f6e4997908561d14"
+    },
+    "unit": "Haripad",
+    "ruknId": "109678",
+    "name": "Saji Fazil",
+    "contactNo": "9497192760",
+    "emailId": "sajidream@gmail.com",
+    "district": "Alappuzha",
+    "isActive": true,
+    "__v": 0,
+    "createdAt": {
+      "$date": "2025-10-04T10:22:13.742Z"
+    },
+    "updatedAt": {
+      "$date": "2026-01-03T14:37:05.780Z"
+    },
+    "lastLogin": {
+      "$date": "2026-01-03T14:37:05.779Z"
+    },
+    "area": "Haripad"
+  },
+  {
+    "_id": {
+      "$oid": "68e0f555f6e4997908561d15"
+    },
+    "unit": "Kottakkal",
+    "ruknId": "110474",
+    "name": "Salavudheen Ayubi.K.",
+    "contactNo": "8606632213",
+    "emailId": "kopilan.sa@gmail.com",
+    "district": "Malappuram",
+    "isActive": true,
+    "__v": 0,
+    "createdAt": {
+      "$date": "2025-10-04T10:22:13.742Z"
+    },
+    "updatedAt": {
+      "$date": "2026-01-19T00:51:10.875Z"
+    },
+    "lastLogin": {
+      "$date": "2026-01-19T00:51:10.874Z"
+    },
+    "area": "Kottakkal"
+  },
+  {
+    "_id": {
+      "$oid": "68e0f555f6e4997908561d16"
+    },
+    "unit": "Kalathod",
+    "ruknId": "113704",
+    "name": "Saleem K M",
+    "contactNo": "9497073028",
+    "emailId": "",
+    "district": "Thrissur",
+    "isActive": true,
+    "__v": 0,
+    "createdAt": {
+      "$date": "2025-10-04T10:22:13.742Z"
+    },
+    "updatedAt": {
+      "$date": "2026-01-07T07:45:04.087Z"
+    },
+    "lastLogin": {
+      "$date": "2026-01-07T07:45:04.086Z"
+    },
+    "area": "Thrissur"
+  },
+  {
+    "_id": {
+      "$oid": "68e0f555f6e4997908561d17"
+    },
+    "unit": "Santhapuram",
+    "ruknId": "110784",
+    "name": "Saleem M",
+    "contactNo": "9446212791",
+    "emailId": "saleemmambads@gmail.com",
+    "district": "Malappuram",
+    "isActive": true,
+    "__v": 0,
+    "createdAt": {
+      "$date": "2025-10-04T10:22:13.742Z"
+    },
+    "updatedAt": {
+      "$date": "2026-01-07T12:09:39.585Z"
+    },
+    "lastLogin": {
+      "$date": "2026-01-07T12:09:39.584Z"
+    },
+    "area": "Santhapuram"
+  },
+  {
+    "_id": {
+      "$oid": "68e0f555f6e4997908561d18"
+    },
+    "unit": "Thrissur",
+    "ruknId": "113705",
+    "name": "Salim Hamza K H",
+    "contactNo": "9605893160",
+    "emailId": "ne62@wgmial.com",
+    "district": "Thrissur",
+    "isActive": true,
+    "__v": 0,
+    "createdAt": {
+      "$date": "2025-10-04T10:22:13.742Z"
+    },
+    "updatedAt": {
+      "$date": "2026-01-12T07:04:13.952Z"
+    },
+    "lastLogin": {
+      "$date": "2026-01-12T07:04:13.951Z"
+    },
+    "area": "Thrissur"
+  },
+  {
+    "_id": {
+      "$oid": "68e0f555f6e4997908561d19"
+    },
+    "unit": "Karuvarakundu",
+    "ruknId": "110427",
+    "name": "Sameer Mannoorkara",
+    "contactNo": "9061233723",
+    "emailId": "sameerkalikavu@gmail.com",
+    "district": "Malappuram",
+    "isActive": true,
+    "__v": 0,
+    "createdAt": {
+      "$date": "2025-10-04T10:22:13.742Z"
+    },
+    "updatedAt": {
+      "$date": "2026-01-03T08:23:23.134Z"
+    },
+    "lastLogin": {
+      "$date": "2026-01-03T08:23:23.134Z"
+    },
+    "area": "Karuvarakundu"
+  },
+  {
+    "_id": {
+      "$oid": "68e0f555f6e4997908561d1a"
+    },
+    "unit": "Thiruvananthapuram North",
+    "ruknId": "109463",
+    "name": "Sameer S",
+    "contactNo": "9745933362",
+    "emailId": "sameerthundil@gmail.com",
+    "district": "Thiruvananthapuram",
+    "isActive": true,
+    "__v": 0,
+    "createdAt": {
+      "$date": "2025-10-04T10:22:13.742Z"
+    },
+    "updatedAt": {
+      "$date": "2025-12-19T09:12:12.545Z"
+    },
+    "area": "Thiruvananthapuram North"
+  },
+  {
+    "_id": {
+      "$oid": "68e0f555f6e4997908561d1b"
+    },
+    "unit": "Kadungalloor",
+    "ruknId": "113363",
+    "name": "Saydu Mohamed V M",
+    "contactNo": "7561037978",
+    "emailId": "smvaliyara@gmail.com",
+    "district": "Ernakulam",
+    "isActive": true,
+    "__v": 0,
+    "createdAt": {
+      "$date": "2025-10-04T10:22:13.743Z"
+    },
+    "updatedAt": {
+      "$date": "2026-01-18T15:35:57.857Z"
+    },
+    "lastLogin": {
+      "$date": "2026-01-18T15:35:57.856Z"
+    },
+    "area": "Panayikulam"
+  },
+  {
+    "_id": {
+      "$oid": "68e0f555f6e4997908561d1c"
+    },
+    "unit": "Pathanapuram",
+    "ruknId": "109590",
+    "name": "Shahul Hameed Ph",
+    "contactNo": "9037433861",
+    "emailId": "shaptnpuram@gmail.com",
+    "district": "Kollam",
+    "isActive": true,
+    "__v": 0,
+    "createdAt": {
+      "$date": "2025-10-04T10:22:13.743Z"
+    },
+    "updatedAt": {
+      "$date": "2026-02-11T13:28:42.794Z"
+    },
+    "lastLogin": {
+      "$date": "2026-02-11T13:28:42.794Z"
+    },
+    "area": "Pathanapuram"
+  },
+  {
+    "_id": {
+      "$oid": "68e0f555f6e4997908561d1d"
+    },
+    "unit": "Cheriyakumbalam",
+    "ruknId": "111309",
+    "name": "Shajeel Bin Hasan",
+    "contactNo": "9744696801",
+    "emailId": "sbhkty@gmail.com",
+    "district": "Kozhikode",
+    "isActive": true,
+    "__v": 0,
+    "createdAt": {
+      "$date": "2025-10-04T10:22:13.743Z"
+    },
+    "updatedAt": {
+      "$date": "2026-01-14T07:55:50.919Z"
+    },
+    "lastLogin": {
+      "$date": "2026-01-14T07:55:50.919Z"
+    },
+    "area": "Changaroth"
+  },
+  {
+    "_id": {
+      "$oid": "68e0f555f6e4997908561d1e"
+    },
+    "unit": "Muvattupuzha",
+    "ruknId": "109736",
+    "name": "Shaji M.M.",
+    "contactNo": "9961225352",
+    "emailId": "shajimmmulavoor@gmail.com",
+    "district": "Ernakulam",
+    "isActive": true,
+    "__v": 0,
+    "createdAt": {
+      "$date": "2025-10-04T10:22:13.743Z"
+    },
+    "updatedAt": {
+      "$date": "2026-01-27T03:49:21.198Z"
+    },
+    "lastLogin": {
+      "$date": "2026-01-27T03:49:21.197Z"
+    },
+    "area": "Muvattupuzha"
+  },
+  {
+    "_id": {
+      "$oid": "68e0f555f6e4997908561d1f"
+    },
+    "unit": "Pathanamthitta",
+    "ruknId": "109670",
+    "name": "Shaji Mm",
+    "contactNo": "9447278742",
+    "emailId": "mmsalapra@gmail.com",
+    "district": "Pathanamthitta",
+    "isActive": true,
+    "__v": 0,
+    "createdAt": {
+      "$date": "2025-10-04T10:22:13.743Z"
+    },
+    "updatedAt": {
+      "$date": "2026-01-16T11:33:19.256Z"
+    },
+    "lastLogin": {
+      "$date": "2026-01-16T11:33:19.255Z"
+    },
+    "area": "Pathanamthitta"
+  },
+  {
+    "_id": {
+      "$oid": "68e0f555f6e4997908561d20"
+    },
+    "unit": "Perumpilavu",
+    "ruknId": "110130",
+    "name": "Shaju Mohammedunni. K.M.",
+    "contactNo": "8129808060",
+    "emailId": "shajumohd.ansar@gmail.com",
+    "district": "Thrissur",
+    "isActive": true,
+    "__v": 0,
+    "createdAt": {
+      "$date": "2025-10-04T10:22:13.743Z"
+    },
+    "updatedAt": {
+      "$date": "2026-01-10T15:01:29.242Z"
+    },
+    "area": "Kunnamkulam",
+    "lastLogin": {
+      "$date": "2026-01-10T15:01:29.241Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "68e0f555f6e4997908561d21"
+    },
+    "unit": "Kunnamkulam",
+    "ruknId": "117537",
+    "name": "Shamsudeen P S",
+    "contactNo": "8547262934",
+    "emailId": "shamsps@gmail.com",
+    "district": "Thrissur",
+    "isActive": true,
+    "__v": 0,
+    "createdAt": {
+      "$date": "2025-10-04T10:22:13.743Z"
+    },
+    "updatedAt": {
+      "$date": "2026-01-22T10:33:53.212Z"
+    },
+    "area": "Kunnamkulam",
+    "lastLogin": {
+      "$date": "2026-01-22T10:33:53.211Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "68e0f555f6e4997908561d22"
+    },
+    "unit": "Thalakkad",
+    "ruknId": "110834",
+    "name": "Shamsudheen",
+    "contactNo": "9947348777",
+    "emailId": "abushamsi@gmail.com",
+    "district": "Malappuram",
+    "isActive": true,
+    "__v": 0,
+    "createdAt": {
+      "$date": "2025-10-04T10:22:13.743Z"
+    },
+    "updatedAt": {
+      "$date": "2026-01-24T15:13:30.938Z"
+    },
+    "lastLogin": {
+      "$date": "2026-01-24T15:13:30.937Z"
+    },
+    "area": "Thalakkad"
+  },
+  {
+    "_id": {
+      "$oid": "68e0f555f6e4997908561d23"
+    },
+    "unit": "Kottapadi",
+    "ruknId": "111361",
+    "name": "Shareef. Tm",
+    "contactNo": "9446877247",
+    "emailId": "mailshareeftm@gmail.com",
+    "district": "Malappuram",
+    "isActive": true,
+    "__v": 0,
+    "createdAt": {
+      "$date": "2025-10-04T10:22:13.743Z"
+    },
+    "updatedAt": {
+      "$date": "2026-01-04T04:02:28.661Z"
+    },
+    "lastLogin": {
+      "$date": "2026-01-04T04:02:28.661Z"
+    },
+    "area": "Malappuram"
+  },
+  {
+    "_id": {
+      "$oid": "68e0f555f6e4997908561d24"
+    },
+    "unit": "Meppayyur",
+    "ruknId": "114079",
+    "name": "Shereef P",
+    "contactNo": "9447384115",
+    "emailId": "sherecfpodayeli@gmail.com",
+    "district": "Kozhikode",
+    "isActive": true,
+    "__v": 0,
+    "createdAt": {
+      "$date": "2025-10-04T10:22:13.743Z"
+    },
+    "updatedAt": {
+      "$date": "2025-12-19T09:12:12.924Z"
+    },
+    "area": "Meppayyur"
+  },
+  {
+    "_id": {
+      "$oid": "68e0f555f6e4997908561d25"
+    },
+    "unit": "Pookkottur",
+    "ruknId": "110941",
+    "name": "Shihab Pookkottur",
+    "contactNo": "9946816996",
+    "emailId": "shihabpktr83@gmail.com",
+    "district": "Malappuram",
+    "isActive": true,
+    "__v": 0,
+    "createdAt": {
+      "$date": "2025-10-04T10:22:13.743Z"
+    },
+    "updatedAt": {
+      "$date": "2026-01-17T12:48:00.127Z"
+    },
+    "lastLogin": {
+      "$date": "2026-01-17T12:48:00.126Z"
+    },
+    "area": "Valluvambram"
+  },
+  {
+    "_id": {
+      "$oid": "68e0f555f6e4997908561d26"
+    },
+    "unit": "Vypin South",
+    "ruknId": "109861",
+    "name": "Shihabuddeen Mi",
+    "contactNo": "9447155209",
+    "emailId": "mishihabuddeen@gmail.com",
+    "district": "Kochi",
+    "isActive": true,
+    "__v": 0,
+    "createdAt": {
+      "$date": "2025-10-04T10:22:13.744Z"
+    },
+    "updatedAt": {
+      "$date": "2026-02-16T02:02:57.810Z"
+    },
+    "lastLogin": {
+      "$date": "2026-02-16T02:02:57.810Z"
+    },
+    "area": "Vypin"
+  },
+  {
+    "_id": {
+      "$oid": "68e0f555f6e4997908561d27"
+    },
+    "unit": "Payyannur",
+    "ruknId": "111425",
+    "name": "Shoukath Ali Thayyil Kizhakke Purayil",
+    "contactNo": "9605477163",
+    "emailId": "tkshoukathali@gmail.com",
+    "district": "Kannur",
+    "isActive": true,
+    "__v": 0,
+    "createdAt": {
+      "$date": "2025-10-04T10:22:13.744Z"
+    },
+    "updatedAt": {
+      "$date": "2026-01-25T16:28:21.302Z"
+    },
+    "lastLogin": {
+      "$date": "2026-01-25T16:28:21.302Z"
+    },
+    "area": "Payyannur"
+  },
+  {
+    "_id": {
+      "$oid": "68e0f555f6e4997908561d28"
+    },
+    "unit": "Thiruvananthapuram West",
+    "ruknId": "109480",
+    "name": "Shoukathali Mr",
+    "contactNo": "8943308574",
+    "emailId": "shoukathnadwi@gmail.com",
+    "district": "Thiruvananthapuram",
+    "isActive": true,
+    "__v": 0,
+    "createdAt": {
+      "$date": "2025-10-04T10:22:13.744Z"
+    },
+    "updatedAt": {
+      "$date": "2026-01-03T07:39:37.510Z"
+    },
+    "lastLogin": {
+      "$date": "2026-01-03T07:39:37.509Z"
+    },
+    "area": "Thiruvananthapuram West"
+  },
+  {
+    "_id": {
+      "$oid": "68e0f555f6e4997908561d29"
+    },
+    "unit": "Kanmanam",
+    "ruknId": "110742",
+    "name": "Siddique Mohammed",
+    "contactNo": "9207220606",
+    "emailId": "siddiquemhmd@yahoo.com",
+    "district": "Malappuram",
+    "isActive": true,
+    "__v": 0,
+    "createdAt": {
+      "$date": "2025-10-04T10:22:13.744Z"
+    },
+    "updatedAt": {
+      "$date": "2026-01-11T09:43:07.889Z"
+    },
+    "lastLogin": {
+      "$date": "2026-01-11T09:43:07.889Z"
+    },
+    "area": "Puthanathani"
+  },
+  {
+    "_id": {
+      "$oid": "68e0f555f6e4997908561d2a"
+    },
+    "unit": "Mundoor",
+    "ruknId": "112483",
+    "name": "Sidheeque T A",
+    "contactNo": "9605774783",
+    "emailId": "sidhiknalakath123@gmail.cm",
+    "district": "Palakkad",
+    "isActive": true,
+    "__v": 0,
+    "createdAt": {
+      "$date": "2025-10-04T10:22:13.744Z"
+    },
+    "updatedAt": {
+      "$date": "2026-01-19T05:00:18.750Z"
+    },
+    "lastLogin": {
+      "$date": "2026-01-19T05:00:18.750Z"
+    },
+    "area": "Kongad"
+  },
+  {
+    "_id": {
+      "$oid": "68e0f555f6e4997908561d2b"
+    },
+    "unit": "Kannur Town",
+    "ruknId": "111472",
+    "name": "Sidik U P",
+    "contactNo": "8590721177",
+    "emailId": "upsidik@gmail.com",
+    "district": "Kannur",
+    "isActive": true,
+    "__v": 0,
+    "createdAt": {
+      "$date": "2025-10-04T10:22:13.744Z"
+    },
+    "updatedAt": {
+      "$date": "2025-12-19T09:12:13.188Z"
+    },
+    "lastLogin": {
+      "$date": "2025-10-11T09:09:26.910Z"
+    },
+    "area": "Kannur"
+  },
+  {
+    "_id": {
+      "$oid": "68e0f555f6e4997908561d2c"
+    },
+    "unit": "Thoppumpady",
+    "ruknId": "109968",
+    "name": "Sirajudheen S.A",
+    "contactNo": "8089106625",
+    "emailId": "sirajmarhama@gmail.com",
+    "district": "Kochi",
+    "isActive": true,
+    "__v": 0,
+    "createdAt": {
+      "$date": "2025-10-04T10:22:13.744Z"
+    },
+    "updatedAt": {
+      "$date": "2026-01-15T02:48:30.290Z"
+    },
+    "lastLogin": {
+      "$date": "2026-01-15T02:48:30.290Z"
+    },
+    "area": "Kochi"
+  },
+  {
+    "_id": {
+      "$oid": "68e0f555f6e4997908561d2d"
+    },
+    "unit": "Kuttiady",
+    "ruknId": "111204",
+    "name": "Soopy Vadakka Thazha",
+    "contactNo": "9895458686",
+    "emailId": "sooppyvt@gmail.com",
+    "district": "Kozhikode",
+    "isActive": true,
+    "__v": 0,
+    "createdAt": {
+      "$date": "2025-10-04T10:22:13.744Z"
+    },
+    "updatedAt": {
+      "$date": "2026-02-08T14:54:01.256Z"
+    },
+    "lastLogin": {
+      "$date": "2026-02-08T14:54:01.255Z"
+    },
+    "area": "Kuttiady"
+  },
+  {
+    "_id": {
+      "$oid": "68e0f555f6e4997908561d2e"
+    },
+    "unit": "Kazhakkoottam",
+    "ruknId": "109484",
+    "name": "Subair Kunju.A",
+    "contactNo": "7356987245",
+    "emailId": "3jihkerala@gmail.com",
+    "district": "Thiruvananthapuram",
+    "isActive": true,
+    "__v": 0,
+    "createdAt": {
+      "$date": "2025-10-04T10:22:13.744Z"
+    },
+    "updatedAt": {
+      "$date": "2026-01-15T04:02:28.963Z"
+    },
+    "area": "Kazhakkoottam",
+    "lastLogin": {
+      "$date": "2026-01-15T04:02:28.962Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "68e0f555f6e4997908561d2f"
+    },
+    "unit": "Karassery",
+    "ruknId": "111067",
+    "name": "Subhan Babu M C",
+    "contactNo": "9495742924",
+    "emailId": "mcsubhan@gmail.com",
+    "district": "Kozhikode",
+    "isActive": true,
+    "__v": 0,
+    "createdAt": {
+      "$date": "2025-10-04T10:22:13.744Z"
+    },
+    "updatedAt": {
+      "$date": "2026-01-26T01:28:37.908Z"
+    },
+    "lastLogin": {
+      "$date": "2026-01-26T01:28:37.907Z"
+    },
+    "area": "Karassery"
+  },
+  {
+    "_id": {
+      "$oid": "68e0f555f6e4997908561d30"
+    },
+    "unit": "Kadakkal",
+    "ruknId": "109595",
+    "name": "Sulaiman S",
+    "contactNo": "9074406103",
+    "emailId": "hudaent@gmail.com",
+    "district": "Kollam",
+    "isActive": true,
+    "__v": 0,
+    "createdAt": {
+      "$date": "2025-10-04T10:22:13.744Z"
+    },
+    "updatedAt": {
+      "$date": "2026-01-09T12:40:03.430Z"
+    },
+    "lastLogin": {
+      "$date": "2026-01-09T12:40:03.430Z"
+    },
+    "area": "Kadakkal"
+  },
+  {
+    "_id": {
+      "$oid": "68e0f555f6e4997908561d31"
+    },
+    "unit": "Kollam",
+    "ruknId": "109562",
+    "name": "T A Khaleelulla",
+    "contactNo": "9847777418",
+    "emailId": "khaleelsum58@gmail.com",
+    "district": "Kollam",
+    "isActive": true,
+    "__v": 0,
+    "createdAt": {
+      "$date": "2025-10-04T10:22:13.744Z"
+    },
+    "updatedAt": {
+      "$date": "2026-01-12T13:37:47.605Z"
+    },
+    "lastLogin": {
+      "$date": "2026-01-12T13:37:47.605Z"
+    },
+    "area": "Kollam"
+  },
+  {
+    "_id": {
+      "$oid": "68e0f555f6e4997908561d32"
+    },
+    "unit": "Mala",
+    "ruknId": "110071",
+    "name": "T K Abdulsalam",
+    "contactNo": "9387528308",
+    "emailId": "abdusalam@gmail.com",
+    "district": "Thrissur",
+    "isActive": true,
+    "__v": 0,
+    "createdAt": {
+      "$date": "2025-10-04T10:22:13.744Z"
+    },
+    "updatedAt": {
+      "$date": "2026-01-07T03:11:11.610Z"
+    },
+    "area": "Mala",
+    "lastLogin": {
+      "$date": "2026-01-07T03:11:11.610Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "68e0f555f6e4997908561d33"
+    },
+    "unit": "Alappuzha",
+    "ruknId": "109710",
+    "name": "T K Saidumohammed",
+    "contactNo": "9447804250",
+    "emailId": "tksaidmohammed@gmail.com",
+    "district": "Alappuzha",
+    "isActive": true,
+    "__v": 0,
+    "createdAt": {
+      "$date": "2025-10-04T10:22:13.744Z"
+    },
+    "updatedAt": {
+      "$date": "2026-01-27T13:12:41.390Z"
+    },
+    "lastLogin": {
+      "$date": "2026-01-27T13:12:41.389Z"
+    },
+    "area": "Alappuzha"
+  },
+  {
+    "_id": {
+      "$oid": "68e0f555f6e4997908561d34"
+    },
+    "unit": "Kakkodi",
+    "ruknId": "111154",
+    "name": "T.K. Huasin",
+    "contactNo": "7907424917",
+    "emailId": "tkhusein@gmail.com",
+    "district": "Kozhikode",
+    "isActive": true,
+    "__v": 0,
+    "createdAt": {
+      "$date": "2025-10-04T10:22:13.745Z"
+    },
+    "updatedAt": {
+      "$date": "2026-01-21T13:37:21.833Z"
+    },
+    "area": "Kakkodi",
+    "lastLogin": {
+      "$date": "2026-01-21T13:37:21.832Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "68e0f555f6e4997908561d35"
+    },
+    "unit": "Irinjalakuda",
+    "ruknId": "110149",
+    "name": "T.M. Abdu Rahman",
+    "contactNo": "9446874263",
+    "emailId": "tmabdultmr@gmai.com",
+    "district": "Thrissur",
+    "isActive": true,
+    "__v": 0,
+    "createdAt": {
+      "$date": "2025-10-04T10:22:13.745Z"
+    },
+    "updatedAt": {
+      "$date": "2026-02-13T11:37:55.885Z"
+    },
+    "area": "Irinjalakuda",
+    "lastLogin": {
+      "$date": "2026-02-13T11:37:55.884Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "68e0f555f6e4997908561d36"
+    },
+    "unit": "Veliyathunad",
+    "ruknId": "109890",
+    "name": "Thajuddeen T A",
+    "contactNo": "9048800459",
+    "emailId": "thaju.ta@gmail.com",
+    "district": "Ernakulam",
+    "isActive": true,
+    "__v": 0,
+    "createdAt": {
+      "$date": "2025-10-04T10:22:13.745Z"
+    },
+    "updatedAt": {
+      "$date": "2026-01-15T09:30:27.739Z"
+    },
+    "lastLogin": {
+      "$date": "2026-01-15T09:30:27.739Z"
+    },
+    "area": "Veliyathunad"
+  },
+  {
+    "_id": {
+      "$oid": "68e0f555f6e4997908561d37"
+    },
+    "unit": "Kalamassery",
+    "ruknId": "109842",
+    "name": "Umer Muhammed",
+    "contactNo": "9447814250",
+    "emailId": "umermuhammed.a@gmail.com",
+    "district": "Ernakulam",
+    "isActive": true,
+    "__v": 0,
+    "createdAt": {
+      "$date": "2025-10-04T10:22:13.745Z"
+    },
+    "updatedAt": {
+      "$date": "2026-01-14T14:02:33.483Z"
+    },
+    "lastLogin": {
+      "$date": "2026-01-14T14:02:33.483Z"
+    },
+    "area": "Kalamassery"
+  },
+  {
+    "_id": {
+      "$oid": "68e0f555f6e4997908561d38"
+    },
+    "unit": "Mannarkkad",
+    "ruknId": "110247",
+    "name": "Ummer Farook K",
+    "contactNo": "9645003777",
+    "emailId": "kalathil.farooq@gmail.com",
+    "district": "Palakkad",
+    "isActive": true,
+    "__v": 0,
+    "createdAt": {
+      "$date": "2025-10-04T10:22:13.745Z"
+    },
+    "updatedAt": {
+      "$date": "2026-01-08T09:29:45.891Z"
+    },
+    "lastLogin": {
+      "$date": "2026-01-08T09:29:45.891Z"
+    },
+    "area": "Mannarkkad"
+  },
+  {
+    "_id": {
+      "$oid": "68e0f555f6e4997908561d39"
+    },
+    "unit": "Chungathara",
+    "ruknId": "110328",
+    "name": "Usman C",
+    "contactNo": "9446880521",
+    "emailId": "chemmalausman21@gmail.com",
+    "district": "Malappuram",
+    "isActive": true,
+    "__v": 0,
+    "createdAt": {
+      "$date": "2025-10-04T10:22:13.745Z"
+    },
+    "updatedAt": {
+      "$date": "2026-01-19T11:45:46.553Z"
+    },
+    "lastLogin": {
+      "$date": "2026-01-19T11:45:46.553Z"
+    },
+    "area": "Chungathara"
+  },
+  {
+    "_id": {
+      "$oid": "68e0f555f6e4997908561d3a"
+    },
+    "unit": "Sulthan Bathery",
+    "ruknId": "111401",
+    "name": "V. Muhammed Sherief",
+    "contactNo": "9447140114",
+    "emailId": "vms0114@gmail.com",
+    "district": "Wayanad",
+    "isActive": true,
+    "__v": 0,
+    "createdAt": {
+      "$date": "2025-10-04T10:22:13.745Z"
+    },
+    "updatedAt": {
+      "$date": "2026-01-05T12:37:33.533Z"
+    },
+    "lastLogin": {
+      "$date": "2026-01-05T12:37:33.533Z"
+    },
+    "area": "Sulthan Bathery"
+  },
+  {
+    "_id": {
+      "$oid": "68e0f555f6e4997908561d3b"
+    },
+    "unit": "S N Puram",
+    "ruknId": "110046",
+    "name": "V.A Fasalurahman",
+    "contactNo": "9995203933",
+    "emailId": "kathikode2010@gmail.com",
+    "district": "Thrissur",
+    "isActive": true,
+    "__v": 0,
+    "createdAt": {
+      "$date": "2025-10-04T10:22:13.745Z"
+    },
+    "updatedAt": {
+      "$date": "2026-01-07T15:55:02.342Z"
+    },
+    "lastLogin": {
+      "$date": "2026-01-07T15:55:02.342Z"
+    },
+    "area": "S N Puram"
+  },
+  {
+    "_id": {
+      "$oid": "68e0f555f6e4997908561d3c"
+    },
+    "unit": "Puthur",
+    "ruknId": "111148",
+    "name": "Yoosuf.Pt",
+    "contactNo": "9496835890",
+    "emailId": "yoosephpt02@gmail.com",
+    "district": "Kozhikode",
+    "isActive": true,
+    "__v": 0,
+    "createdAt": {
+      "$date": "2025-10-04T10:22:13.745Z"
+    },
+    "updatedAt": {
+      "$date": "2026-02-12T12:49:09.604Z"
+    },
+    "lastLogin": {
+      "$date": "2026-02-12T12:49:09.604Z"
+    },
+    "area": "Omassery"
+  },
+  {
+    "_id": {
+      "$oid": "68e0f555f6e4997908561d3d"
+    },
+    "unit": "Kuttikkattur",
+    "ruknId": "114261",
+    "name": "Zulfikar A",
+    "contactNo": "9744000584",
+    "emailId": "ne18@gmail.com",
+    "district": "Kozhikode (City)",
+    "isActive": true,
+    "__v": 0,
+    "createdAt": {
+      "$date": "2025-10-04T10:22:13.745Z"
+    },
+    "updatedAt": {
+      "$date": "2026-01-11T04:22:03.386Z"
+    },
+    "lastLogin": {
+      "$date": "2026-01-11T04:22:03.386Z"
+    },
+    "area": "Medical College"
+  }
+]

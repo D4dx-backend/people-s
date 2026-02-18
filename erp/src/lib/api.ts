@@ -20,6 +20,7 @@ export interface User {
   adminScope?: {
     level: string;
     regions: string[];
+    state?: string;     // State reference (for state_admin)
     district?: string;  // District reference
     area?: string;      // Area reference (for area_admin and unit_admin)
     unit?: string;      // Unit reference (for unit_admin)

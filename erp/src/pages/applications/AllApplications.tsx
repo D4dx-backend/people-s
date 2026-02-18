@@ -97,7 +97,7 @@ export default function AllApplications() {
 
   const canViewApplications = hasAnyPermission(['applications.read.all', 'applications.read.regional', 'applications.read.own']);
   const canApproveApplications = hasPermission('applications.approve');
-  const hasAdminAccess = user && ['super_admin', 'state_admin', 'district_admin', 'area_admin', 'unit_admin'].includes(user.role);
+  const hasAdminAccess = user && ['super_admin', 'state_admin', 'district_admin', 'area_admin', 'unit_admin', 'project_coordinator', 'scheme_coordinator'].includes(user.role);
   
   // Only area_admin, state_admin, and super_admin can review/approve applications
   const canReviewApplications = user && ['super_admin', 'state_admin', 'area_admin'].includes(user.role);
@@ -251,7 +251,7 @@ export default function AllApplications() {
 
   return (
     <div className="space-y-6">
-      <ApplicationViewModal open={showViewModal} onOpenChange={setShowViewModal} application={selectedApp} mode={modalMode} onApprove={handleApprove} onReject={handleReject} />
+      <ApplicationViewModal open={showViewModal} onOpenChange={setShowViewModal} application={selectedApp} mode={modalMode} onApprove={handleApprove} onReject={handleReject} canApprove={!!canReviewApplications} />
       
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
@@ -501,6 +501,7 @@ export default function AllApplications() {
           setSelectedApplicationId(null);
         }}
         onActionComplete={handleApplicationActionComplete}
+        canApprove={!!canReviewApplications}
       />
     </div>
   );
