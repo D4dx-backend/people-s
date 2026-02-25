@@ -7,6 +7,7 @@ const {
   updateApplication,
   reviewApplication,
   approveApplication,
+  modifyApprovedApplication,
   deleteApplication,
   getAvailableRevertRoles,
   revertApplicationStage,
@@ -165,6 +166,30 @@ router.put('/:id/approve',
   authorize('super_admin', 'state_admin', 'area_admin'), 
   approveApplicationValidation, 
   approveApplication
+);
+
+// Modify an already approved application (amount, timeline, comments)
+router.patch('/:id/modify-approved',
+  authenticate,
+  authorize('super_admin', 'state_admin'),
+  [
+    body('approvedAmount')
+      .optional()
+      .isNumeric()
+      .isFloat({ min: 1 })
+      .withMessage('Approved amount must be a positive number'),
+    body('reason')
+      .notEmpty()
+      .trim()
+      .isLength({ max: 500 })
+      .withMessage('Modification reason is required (max 500 characters)'),
+    body('comments')
+      .optional()
+      .trim()
+      .isLength({ max: 500 })
+      .withMessage('Comments must be less than 500 characters')
+  ],
+  modifyApprovedApplication
 );
 
 router.delete('/:id', 

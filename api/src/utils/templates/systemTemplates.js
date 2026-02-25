@@ -1,3 +1,5 @@
+const orgConfig = require('../../config/orgConfig');
+
 /**
  * System SMS Templates
  */
@@ -5,7 +7,7 @@ class SystemTemplates {
   static getTemplates() {
     return {
       system_maintenance: {
-        template: "Dear {name}, People's Foundation ERP system will be under maintenance from {startTime} to {endTime} on {date}. - PFERP",
+        template: `Dear {name}, ${orgConfig.erpTitle} system will be under maintenance from {startTime} to {endTime} on {date}. - ${orgConfig.key.toUpperCase().slice(0, 5)}`,
         variables: ['name', 'startTime', 'endTime', 'date'],
         category: 'transactional',
         dltTemplateId: 'DLT_TEMPLATE_MAINTENANCE'
@@ -19,7 +21,7 @@ class SystemTemplates {
       },
       
       policy_update: {
-        template: "Dear {name}, important policy updates have been made to People's Foundation ERP services. Please review online. - PFERP",
+        template: `Dear {name}, important policy updates have been made to ${orgConfig.erpTitle} services. Please review online. - ${orgConfig.key.toUpperCase().slice(0, 5)}`,
         variables: ['name'],
         category: 'transactional',
         dltTemplateId: 'DLT_TEMPLATE_POLICY_UPDATE'

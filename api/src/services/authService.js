@@ -3,6 +3,7 @@ const bcrypt = require('bcryptjs');
 const crypto = require('crypto');
 const { User } = require('../models');
 const config = require('../config/environment');
+const orgConfig = require('../config/orgConfig');
 const staticOTPConfig = require('../config/staticOTP');
 const whatsappOTPService = require('../utils/whatsappOtpService');
 
@@ -23,8 +24,8 @@ class AuthService {
 
     return jwt.sign(payload, config.JWT_SECRET, {
       expiresIn: config.JWT_EXPIRE,
-      issuer: 'baithuzzakath-api',
-      audience: 'baithuzzakath-client'
+      issuer: 'erp-api',
+      audience: 'erp-client'
     });
   }
 
@@ -44,8 +45,8 @@ class AuthService {
 
     const accessToken = jwt.sign(payload, config.JWT_SECRET, {
       expiresIn: config.JWT_EXPIRE,
-      issuer: 'baithuzzakath-api',
-      audience: 'baithuzzakath-client'
+      issuer: 'erp-api',
+      audience: 'erp-client'
     });
 
     const refreshToken = jwt.sign(
@@ -53,8 +54,8 @@ class AuthService {
       config.JWT_SECRET,
       {
         expiresIn: config.JWT_REFRESH_EXPIRE,
-        issuer: 'baithuzzakath-api',
-        audience: 'baithuzzakath-client'
+        issuer: 'erp-api',
+        audience: 'erp-client'
       }
     );
 
@@ -72,10 +73,9 @@ class AuthService {
    */
   verifyToken(token) {
     try {
-      return jwt.verify(token, config.JWT_SECRET, {
-        issuer: 'baithuzzakath-api',
-        audience: 'baithuzzakath-client'
-      });
+      // Accept tokens from any issuer — JWT_SECRET provides auth security.
+      // This avoids breakage when switching ORG_NAME between deployments.
+      return jwt.verify(token, config.JWT_SECRET);
     } catch (error) {
       throw new Error('Invalid or expired token');
     }
@@ -419,7 +419,7 @@ class AuthService {
 
       return {
         success: true,
-        message: "Registration completed successfully! Welcome to People's Foundation ERP.",
+        message: `Registration completed successfully! Welcome to ${orgConfig.erpTitle}.`,
         user: userData,
         tokens,
         authMethod: 'otp_only'

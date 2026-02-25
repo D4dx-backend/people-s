@@ -1,5 +1,6 @@
 const nodemailer = require('nodemailer');
 const config = require('../config/environment');
+const orgConfig = require('../config/orgConfig');
 
 class EmailService {
   constructor() {
@@ -54,7 +55,7 @@ class EmailService {
       }
 
       const mailOptions = {
-        from: `"People's Foundation ERP" <${from}>`,
+        from: `"${orgConfig.emailSenderName}" <${from}>`,
         to,
         subject,
         text,
@@ -112,9 +113,9 @@ class EmailService {
    * @returns {Promise<Object>} Send result
    */
   async sendOTPEmail(email, otp, name = 'User') {
-    const subject = "Your OTP for People's Foundation ERP";
+    const subject = `Your OTP for ${orgConfig.erpTitle}`;
     const html = this.getOTPTemplate(name, otp);
-    const text = `Dear ${name}, your OTP for People's Foundation ERP is ${otp}. Valid for 10 minutes. Do not share with anyone.`;
+    const text = `Dear ${name}, your OTP for ${orgConfig.erpTitle} is ${otp}. Valid for 10 minutes. Do not share with anyone.`;
 
     return await this.sendEmail({
       to: email,
@@ -132,9 +133,9 @@ class EmailService {
    * @returns {Promise<Object>} Send result
    */
   async sendWelcomeEmail(email, name, userData = {}) {
-    const subject = "Welcome to People's Foundation ERP";
+    const subject = `Welcome to ${orgConfig.erpTitle}`;
     const html = this.getWelcomeTemplate(name, userData);
-    const text = `Welcome to People's Foundation ERP, ${name}! Your account has been created successfully.`;
+    const text = `Welcome to ${orgConfig.erpTitle}, ${name}! Your account has been created successfully.`;
 
     return await this.sendEmail({
       to: email,
@@ -237,7 +238,7 @@ class EmailService {
     <body>
         <div class="container">
             <div class="header">
-                <h1>People's Foundation ERP</h1>
+                <h1>${orgConfig.erpTitle}</h1>
                 <p>OTP Verification</p>
             </div>
             
@@ -258,7 +259,7 @@ class EmailService {
             </div>
             
             <div class="footer">
-                <p>© 2025 People's Foundation ERP. All rights reserved.</p>
+                <p>${orgConfig.copyrightText}</p>
                 <p>This is an automated email. Please do not reply to this message.</p>
             </div>
         </div>
@@ -280,7 +281,7 @@ class EmailService {
     <head>
         <meta charset="utf-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>Welcome to People's Foundation ERP</title>
+        <title>Welcome to ${orgConfig.erpTitle}</title>
         <style>
             body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
             .container { max-width: 600px; margin: 0 auto; padding: 20px; }
@@ -294,14 +295,14 @@ class EmailService {
     <body>
         <div class="container">
             <div class="header">
-                <h1>Welcome to People's Foundation ERP</h1>
+                <h1>Welcome to ${orgConfig.erpTitle}</h1>
                 <p>Your account has been created successfully</p>
             </div>
             
             <div class="content">
                 <div class="welcome-box">
                     <h2>Hello ${name}!</h2>
-                    <p>Welcome to People's Foundation ERP - your gateway to transparent and efficient Zakat distribution.</p>
+                    <p>Welcome to ${orgConfig.erpTitle} - ${orgConfig.welcomeEmailText}.</p>
                     
                     <p><strong>Your Account Details:</strong></p>
                     <ul>
@@ -325,8 +326,8 @@ class EmailService {
             </div>
             
             <div class="footer">
-                <p>© 2025 People's Foundation ERP. All rights reserved.</p>
-                <p>Need help? Contact our support team at support@baithuzzakath.org</p>
+                <p>${orgConfig.copyrightText}</p>
+                <p>Need help? Contact our support team at ${orgConfig.supportEmail}</p>
             </div>
         </div>
     </body>
@@ -388,13 +389,13 @@ class EmailService {
                         <li>Funds will be transferred to your registered bank account</li>
                     </ul>
                     
-                    <p>Thank you for choosing People's Foundation ERP. We are committed to serving you better.</p>
+                    <p>Thank you for choosing ${orgConfig.erpTitle}. We are committed to serving you better.</p>
                 </div>
             </div>
             
             <div class="footer">
-                <p>© 2025 People's Foundation ERP. All rights reserved.</p>
-                <p>For queries, contact us at support@baithuzzakath.org</p>
+                <p>${orgConfig.copyrightText}</p>
+                <p>For queries, contact us at ${orgConfig.supportEmail}</p>
             </div>
         </div>
     </body>
@@ -453,13 +454,13 @@ class EmailService {
                     
                     <p>The amount should reflect in your bank account within 24-48 hours. If you don't receive the amount within this timeframe, please contact our support team.</p>
                     
-                    <p>Thank you for using People's Foundation ERP services.</p>
+                    <p>Thank you for using ${orgConfig.erpTitle} services.</p>
                 </div>
             </div>
             
             <div class="footer">
-                <p>© 2025 People's Foundation ERP. All rights reserved.</p>
-                <p>For payment queries, contact us at payments@baithuzzakath.org</p>
+                <p>${orgConfig.copyrightText}</p>
+                <p>For payment queries, contact us at ${orgConfig.paymentsEmail}</p>
             </div>
         </div>
     </body>
@@ -523,7 +524,7 @@ class EmailService {
             </div>
             
             <div class="footer">
-                <p>© 2025 People's Foundation ERP. All rights reserved.</p>
+                <p>${orgConfig.copyrightText}</p>
                 <p>Track your application at ${config.FRONTEND_URL}/applications</p>
             </div>
         </div>
@@ -590,8 +591,8 @@ class EmailService {
             </div>
             
             <div class="footer">
-                <p>© 2025 People's Foundation ERP. All rights reserved.</p>
-                <p>Need assistance? Contact us at support@baithuzzakath.org</p>
+                <p>${orgConfig.copyrightText}</p>
+                <p>Need assistance? Contact us at ${orgConfig.supportEmail}</p>
             </div>
         </div>
     </body>
@@ -646,7 +647,7 @@ class EmailService {
             </div>
             
             <div class="footer">
-                <p>© 2025 People's Foundation ERP. All rights reserved.</p>
+                <p>${orgConfig.copyrightText}</p>
                 <p>Login to your account at ${config.FRONTEND_URL}/login</p>
             </div>
         </div>

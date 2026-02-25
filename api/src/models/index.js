@@ -18,6 +18,7 @@ const DonorFollowUp = require('./DonorFollowUp');
 const ActivityLog = require('./ActivityLog');
 const MasterData = require('./MasterData');
 const RecurringPayment = require('./RecurringPayment');
+const Counter = require('./Counter');
 const LoginLog = require('./LoginLog');
 const ErrorLog = require('./ErrorLog');
 const SchemeTarget = require('./SchemeTarget');
@@ -54,6 +55,7 @@ module.exports = {
   ActivityLog,
   MasterData,
   RecurringPayment,
+  Counter,
   LoginLog,
   ErrorLog,
   SchemeTarget,

@@ -1,15 +1,17 @@
 const swaggerJsdoc = require('swagger-jsdoc');
 
+const orgConfig = require('./orgConfig');
+
 const options = {
   definition: {
     openapi: '3.0.0',
     info: {
-      title: "People's Foundation ERP - Complete API Documentation",
+      title: `${orgConfig.erpTitle} - Complete API Documentation`,
       version: '1.0.0',
       description: `
-# People's Foundation ERP System API
+# ${orgConfig.erpTitle} System API
 
-Complete API documentation for People's Foundation ERP system serving all user roles.
+Complete API documentation for ${orgConfig.erpTitle} system serving all user roles.
 
 ## Authentication Endpoints by Role
 
@@ -38,8 +40,8 @@ Complete API documentation for People's Foundation ERP system serving all user r
 3. Use token in Authorization header: \`Bearer <token>\`
       `,
       contact: {
-        name: "People's Foundation ERP",
-        email: 'support@baithuzzakath.org'
+        name: orgConfig.erpTitle,
+        email: orgConfig.supportEmail
       },
       license: {
         name: 'Private',

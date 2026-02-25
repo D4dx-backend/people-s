@@ -1,6 +1,8 @@
 /**
  * DXing SMS Template Generator
  */
+const orgConfig = require('../../config/orgConfig');
+
 class DXingTemplates {
   /**
    * Generate OTP
@@ -26,9 +28,9 @@ class DXingTemplates {
    */
   static createTemplate(type, variables = {}) {
     const templates = {
-      otp: `Dear ${variables.name || 'User'}, your OTP for People's Foundation ERP is ${variables.otp}. Valid for ${variables.validity || '10 minutes'}. Do not share with anyone.`,
+      otp: `Dear ${variables.name || 'User'}, your OTP for ${orgConfig.erpTitle} is ${variables.otp}. Valid for ${variables.validity || '10 minutes'}. Do not share with anyone.`,
       
-      welcome: `Welcome to People's Foundation ERP, ${variables.name}! Your account has been created successfully. Login with your registered mobile number.`,
+      welcome: `Welcome to ${orgConfig.erpTitle}, ${variables.name}! Your account has been created successfully. Login with your registered mobile number.`,
       
       application_submitted: `Dear ${variables.name}, your application ${variables.applicationNumber} has been submitted successfully. You will be notified about the status updates.`,
       
@@ -45,15 +47,15 @@ class DXingTemplates {
       reminder: `Dear ${variables.name || 'User'}, this is a reminder for ${variables.subject}. Please take necessary action before ${variables.deadline}.`,
       
       // Donor-specific templates
-      donation_thank_you: `Dear ${variables.name || 'Donor'}, thank you for your generous donation of ₹${variables.amount || '0'} to People's Foundation${variables.projectName ? ` for ${variables.projectName}` : ''}. Your support makes a real difference! Receipt: ${variables.receiptNumber || 'Will be shared shortly'}.`,
+      donation_thank_you: `Dear ${variables.name || 'Donor'}, thank you for your generous donation of ₹${variables.amount || '0'} to ${orgConfig.displayName}${variables.projectName ? ` for ${variables.projectName}` : ''}. Your support makes a real difference! Receipt: ${variables.receiptNumber || 'Will be shared shortly'}.`,
       
-      donation_reminder_7day: `Dear ${variables.name || 'Donor'}, your ${variables.frequency || 'scheduled'} donation${variables.amount ? ` of ₹${variables.amount}` : ''} is due on ${variables.dueDate || 'soon'}. We truly appreciate your continued support for People's Foundation. 🙏`,
+      donation_reminder_7day: `Dear ${variables.name || 'Donor'}, your ${variables.frequency || 'scheduled'} donation${variables.amount ? ` of ₹${variables.amount}` : ''} is due on ${variables.dueDate || 'soon'}. We truly appreciate your continued support for ${orgConfig.displayName}. 🙏`,
       
-      donation_reminder_due: `Dear ${variables.name || 'Donor'}, your ${variables.frequency || 'scheduled'} donation${variables.amount ? ` of ₹${variables.amount}` : ''} is due today. Thank you for supporting People's Foundation and making an impact! 🌟`,
+      donation_reminder_due: `Dear ${variables.name || 'Donor'}, your ${variables.frequency || 'scheduled'} donation${variables.amount ? ` of ₹${variables.amount}` : ''} is due today. Thank you for supporting ${orgConfig.displayName} and making an impact! 🌟`,
       
       donation_lapsed: `Dear ${variables.name || 'Donor'}, it's been a while since your last donation${variables.lastDonationDate ? ` on ${variables.lastDonationDate}` : ''}. We miss your support! Your previous contribution${variables.amount ? ` of ₹${variables.amount}` : ''} made a real impact. Consider renewing your support today. 💚`,
       
-      donation_anniversary: `Dear ${variables.name || 'Donor'}, it's been one year since your generous donation${variables.amount ? ` of ₹${variables.amount}` : ''} to People's Foundation. Your contribution has made a lasting impact! Consider renewing your support to continue making a difference. 🎉`
+      donation_anniversary: `Dear ${variables.name || 'Donor'}, it's been one year since your generous donation${variables.amount ? ` of ₹${variables.amount}` : ''} to ${orgConfig.displayName}. Your contribution has made a lasting impact! Consider renewing your support to continue making a difference. 🎉`
     };
     
     return templates[type] || variables.message || '';

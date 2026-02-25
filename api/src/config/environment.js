@@ -56,5 +56,8 @@ module.exports = {
   
   // Logging (REQUIRED)
   LOG_LEVEL: getEnvVar('LOG_LEVEL', 'Logging level'),
-  LOG_FILE: getEnvVar('LOG_FILE', 'Log file path')
+  LOG_FILE: getEnvVar('LOG_FILE', 'Log file path'),
+
+  // Organization Identity (OPTIONAL — defaults managed by orgConfig.js)
+  ORG_NAME: getOptionalEnvVar('ORG_NAME', 'people_foundation'),
 };

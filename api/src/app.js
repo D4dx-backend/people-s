@@ -17,6 +17,7 @@ const { activityLogger } = require('./middleware/activityLogger');
 
 const connectDB = require('./config/database');
 const config = require('./config/environment');
+const orgConfig = require('./config/orgConfig');
 const errorHandler = require('./middleware/errorHandler');
 
 const app = express();
@@ -54,6 +55,10 @@ app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true }));
 app.use(compression());
 
+// Serve org logo and other static assets from src/assets
+app.use('/assets', express.static(path.join(__dirname, 'assets')));
+app.use('/api/assets', express.static(path.join(__dirname, 'assets')));
+
 // Logging
 if (config.NODE_ENV === 'development') {
   app.use(morgan('dev'));
@@ -69,7 +74,7 @@ app.use(activityLogger({
 app.get('/health', (req, res) => {
   res.status(200).json({
     success: true,
-    message: "People's Foundation ERP API is running",
+    message: `${orgConfig.erpTitle} API is running`,
     timestamp: new Date().toISOString(),
     uptime: process.uptime(),
     environment: config.NODE_ENV,
@@ -80,7 +85,7 @@ app.get('/health', (req, res) => {
 // Swagger API Documentation
 app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpecs, {
   customCss: '.swagger-ui .topbar { display: none }',
-  customSiteTitle: "People's Foundation ERP API Documentation",
+  customSiteTitle: `${orgConfig.erpTitle} API Documentation`,
   explorer: true
 }));
 

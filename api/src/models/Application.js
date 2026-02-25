@@ -139,6 +139,38 @@ const applicationSchema = new mongoose.Schema({
     type: String
   },
   
+  // Post-approval modification tracking
+  lastModifiedBy: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User'
+  },
+  lastModifiedAt: {
+    type: Date
+  },
+  modificationHistory: [{
+    modifiedBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User'
+    },
+    modifiedAt: {
+      type: Date,
+      default: Date.now
+    },
+    reason: {
+      type: String,
+      required: true
+    },
+    previousAmount: {
+      type: Number
+    },
+    newAmount: {
+      type: Number
+    },
+    previousComments: {
+      type: String
+    }
+  }],
+  
   // Committee Approval Information
   interviewReport: {
     type: String

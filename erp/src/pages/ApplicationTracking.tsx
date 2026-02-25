@@ -6,7 +6,8 @@ import { Badge } from "@/components/ui/badge";
 import { ArrowLeft, CheckCircle, Clock, XCircle, FileText, Loader2, IndianRupee, Calendar, User, Phone } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { beneficiaryApi } from "@/services/beneficiaryApi";
-import logo from "@/assets/logo.png";
+import { useOrgLogoUrl } from "@/hooks/useOrgLogoUrl";
+import defaultLogo from "@/assets/logo.png";
 
 interface ApplicationData {
   _id: string;
@@ -27,6 +28,7 @@ interface ApplicationData {
 export default function ApplicationTracking() {
   const navigate = useNavigate();
   const { id } = useParams();
+  const orgLogoUrl = useOrgLogoUrl();
   const [application, setApplication] = useState<ApplicationData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -237,7 +239,7 @@ export default function ApplicationTracking() {
               <ArrowLeft className="h-4 w-4 mr-1" />
               Back
             </Button>
-            <img src={logo} alt="Logo" className="h-8 w-8 rounded-full" />
+            <img src={orgLogoUrl} alt="Logo" className="h-8 w-8 rounded-full" onError={(e) => { (e.target as HTMLImageElement).src = defaultLogo; }} />
             <div>
               <h1 className="text-lg font-bold">Application Tracking</h1>
               <p className="text-xs text-muted-foreground hidden sm:block">+91 {phoneNumber}</p>

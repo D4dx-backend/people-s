@@ -1,4 +1,4 @@
-const { RecurringPayment, Application, Payment } = require('../models');
+const { RecurringPayment, Application, Payment, Counter } = require('../models');
 const mongoose = require('mongoose');
 
 class RecurringPaymentService {
@@ -14,23 +14,23 @@ class RecurringPaymentService {
     const dates = [];
     const start = new Date(startDate);
     
-    // Define days for each period
-    const daysPerPeriod = {
-      'monthly': 30,
-      'quarterly': 90,
-      'semi_annually': 180,
-      'annually': 365
+    // Define months for each period (use proper calendar months to prevent drift)
+    const monthsPerPeriod = {
+      'monthly': 1,
+      'quarterly': 3,
+      'semi_annually': 6,
+      'annually': 12
     };
     
-    const days = daysPerPeriod[period];
-    if (!days) {
+    const months = monthsPerPeriod[period];
+    if (!months) {
       throw new Error(`Invalid period: ${period}`);
     }
     
     for (let i = 0; i < numberOfPayments; i++) {
       const paymentDate = new Date(start);
-      // Add (i * days) to the start date
-      paymentDate.setDate(start.getDate() + (i * days));
+      // Use calendar month addition to prevent date drift
+      paymentDate.setMonth(start.getMonth() + (i * months));
       dates.push(paymentDate);
     }
     
@@ -218,21 +218,12 @@ class RecurringPaymentService {
     if (filters.area) query.area = filters.area;
     if (filters.unit) query.unit = filters.unit;
     
-    console.log('📋 getRecurringApplications called with filters:', filters);
-    console.log('📋 Query built:', query);
-    
-    // Check total recurring applications
-    const totalRecurringApps = await Application.countDocuments({ isRecurring: true });
-    console.log('📋 Total recurring applications in database:', totalRecurringApps);
-    
     const apps = await Application.find(query)
       .populate('beneficiary', 'name phone email applicationNumber')
       .populate('scheme', 'name')
       .populate('project', 'name')
       .populate('state district area unit', 'name')
       .sort({ 'recurringConfig.nextPaymentDate': 1 });
-      
-    console.log('📋 Found', apps.length, 'applications matching query');
     
     return apps;
   }
@@ -306,77 +297,100 @@ class RecurringPaymentService {
    * @returns {Object} Updated recurring payment
    */
   async recordPayment(recurringPaymentId, paymentData, userId) {
-    const recurringPayment = await RecurringPayment.findById(recurringPaymentId)
-      .populate('application');
+    const session = await mongoose.startSession();
+    session.startTransaction();
     
-    if (!recurringPayment) {
-      throw new Error('Recurring payment not found');
+    try {
+      const recurringPayment = await RecurringPayment.findById(recurringPaymentId)
+        .populate('application')
+        .session(session);
+      
+      if (!recurringPayment) {
+        throw new Error('Recurring payment not found');
+      }
+      
+      if (recurringPayment.status === 'completed') {
+        throw new Error('Payment already completed');
+      }
+      
+      // Generate proper payment number using atomic Counter
+      const year = new Date().getFullYear();
+      const month = String(new Date().getMonth() + 1).padStart(2, '0');
+      const counterKey = `payment_${year}_${month}`;
+      const seq = await Counter.getNextSequence(counterKey);
+      const paymentNumber = `PAY_${year}_${month}_${String(seq).padStart(5, '0')}`;
+      
+      // Create actual payment record
+      const payment = new Payment({
+        paymentNumber,
+        application: recurringPayment.application._id,
+        beneficiary: recurringPayment.beneficiary,
+        project: recurringPayment.project,
+        scheme: recurringPayment.scheme,
+        amount: paymentData.amount || recurringPayment.amount,
+        type: 'installment',
+        method: paymentData.method,
+        installment: {
+          number: recurringPayment.paymentNumber,
+          totalInstallments: recurringPayment.totalPayments,
+          description: recurringPayment.description
+        },
+        status: 'completed',
+        timeline: {
+          completedAt: new Date(),
+          processedAt: new Date()
+        },
+        initiatedBy: userId,
+        processedBy: userId
+      });
+      
+      await payment.save({ session });
+      
+      // Update recurring payment
+      await recurringPayment.markAsCompleted(
+        payment._id,
+        paymentData.amount || recurringPayment.amount,
+        paymentData.method,
+        paymentData.transactionReference,
+        userId
+      );
+      await recurringPayment.save({ session });
+      
+      // Update application recurring config
+      const application = recurringPayment.application;
+      const completedCount = (application.recurringConfig?.completedPayments || 0) + 1;
+      const nextPayment = await RecurringPayment.findOne({
+        application: application._id,
+        status: { $in: ['scheduled', 'due'] }
+      }).sort({ scheduledDate: 1 }).session(session);
+      
+      const updateData = {
+        'recurringConfig.completedPayments': completedCount,
+        'recurringConfig.lastPaymentDate': new Date()
+      };
+      
+      if (nextPayment) {
+        updateData['recurringConfig.nextPaymentDate'] = nextPayment.scheduledDate;
+      } else {
+        // All payments completed
+        updateData['recurringConfig.status'] = 'completed';
+        updateData['recurringConfig.nextPaymentDate'] = null;
+      }
+      
+      await Application.findByIdAndUpdate(application._id, updateData, { session });
+      
+      await session.commitTransaction();
+      session.endSession();
+      
+      return await RecurringPayment.findById(recurringPaymentId)
+        .populate('payment')
+        .populate('application')
+        .populate('beneficiary');
+    } catch (error) {
+      await session.abortTransaction();
+      session.endSession();
+      throw error;
     }
-    
-    if (recurringPayment.status === 'completed') {
-      throw new Error('Payment already completed');
-    }
-    
-    // Create actual payment record
-    const payment = new Payment({
-      paymentNumber: `PAY${Date.now()}`, // Generate proper payment number
-      application: recurringPayment.application._id,
-      beneficiary: recurringPayment.beneficiary,
-      project: recurringPayment.project,
-      scheme: recurringPayment.scheme,
-      amount: paymentData.amount || recurringPayment.amount,
-      type: 'installment',
-      method: paymentData.method,
-      installment: {
-        number: recurringPayment.paymentNumber,
-        totalInstallments: recurringPayment.totalPayments,
-        description: recurringPayment.description
-      },
-      status: 'completed',
-      completedDate: new Date(),
-      ...paymentData,
-      processedBy: userId,
-      createdBy: userId
-    });
-    
-    await payment.save();
-    
-    // Update recurring payment
-    await recurringPayment.markAsCompleted(
-      payment._id,
-      paymentData.amount || recurringPayment.amount,
-      paymentData.method,
-      paymentData.transactionReference,
-      userId
-    );
-    
-    // Update application recurring config
-    const application = recurringPayment.application;
-    const completedCount = application.recurringConfig.completedPayments + 1;
-    const nextPayment = await RecurringPayment.findOne({
-      application: application._id,
-      status: { $in: ['scheduled', 'due'] }
-    }).sort({ scheduledDate: 1 });
-    
-    const updateData = {
-      'recurringConfig.completedPayments': completedCount,
-      'recurringConfig.lastPaymentDate': new Date()
-    };
-    
-    if (nextPayment) {
-      updateData['recurringConfig.nextPaymentDate'] = nextPayment.scheduledDate;
-    } else {
-      // All payments completed
-      updateData['recurringConfig.status'] = 'completed';
-      updateData['recurringConfig.nextPaymentDate'] = null;
-    }
-    
-    await Application.findByIdAndUpdate(application._id, updateData);
-    
-    return await RecurringPayment.findById(recurringPaymentId)
-      .populate('payment')
-      .populate('application')
-      .populate('beneficiary');
   }
   
   /**
@@ -392,7 +406,8 @@ class RecurringPaymentService {
     
     const query = {
       status: { $in: ['scheduled', 'due', 'overdue'] },
-      scheduledDate: { $lte: endDate }
+      scheduledDate: { $lte: endDate },
+      // Explicitly exclude cancelled and skipped to ensure forecast accuracy
     };
     
     if (filters.scheme) query.scheme = filters.scheme;
@@ -539,13 +554,6 @@ class RecurringPaymentService {
     if (filters.state) query.state = filters.state;
     if (filters.district) query.district = filters.district;
     
-    console.log('📊 getDashboardStats called with filters:', filters);
-    console.log('📊 Query built:', query);
-    
-    // First, check total count of recurring payments in database
-    const totalInDb = await RecurringPayment.countDocuments({});
-    console.log('📊 Total RecurringPayment documents in database:', totalInDb);
-    
     const [
       totalRecurring,
       scheduled,
@@ -561,15 +569,6 @@ class RecurringPaymentService {
       this.getUpcomingPayments(7, filters),
       this.getUpcomingPayments(30, filters)
     ]);
-    
-    console.log('📊 Dashboard counts:', {
-      totalRecurring,
-      scheduled,
-      overdue,
-      completed,
-      upcoming7Days: upcoming7Days.length,
-      upcoming30Days: upcoming30Days.length
-    });
     
     const overduePayments = await this.getOverduePayments(filters);
     

@@ -3,6 +3,16 @@ const ResponseHelper = require('../utils/responseHelper');
 const donorReminderService = require('../services/donorReminderService');
 const mongoose = require('mongoose');
 
+// Valid status transitions map — prevents invalid state changes
+const DONATION_STATUS_TRANSITIONS = {
+  pending:    ['processing', 'completed', 'cancelled'],
+  processing: ['completed', 'failed'],
+  failed:     ['processing'], // allow retry
+  completed:  ['refunded'],
+  cancelled:  [], // terminal state
+  refunded:   []  // terminal state
+};
+
 class DonationController {
   /**
    * Get donations by donor ID
@@ -295,7 +305,7 @@ class DonationController {
       // Map mode to recurring preferences
       const recurringModes = ['monthly', 'quarterly', 'half_yearly', 'yearly', 'custom'];
       const isRecurring = mode && recurringModes.includes(mode);
-      const frequency = isRecurring ? mode : 'one_time';
+      const frequency = isRecurring ? mode : 'one-time';
 
       // Resolve donation date
       const donationDate = date ? new Date(date) : new Date();
@@ -400,16 +410,21 @@ class DonationController {
       }
       const previousStatus = existingDonation.status;
 
-      const updateData = {
-        ...req.body,
-        lastModifiedBy: req.user._id
-      };
+      // Allowlist of fields that can be updated via PUT
+      // Security: block status, donationNumber, timeline, verification, refund, donor from being modified here
+      const ALLOWED_UPDATE_FIELDS = [
+        'amount', 'method', 'purpose', 'notes', 'internalNotes', 'tags',
+        'paymentDetails', 'project', 'scheme',
+        'anonymousDonor', 'preferences', 'campaign',
+        'tax', 'receipt', 'metadata'
+      ];
 
-      // Remove fields that shouldn't be updated directly
-      delete updateData.donationNumber;
-      delete updateData.createdBy;
-      delete updateData.createdAt;
-      delete updateData.timeline;
+      const updateData = { lastModifiedBy: req.user._id };
+      for (const field of ALLOWED_UPDATE_FIELDS) {
+        if (req.body[field] !== undefined) {
+          updateData[field] = req.body[field];
+        }
+      }
 
       const donation = await Donation.findByIdAndUpdate(
         id,
@@ -475,9 +490,28 @@ class DonationController {
         return ResponseHelper.error(res, 'Invalid donation ID', 400);
       }
 
-      if (!['pending', 'processing', 'completed', 'failed', 'cancelled'].includes(status)) {
+      if (!['pending', 'processing', 'completed', 'failed', 'cancelled', 'refunded'].includes(status)) {
         return ResponseHelper.error(res, 'Invalid status', 400);
       }
+
+      // Get current donation to enforce transition rules
+      const existingDonation = await Donation.findById(id);
+      if (!existingDonation) {
+        return ResponseHelper.error(res, 'Donation not found', 404);
+      }
+
+      const currentStatus = existingDonation.status;
+      const allowedTransitions = DONATION_STATUS_TRANSITIONS[currentStatus] || [];
+
+      if (!allowedTransitions.includes(status)) {
+        return ResponseHelper.error(
+          res,
+          `Cannot transition from "${currentStatus}" to "${status}". Allowed transitions: ${allowedTransitions.join(', ') || 'none (terminal state)'}`,
+          400
+        );
+      }
+
+      const previousStatus = currentStatus;
 
       const donation = await Donation.findByIdAndUpdate(
         id,
@@ -494,8 +528,14 @@ class DonationController {
         return ResponseHelper.error(res, 'Donation not found', 404);
       }
 
-      // Update donor stats if donation is completed and has a donor
-      if (status === 'completed' && donation.donor) {
+      // Reverse donor stats if transitioning FROM completed to another status
+      if (previousStatus === 'completed' && status !== 'completed' && donation.donor) {
+        const donorObjId = donation.donor._id || donation.donor;
+        await this.reverseDonorStats(donorObjId, donation.amount);
+      }
+
+      // Update donor stats if donation is newly completed and has a donor
+      if (previousStatus !== 'completed' && status === 'completed' && donation.donor) {
         const donorObjId = donation.donor._id || donation.donor;
         await this.updateDonorStats(donorObjId, donation.amount);
 
@@ -693,6 +733,33 @@ class DonationController {
       await donor.save();
     } catch (error) {
       console.error('❌ Update Donor Stats Error:', error);
+    }
+  }
+
+  /**
+   * Helper method to reverse donor statistics (when donation status changes away from completed)
+   */
+  async reverseDonorStats(donorId, amount) {
+    try {
+      if (!donorId) return;
+
+      const donor = await Donor.findById(donorId);
+      if (!donor) return;
+
+      // Decrement donation statistics
+      donor.donationStats.totalDonated = Math.max(0, (donor.donationStats.totalDonated || 0) - amount);
+      donor.donationStats.donationCount = Math.max(0, (donor.donationStats.donationCount || 0) - 1);
+
+      // Recalculate average
+      if (donor.donationStats.donationCount > 0) {
+        donor.donationStats.averageDonation = donor.donationStats.totalDonated / donor.donationStats.donationCount;
+      } else {
+        donor.donationStats.averageDonation = 0;
+      }
+
+      await donor.save();
+    } catch (error) {
+      console.error('❌ Reverse Donor Stats Error:', error);
     }
   }
 }

@@ -10,11 +10,16 @@ import { toast } from "@/hooks/use-toast";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { auth } from "@/lib/api";
 import { useAuth } from "@/hooks/useAuth";
+import { useConfig } from "@/contexts/ConfigContext";
+import { useOrgLogoUrl } from "@/hooks/useOrgLogoUrl";
+import defaultLogo from "@/assets/logo.png";
 
 export default function Login() {
   const navigate = useNavigate();
   const location = useLocation();
   const { login } = useAuth();
+  const { org } = useConfig();
+  const orgLogoUrl = useOrgLogoUrl();
   const [step, setStep] = useState<"role" | "phone" | "otp">("role");
   const [role, setRole] = useState<"beneficiary" | "admin">("admin");
   const [phoneNumber, setPhoneNumber] = useState("9876543210");
@@ -254,6 +259,15 @@ export default function Login() {
     <div className="min-h-screen flex items-center justify-center bg-gradient-subtle p-4">
       <Card className="w-full max-w-md shadow-elegant">
         <CardHeader className="space-y-1">
+          <div className="flex flex-col items-center mb-2">
+            <img 
+              src={orgLogoUrl} 
+              alt={org.erpTitle} 
+              className="h-16 w-16 rounded-2xl shadow-sm mb-2" 
+              onError={(e) => { (e.target as HTMLImageElement).src = defaultLogo; }} 
+            />
+            <p className="text-sm font-semibold text-muted-foreground">{org.erpTitle}</p>
+          </div>
           <div className="flex items-center justify-between">
             <CardTitle className="text-2xl font-bold">
               {step === "role" ? "Select Login Type" : step === "phone" ? "Login" : "Verify OTP"}

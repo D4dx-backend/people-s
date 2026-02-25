@@ -1,5 +1,8 @@
 const ApplicationConfig = require('../models/ApplicationConfig');
 const ResponseHelper = require('../utils/responseHelper');
+const orgConfig = require('../config/orgConfig');
+const path = require('path');
+const fs = require('fs');
 
 class ApplicationConfigController {
   /**
@@ -52,7 +55,32 @@ class ApplicationConfigController {
         acc[config.category][config.key] = config.value;
         return acc;
       }, {});
-      
+
+      // Attach org branding (driven by ORG_NAME env var)
+      configMap.org = {
+        key: orgConfig.key,
+        displayName: orgConfig.displayName,
+        erpTitle: orgConfig.erpTitle,
+        erpSubtitle: orgConfig.erpSubtitle,
+        tagline: orgConfig.tagline,
+        regNumber: orgConfig.regNumber,
+        email: orgConfig.email,
+        supportEmail: orgConfig.supportEmail,
+        paymentsEmail: orgConfig.paymentsEmail,
+        phone: orgConfig.phone,
+        address: orgConfig.address,
+        website: orgConfig.website,
+        websiteUrl: orgConfig.websiteUrl,
+        defaultTheme: orgConfig.defaultTheme,
+        copyrightText: orgConfig.copyrightText,
+        logoUrl: `/assets/${orgConfig.logoFilename}`,
+        heroSubtext: orgConfig.heroSubtext,
+        aboutText: orgConfig.aboutText,
+        footerText: orgConfig.footerText,
+        communityLabel: orgConfig.communityLabel,
+        communityDescription: orgConfig.communityDescription,
+      };
+
       return ResponseHelper.success(
         res,
         { config: configMap },
@@ -341,6 +369,64 @@ class ApplicationConfigController {
         return typeof value === 'object' && value !== null && !Array.isArray(value);
       default:
         return true;
+    }
+  }
+
+  /**
+   * Upload organization logo
+   * POST /api/config/logo
+   * Accepts a PNG/JPG/SVG file, saves to api/src/assets/ as the org's logo
+   */
+  uploadLogo = async (req, res) => {
+    try {
+      if (!req.file) {
+        return ResponseHelper.error(res, 'No logo file provided', 400);
+      }
+
+      const allowedMimes = ['image/png', 'image/jpeg', 'image/jpg', 'image/svg+xml', 'image/webp'];
+      if (!allowedMimes.includes(req.file.mimetype)) {
+        // Clean up uploaded file
+        if (fs.existsSync(req.file.path)) fs.unlinkSync(req.file.path);
+        return ResponseHelper.error(res, 'Only PNG, JPG, SVG, and WebP images are allowed', 400);
+      }
+
+      // Max 2MB
+      if (req.file.size > 2 * 1024 * 1024) {
+        if (fs.existsSync(req.file.path)) fs.unlinkSync(req.file.path);
+        return ResponseHelper.error(res, 'Logo file must be under 2MB', 400);
+      }
+
+      const assetsDir = path.join(__dirname, '../assets');
+      const destPath = path.join(assetsDir, orgConfig.logoFilename);
+
+      // Ensure assets directory exists
+      if (!fs.existsSync(assetsDir)) {
+        fs.mkdirSync(assetsDir, { recursive: true });
+      }
+
+      // Copy uploaded file to assets directory (overwrite existing)
+      fs.copyFileSync(req.file.path, destPath);
+
+      // Clean up the multer temp file
+      if (fs.existsSync(req.file.path)) fs.unlinkSync(req.file.path);
+
+      return ResponseHelper.success(
+        res,
+        { logoUrl: `/assets/${orgConfig.logoFilename}` },
+        'Logo uploaded successfully'
+      );
+    } catch (error) {
+      console.error('Error uploading logo:', error);
+      // Clean up temp file on error
+      if (req.file && req.file.path && fs.existsSync(req.file.path)) {
+        fs.unlinkSync(req.file.path);
+      }
+      return ResponseHelper.error(
+        res,
+        'Failed to upload logo',
+        500,
+        error.message
+      );
     }
   }
 }

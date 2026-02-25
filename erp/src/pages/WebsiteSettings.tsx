@@ -8,6 +8,7 @@ import { useToast } from "@/hooks/use-toast";
 import { website } from "@/lib/api";
 import { Loader2, Plus, Trash2, Save, Globe, Users, Phone, Mail, MapPin, Facebook, Instagram, Youtube, Twitter } from "lucide-react";
 import { useRBAC } from "@/hooks/useRBAC";
+import { useConfig } from "@/contexts/ConfigContext";
 
 interface Counter {
   _id?: string;
@@ -22,6 +23,7 @@ export default function WebsiteSettings() {
   const { hasAnyPermission } = useRBAC();
   
   const canEdit = hasAnyPermission(['website.write', 'settings.write']);
+  const { org } = useConfig();
 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -203,7 +205,7 @@ export default function WebsiteSettings() {
             <Input
               value={aboutTitle}
               onChange={(e) => setAboutTitle(e.target.value)}
-              placeholder="About People's Foundation ERP"
+              placeholder={`About ${org.erpTitle}`}
               disabled={!canEdit}
             />
           </div>
@@ -322,7 +324,7 @@ export default function WebsiteSettings() {
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                placeholder="info@baithuzzakath.org"
+                placeholder={org.email}
                 disabled={!canEdit}
               />
             </div>

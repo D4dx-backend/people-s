@@ -27,6 +27,7 @@ import { useExport } from '@/hooks/useExport';
 import ExportButton from '@/components/common/ExportButton';
 import { paymentExportColumns } from '@/utils/exportColumns';
 import { Input } from "@/components/ui/input";
+import { useConfig } from "@/contexts/ConfigContext";
 
 interface PaymentSchedule {
   id: string;
@@ -78,6 +79,7 @@ const statusConfig = {
 
 export default function BeneficiaryPayments() {
   const { hasAnyPermission, hasPermission } = useRBAC();
+  const { org } = useConfig();
   const filterHook = usePaymentFilters();
   const { exportCSV, exportPDF, printData, exporting } = useExport({
     apiCall: (params) => payments.export(params),
@@ -177,13 +179,13 @@ export default function BeneficiaryPayments() {
   };
 
   const handleDownloadReceipt = (schedule: PaymentSchedule) => {
-    // Generate beautiful HTML content for PDF receipt with People's Foundation ERP branding
+    // Generate beautiful HTML content for PDF receipt with org branding
     const receiptHTML = `
     <!DOCTYPE html>
     <html>
     <head>
       <meta charset="utf-8">
-      <title>People's Foundation ERP Payment Receipt</title>
+      <title>${org.erpTitle} Payment Receipt</title>
       <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { 
@@ -377,14 +379,14 @@ export default function BeneficiaryPayments() {
       </style>
     </head>
     <body>
-      <div class="watermark">PEOPLE'S FOUNDATION ERP</div>
+      <div class="watermark">${org.erpTitle.toUpperCase()}</div>
       <div class="receipt-container">
         <!-- Header with Logo and Organization Info -->
         <div class="header">
           <div class="logo-section">
-            <div class="logo">BZ</div>
-            <div class="org-name">PEOPLE'S FOUNDATION ERP</div>
-            <div class="org-tagline">Empowering Communities Through Compassionate Support</div>
+            <div class="logo">${org.displayName.substring(0, 2).toUpperCase()}</div>
+            <div class="org-name">${org.erpTitle.toUpperCase()}</div>
+            <div class="org-tagline">${org.tagline}</div>
           </div>
         </div>
         
@@ -473,7 +475,7 @@ export default function BeneficiaryPayments() {
             This is a computer-generated receipt and does not require a signature.
           </div>
           <div class="footer-note">
-            For any queries, please contact People's Foundation ERP Support Team
+            For any queries, please contact ${org.erpTitle} Support Team
           </div>
           <div class="footer-timestamp">
             Document generated on ${new Date().toLocaleString('en-IN')} | Receipt ID: ${schedule.paymentNumber}

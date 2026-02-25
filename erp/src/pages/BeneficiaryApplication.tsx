@@ -12,7 +12,8 @@ import { ArrowLeft, Upload, FileText, AlertCircle, CheckCircle, Loader2, Refresh
 import { toast } from "@/hooks/use-toast";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { beneficiaryApi } from "@/services/beneficiaryApi";
-import logo from "@/assets/logo.png";
+import { useOrgLogoUrl } from "@/hooks/useOrgLogoUrl";
+import defaultLogo from "@/assets/logo.png";
 
 interface FormField {
   id: number;
@@ -93,6 +94,7 @@ export default function BeneficiaryApplication() {
   const navigate = useNavigate();
   const { schemeId } = useParams();
   const location = useLocation();
+  const orgLogoUrl = useOrgLogoUrl();
   
   // Don't use the scheme from location.state as it doesn't have form configuration
   // Always load from API to get complete scheme details including form config
@@ -1015,7 +1017,7 @@ export default function BeneficiaryApplication() {
               <ArrowLeft className="h-4 w-4 mr-1" />
               Back
             </Button>
-            <img src={logo} alt="Logo" className="h-8 w-8 rounded-full" />
+            <img src={orgLogoUrl} alt="Logo" className="h-8 w-8 rounded-full" onError={(e) => { (e.target as HTMLImageElement).src = defaultLogo; }} />
             <div>
               <h1 className="text-lg font-bold">
                 {isRenewalMode ? 'Renew Application' : 'Apply for Scheme'}

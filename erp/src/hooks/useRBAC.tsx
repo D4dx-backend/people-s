@@ -142,14 +142,18 @@ export const RBACProvider = ({ children }: RBACProviderProps) => {
   }, [user, token]);
 
   const hasPermission = (permissionName: string): boolean => {
+    // Super admin has all permissions - bypass check (mirrors backend middleware)
+    if (user?.role === 'super_admin') return true;
     return userPermissions.some(permission => permission.name === permissionName);
   };
 
   const hasAnyPermission = (permissions: string[]): boolean => {
+    if (user?.role === 'super_admin') return true;
     return permissions.some(permission => hasPermission(permission));
   };
 
   const hasAllPermissions = (permissions: string[]): boolean => {
+    if (user?.role === 'super_admin') return true;
     return permissions.every(permission => hasPermission(permission));
   };
 

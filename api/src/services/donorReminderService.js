@@ -2,6 +2,7 @@ const { Donor, Donation, DonorFollowUp, User } = require('../models');
 const notificationService = require('./notificationService');
 const DXingTemplates = require('./dxing/dxingTemplates');
 const mongoose = require('mongoose');
+const orgConfig = require('../config/orgConfig');
 
 /**
  * DonorReminderService - Automated donor follow-up and reminder system
@@ -449,7 +450,7 @@ class DonorReminderService {
             name: donor.name,
             amount: (followUp.expectedAmount || 0).toLocaleString('en-IN'),
             frequency: this._getFrequencyLabel(followUp.frequency),
-            orgName: "People's Foundation"
+            orgName: orgConfig.displayName
           };
 
           const message = DXingTemplates.createTemplate('donation_reminder_due', templateVars);
@@ -781,7 +782,7 @@ class DonorReminderService {
         lastDonationDate: donor.donationStats?.lastDonation 
           ? new Date(donor.donationStats.lastDonation).toLocaleDateString('en-IN')
           : 'N/A',
-        orgName: "People's Foundation",
+        orgName: orgConfig.displayName,
         ...customVars
       };
 

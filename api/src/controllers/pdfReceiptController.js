@@ -52,10 +52,16 @@ class PDFReceiptController {
       const fileStream = fs.createReadStream(pdfPath);
       fileStream.pipe(res);
 
-      // Clean up file after sending (optional)
+      // Clean up file after sending
       fileStream.on('end', () => {
-        // Optionally delete the file after sending
-        // fs.unlinkSync(pdfPath);
+        // Delete the generated PDF after streaming to prevent disk space accumulation
+        try {
+          if (fs.existsSync(pdfPath)) {
+            fs.unlinkSync(pdfPath);
+          }
+        } catch (cleanupErr) {
+          console.error('Warning: Failed to clean up receipt file:', cleanupErr.message);
+        }
       });
 
     } catch (error) {

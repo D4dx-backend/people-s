@@ -17,6 +17,7 @@ import { FormPreview } from "@/components/formbuilder/FormPreview";
 import { useToast } from "@/hooks/use-toast";
 import { api, schemes as schemesApi } from "@/lib/api";
 import { useRBAC } from "@/hooks/useRBAC";
+import { useConfig } from "@/contexts/ConfigContext";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { type FormScoringConfig, isScorableType, NON_SCORABLE_TYPES } from "@/types/formBuilder";
@@ -51,6 +52,7 @@ interface Page {
 
 export default function FormBuilder() {
   const { toast } = useToast();
+  const { org } = useConfig();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const { hasAnyPermission } = useRBAC();
@@ -272,7 +274,7 @@ export default function FormBuilder() {
   const getOptionalFields = () => getTotalFields() - getRequiredFields();
 
   const copyEmbedCode = () => {
-    navigator.clipboard.writeText('<iframe src="https://baithuzzakath.org/apply/scholarship" width="100%" height="600"></iframe>');
+    navigator.clipboard.writeText(`<iframe src="${org.websiteUrl}/apply/scholarship" width="100%" height="600"></iframe>`);
     toast({ title: "Embed code copied to clipboard!" });
   };
 
@@ -926,7 +928,7 @@ export default function FormBuilder() {
                 </Button>
               </div>
               <Textarea 
-                value={`<iframe src="https://baithuzzakath.org/apply/${selectedScheme}" width="100%" height="800" frameborder="0"></iframe>`}
+                value={`<iframe src="${org.websiteUrl}/apply/${selectedScheme}" width="100%" height="800" frameborder="0"></iframe>`}
                 readOnly
                 rows={3}
                 className="font-mono text-xs"
@@ -936,7 +938,7 @@ export default function FormBuilder() {
               <div className="flex items-center justify-between">
                 <Label>Direct Link</Label>
                 <Button size="sm" variant="outline" onClick={() => {
-                  navigator.clipboard.writeText(`https://baithuzzakath.org/apply/${selectedScheme}`);
+                  navigator.clipboard.writeText(`${org.websiteUrl}/apply/${selectedScheme}`);
                   toast({ title: "Link copied!" });
                 }}>
                   <Copy className="h-3 w-3 mr-1" />
@@ -944,7 +946,7 @@ export default function FormBuilder() {
                 </Button>
               </div>
               <Input 
-                value={`https://baithuzzakath.org/apply/${selectedScheme}`}
+                value={`${org.websiteUrl}/apply/${selectedScheme}`}
                 readOnly 
                 className="text-xs font-mono"
               />
@@ -978,7 +980,7 @@ export default function FormBuilder() {
                 </Button>
               </div>
               <Textarea 
-                value='<iframe src="https://baithuzzakath.org/apply/scholarship" width="100%" height="600"></iframe>'
+                value={`<iframe src="${org.websiteUrl}/apply/scholarship" width="100%" height="600"></iframe>`}
                 readOnly
                 rows={3}
                 className="font-mono text-xs"
@@ -988,7 +990,7 @@ export default function FormBuilder() {
               <div className="flex items-center justify-between">
                 <Label>Public Form URL</Label>
                 <Button size="sm" variant="outline" onClick={() => {
-                  navigator.clipboard.writeText('https://baithuzzakath.org/apply/scholarship');
+                  navigator.clipboard.writeText(`${org.websiteUrl}/apply/scholarship`);
                   toast({ title: "URL copied!" });
                 }}>
                   <Copy className="h-3 w-3 mr-1" />
@@ -996,7 +998,7 @@ export default function FormBuilder() {
                 </Button>
               </div>
               <Input 
-                value="https://baithuzzakath.org/apply/scholarship" 
+                value={`${org.websiteUrl}/apply/scholarship`} 
                 readOnly 
                 className="text-xs font-mono"
               />

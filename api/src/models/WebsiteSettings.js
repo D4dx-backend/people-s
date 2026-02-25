@@ -1,11 +1,12 @@
 const mongoose = require('mongoose');
+const orgConfig = require('../config/orgConfig');
 
 const websiteSettingsSchema = new mongoose.Schema({
   // About Us Section
   aboutUs: {
     title: {
       type: String,
-      default: "About People's Foundation ERP"
+      default: function() { return `About ${orgConfig.erpTitle}`; }
     },
     description: {
       type: String,

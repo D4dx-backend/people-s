@@ -1,5 +1,6 @@
 const WebsiteSettings = require('../models/WebsiteSettings');
 const ResponseHelper = require('../utils/responseHelper');
+const orgConfig = require('../config/orgConfig');
 
 class WebsiteController {
   /**
@@ -14,8 +15,8 @@ class WebsiteController {
       if (!settings) {
         settings = await WebsiteSettings.create({
           aboutUs: {
-            title: "About People's Foundation ERP",
-            description: 'Empowering Communities Through Zakat and Charitable Programs'
+            title: `About ${orgConfig.erpTitle}`,
+            description: orgConfig.tagline
           },
           counts: [],
           contactDetails: {},

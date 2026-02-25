@@ -1222,6 +1222,11 @@ export const applications = {
     return extendedApiClient.request(`/applications/renewal-due${searchParams.toString() ? `?${searchParams.toString()}` : ''}`);
   },
   getRenewalHistory: (id: string) => extendedApiClient.request(`/applications/${id}/renewal-history`),
+  modifyApproved: (id: string, data: { approvedAmount?: number; comments?: string; reason: string; distributionTimeline?: any[] }) =>
+    extendedApiClient.request(`/applications/${id}/modify-approved`, {
+      method: 'PATCH',
+      body: JSON.stringify(data),
+    }),
   export: (params?: any) => extendedApiClient.request(buildExportUrl('/applications/export', params)),
 };
 
@@ -1343,8 +1348,10 @@ export const donations = {
   create: (data: any) => extendedApiClient.request('/donations', { method: 'POST', body: JSON.stringify(data) }),
   update: (id: string, data: any) => extendedApiClient.request(`/donations/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
   delete: (id: string) => extendedApiClient.request(`/donations/${id}`, { method: 'DELETE' }),
-  getStats: () => extendedApiClient.request('/donations/stats'),
-  getRecent: (limit?: number) => extendedApiClient.request(`/donors/donations${limit ? `?limit=${limit}` : ''}`),
+  updateStatus: (id: string, status: string) => extendedApiClient.request(`/donations/${id}/status`, { method: 'PATCH', body: JSON.stringify({ status }) }),
+  getStats: () => extendedApiClient.request('/donations/analytics/stats'),
+  getRecent: (limit?: number) => extendedApiClient.request(`/donations/analytics/recent${limit ? `?limit=${limit}` : ''}`),
+  getTrends: (months?: number) => extendedApiClient.request(`/donations/analytics/trends${months ? `?months=${months}` : ''}`),
   getHistory: (params?: any) => {
     const searchParams = new URLSearchParams();
     if (params) {
@@ -1371,6 +1378,9 @@ export const donations = {
   },
   export: (params?: any) => extendedApiClient.request(buildExportUrl('/donations/export', params)),
 };
+
+// Backward-compatible alias (deprecated — use `donations` instead)
+export const donationsApi = donations;
 
 
 
@@ -1410,27 +1420,6 @@ export const budgetApi = {
   },
   getByCategory: () => extendedApiClient.request('/budget/by-category'),
   getAnalytics: () => extendedApiClient.request('/budget/analytics'),
-};
-
-export const donationsApi = {
-  getAll: (params?: any) => {
-    const searchParams = new URLSearchParams();
-    if (params) {
-      Object.entries(params).forEach(([key, value]) => {
-        if (value !== undefined && value !== null && value !== '') {
-          searchParams.append(key, value.toString());
-        }
-      });
-    }
-    return extendedApiClient.request(`/donations${searchParams.toString() ? `?${searchParams.toString()}` : ''}`);
-  },
-  getById: (id: string) => extendedApiClient.request(`/donations/${id}`),
-  create: (data: any) => extendedApiClient.request('/donations', { method: 'POST', body: JSON.stringify(data) }),
-  update: (id: string, data: any) => extendedApiClient.request(`/donations/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
-  updateStatus: (id: string, status: string) => extendedApiClient.request(`/donations/${id}/status`, { method: 'PATCH', body: JSON.stringify({ status }) }),
-  getStats: () => extendedApiClient.request('/donations/analytics/stats'),
-  getRecent: (limit?: number) => extendedApiClient.request(`/donations/analytics/recent${limit ? `?limit=${limit}` : ''}`),
-  getTrends: (months?: number) => extendedApiClient.request(`/donations/analytics/trends${months ? `?months=${months}` : ''}`),
 };
 
 export const interviews = {
@@ -1903,7 +1892,16 @@ export const config = {
   }),
   delete: (id: string) => apiClient.request(`/config/${id}`, {
     method: 'DELETE'
-  })
+  }),
+  uploadLogo: (file: File) => {
+    const formData = new FormData();
+    formData.append('logo', file);
+    return apiClient.request('/config/logo', {
+      method: 'POST',
+      body: formData,
+      headers: {} // Let browser set Content-Type for FormData
+    });
+  }
 };
 
 // Speech-to-Text API

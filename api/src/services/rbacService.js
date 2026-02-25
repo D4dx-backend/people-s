@@ -1465,7 +1465,7 @@ class RBACService {
         // Update existing role if it's modifiable or if it's a system role that needs permission updates
         const shouldUpdate = existingRole.type === 'system' && (existingRole.constraints.isModifiable !== false);
         
-        if (shouldUpdate || existingRole.name === 'area_admin' || existingRole.name === 'district_admin' || existingRole.name === 'unit_admin') {
+        if (shouldUpdate || existingRole.name === 'super_admin' || existingRole.name === 'area_admin' || existingRole.name === 'district_admin' || existingRole.name === 'unit_admin') {
           const permissionIds = [];
           
           if (roleData.name === 'super_admin') {

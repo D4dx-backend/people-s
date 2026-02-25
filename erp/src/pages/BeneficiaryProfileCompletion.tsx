@@ -9,7 +9,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Loader2, User, MapPin } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { beneficiaryApi } from "@/services/beneficiaryApi";
-import logo from "@/assets/logo.png";
+import { useOrgLogoUrl } from "@/hooks/useOrgLogoUrl";
+import defaultLogo from "@/assets/logo.png";
 
 interface Location {
   _id: string;
@@ -21,6 +22,7 @@ interface Location {
 
 export default function BeneficiaryProfileCompletion() {
   const navigate = useNavigate();
+  const orgLogoUrl = useOrgLogoUrl();
   const [isLoading, setIsLoading] = useState(false);
   const [phoneNumber, setPhoneNumber] = useState("");
   
@@ -255,7 +257,7 @@ export default function BeneficiaryProfileCompletion() {
       <Card className="w-full max-w-2xl shadow-elegant">
         <CardHeader className="text-center">
           <div className="flex justify-center mb-4">
-            <img src={logo} alt="Logo" className="h-16 w-16 rounded-full" />
+            <img src={orgLogoUrl} alt="Logo" className="h-16 w-16 rounded-full" onError={(e) => { (e.target as HTMLImageElement).src = defaultLogo; }} />
           </div>
           <CardTitle className="text-xl font-bold">Your Profile</CardTitle>
           <CardDescription>
