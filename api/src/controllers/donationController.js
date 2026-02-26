@@ -28,7 +28,7 @@ class DonationController {
       }
 
       // Check if donor exists
-      const donor = await Donor.findById(donorId);
+      const donor = await Donor.findOne({ _id: donorId, franchise: req.franchiseId });
       if (!donor) {
         return ResponseHelper.error(res, 'Donor not found', 404);
       }
@@ -127,6 +127,9 @@ class DonationController {
       const limitNum = parseInt(limit);
       const skip = (pageNum - 1) * limitNum;
 
+      // Multi-tenant: restrict to current franchise
+      if (req.franchiseId) filter.franchise = req.franchiseId;
+
       // Get donations with pagination
       const [donations, total] = await Promise.all([
         Donation.find(filter)
@@ -208,7 +211,7 @@ class DonationController {
         return ResponseHelper.error(res, 'Invalid donation ID', 400);
       }
 
-      const donation = await Donation.findById(id)
+      const donation = await Donation.findOne({ _id: id, franchise: req.franchiseId })
         .populate('donor', 'name email phone type category address')
         .populate('project', 'name code description')
         .populate('scheme', 'name code description')
@@ -274,7 +277,7 @@ class DonationController {
         }
 
         // Check if donor exists
-        const donor = await Donor.findById(donorId);
+        const donor = await Donor.findOne({ _id: donorId, franchise: req.franchiseId });
         if (!donor) {
           return ResponseHelper.error(res, 'Donor not found', 404);
         }
@@ -285,7 +288,7 @@ class DonationController {
         if (!mongoose.Types.ObjectId.isValid(project)) {
           return ResponseHelper.error(res, 'Invalid project ID', 400);
         }
-        const projectExists = await Project.findById(project);
+        const projectExists = await Project.findOne({ _id: project, franchise: req.franchiseId });
         if (!projectExists) {
           return ResponseHelper.error(res, 'Project not found', 400);
         }
@@ -296,7 +299,7 @@ class DonationController {
         if (!mongoose.Types.ObjectId.isValid(scheme)) {
           return ResponseHelper.error(res, 'Invalid scheme ID', 400);
         }
-        const schemeExists = await Scheme.findById(scheme);
+        const schemeExists = await Scheme.findOne({ _id: scheme, franchise: req.franchiseId });
         if (!schemeExists) {
           return ResponseHelper.error(res, 'Scheme not found', 400);
         }
@@ -326,6 +329,7 @@ class DonationController {
         status: method === 'cash' ? 'completed' : 'pending',
         createdBy: req.user._id,
         donationDate,
+        franchise: req.franchiseId || null,  // Multi-tenant
         preferences: {
           isRecurring: !!isRecurring,
           frequency: frequency
@@ -348,7 +352,7 @@ class DonationController {
 
       // Update donor statistics if donation is completed and has a donor
       if (donation.status === 'completed' && effectiveDonorId) {
-        await this.updateDonorStats(effectiveDonorId, parseFloat(amount));
+        await this.updateDonorStats(effectiveDonorId, parseFloat(amount), req.franchiseId);
 
         // Send auto thank-you and create follow-up (async, don't block response)
         setImmediate(async () => {
@@ -404,7 +408,7 @@ class DonationController {
       }
 
       // Check previous status before update
-      const existingDonation = await Donation.findById(id);
+      const existingDonation = await Donation.findOne({ _id: id, franchise: req.franchiseId });
       if (!existingDonation) {
         return ResponseHelper.error(res, 'Donation not found', 404);
       }
@@ -426,8 +430,8 @@ class DonationController {
         }
       }
 
-      const donation = await Donation.findByIdAndUpdate(
-        id,
+      const donation = await Donation.findOneAndUpdate(
+        { _id: id, franchise: req.franchiseId },
         updateData,
         { new: true, runValidators: true }
       )
@@ -443,7 +447,7 @@ class DonationController {
       // If status changed to completed and has a donor, trigger follow-up hooks
       if (previousStatus !== 'completed' && donation.status === 'completed' && donation.donor) {
         const donorObjId = donation.donor._id || donation.donor;
-        await this.updateDonorStats(donorObjId, donation.amount);
+        await this.updateDonorStats(donorObjId, donation.amount, req.franchiseId);
 
         setImmediate(async () => {
           try {
@@ -495,7 +499,7 @@ class DonationController {
       }
 
       // Get current donation to enforce transition rules
-      const existingDonation = await Donation.findById(id);
+      const existingDonation = await Donation.findOne({ _id: id, franchise: req.franchiseId });
       if (!existingDonation) {
         return ResponseHelper.error(res, 'Donation not found', 404);
       }
@@ -513,8 +517,8 @@ class DonationController {
 
       const previousStatus = currentStatus;
 
-      const donation = await Donation.findByIdAndUpdate(
-        id,
+      const donation = await Donation.findOneAndUpdate(
+        { _id: id, franchise: req.franchiseId },
         { 
           status, 
           lastModifiedBy: req.user._id
@@ -531,13 +535,13 @@ class DonationController {
       // Reverse donor stats if transitioning FROM completed to another status
       if (previousStatus === 'completed' && status !== 'completed' && donation.donor) {
         const donorObjId = donation.donor._id || donation.donor;
-        await this.reverseDonorStats(donorObjId, donation.amount);
+        await this.reverseDonorStats(donorObjId, donation.amount, req.franchiseId);
       }
 
       // Update donor stats if donation is newly completed and has a donor
       if (previousStatus !== 'completed' && status === 'completed' && donation.donor) {
         const donorObjId = donation.donor._id || donation.donor;
-        await this.updateDonorStats(donorObjId, donation.amount);
+        await this.updateDonorStats(donorObjId, donation.amount, req.franchiseId);
 
         // Send auto thank-you and match to follow-up (async, don't block response)
         setImmediate(async () => {
@@ -714,12 +718,12 @@ class DonationController {
   /**
    * Helper method to update donor statistics
    */
-  async updateDonorStats(donorId, amount) {
+  async updateDonorStats(donorId, amount, franchiseId) {
     try {
       // Skip if no donor ID (anonymous donation)
       if (!donorId) return;
 
-      const donor = await Donor.findById(donorId);
+      const donor = await Donor.findOne({ _id: donorId, franchise: franchiseId });
       if (!donor) return;
 
       // Update donation statistics
@@ -739,11 +743,11 @@ class DonationController {
   /**
    * Helper method to reverse donor statistics (when donation status changes away from completed)
    */
-  async reverseDonorStats(donorId, amount) {
+  async reverseDonorStats(donorId, amount, franchiseId) {
     try {
       if (!donorId) return;
 
-      const donor = await Donor.findById(donorId);
+      const donor = await Donor.findOne({ _id: donorId, franchise: franchiseId });
       if (!donor) return;
 
       // Decrement donation statistics

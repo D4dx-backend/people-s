@@ -60,4 +60,19 @@ module.exports = {
 
   // Organization Identity (OPTIONAL — defaults managed by orgConfig.js)
   ORG_NAME: getOptionalEnvVar('ORG_NAME', 'people_foundation'),
+
+  // ── Multi-Tenant / Franchise configuration ────────────────────────────────
+  // BASE_DOMAIN: Root domain used for subdomain franchise detection.
+  //   e.g. 'peopleerp.com' → people.peopleerp.com resolves to slug 'people'
+  //   Leave empty in development (use X-Franchise-Slug header instead).
+  BASE_DOMAIN: getOptionalEnvVar('BASE_DOMAIN'),
+
+  // CORS_ORIGINS: Comma-separated list of explicitly allowed origins.
+  //   Wildcards are supported via BASE_DOMAIN matching.
+  //   e.g. 'https://admin.peopleerp.com,http://localhost:5173'
+  CORS_ORIGINS: getOptionalEnvVar('CORS_ORIGINS'),
+
+  // FRANCHISE_STRICT: When 'true', franchise plugin throws on missing franchise filter
+  //   (instead of just warning). Recommended for production.
+  FRANCHISE_STRICT: process.env.FRANCHISE_STRICT === 'true',
 };

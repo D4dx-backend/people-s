@@ -19,6 +19,7 @@ const connectDB = require('./config/database');
 const config = require('./config/environment');
 const orgConfig = require('./config/orgConfig');
 const errorHandler = require('./middleware/errorHandler');
+const tenantResolver = require('./middleware/tenantResolver');
 
 const app = express();
 
@@ -29,16 +30,32 @@ connectDB();
 app.use(helmet({
   contentSecurityPolicy: false, // Disable CSP for serving static files
 }));
-// CORS configuration - use FRONTEND_URL from environment
-const corsOrigins = config.NODE_ENV === 'development'
-  ? process.env.CORS_ORIGINS ? process.env.CORS_ORIGINS.split(',').map(origin => origin.trim()) : [config.FRONTEND_URL]
-  : [config.FRONTEND_URL];
+// CORS configuration — multi-franchise: accept any subdomain of BASE_DOMAIN
+const BASE_DOMAIN = (process.env.BASE_DOMAIN || '').toLowerCase();
+
+function isAllowedOrigin(origin) {
+  if (!origin) return true; // server-to-server
+  const h = origin.replace(/^https?:\/\//, '').split(':')[0].toLowerCase();
+  // Exact matches from CORS_ORIGINS env list
+  const explicitList = process.env.CORS_ORIGINS
+    ? process.env.CORS_ORIGINS.split(',').map(o => o.trim().replace(/^https?:\/\//, '').split(':')[0])
+    : [];
+  if (explicitList.includes(h)) return true;
+  // Wildcard subdomain match for BASE_DOMAIN
+  if (BASE_DOMAIN && (h === BASE_DOMAIN || h.endsWith(`.${BASE_DOMAIN}`))) return true;
+  // Development: allow localhost variants
+  if (config.NODE_ENV === 'development' && (h === 'localhost' || h.endsWith('.localhost'))) return true;
+  return false;
+}
 
 app.use(cors({
-  origin: corsOrigins,
+  origin: (origin, callback) => {
+    if (isAllowedOrigin(origin)) return callback(null, true);
+    callback(new Error(`CORS: origin '${origin}' not allowed`));
+  },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization']
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Franchise-Slug']
 }));
 
 
@@ -70,11 +87,11 @@ app.use(activityLogger({
   includeResponseData: false
 }));
 
-// Health check endpoint
+// Health check endpoint (no franchise context required)
 app.get('/health', (req, res) => {
   res.status(200).json({
     success: true,
-    message: `${orgConfig.erpTitle} API is running`,
+    message: 'Multi-Tenant NGO ERP API is running',
     timestamp: new Date().toISOString(),
     uptime: process.uptime(),
     environment: config.NODE_ENV,
@@ -85,9 +102,19 @@ app.get('/health', (req, res) => {
 // Swagger API Documentation
 app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpecs, {
   customCss: '.swagger-ui .topbar { display: none }',
-  customSiteTitle: `${orgConfig.erpTitle} API Documentation`,
+  customSiteTitle: 'NGO ERP API Documentation',
   explorer: true
 }));
+
+// ── Tenant Resolver Middleware ────────────────────────────────────────────────
+// Identifies franchise from subdomain / custom domain / X-Franchise-Slug header.
+// Skips /api/health and /api/global/* (see tenantResolver.js SKIP_PREFIXES).
+app.use('/api', tenantResolver);
+
+// ── Global Admin Routes (no franchise context needed) ─────────────────────────
+// Protected by User.isSuperAdmin check inside the controller.
+const globalAdminRoutes = require('./routes/globalAdminRoutes');
+app.use('/api/global', globalAdminRoutes);
 
 // API Routes
 const authRoutes = require('./routes/authRoutes');

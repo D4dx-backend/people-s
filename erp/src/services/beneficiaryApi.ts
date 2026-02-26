@@ -78,6 +78,11 @@ interface Application {
 }
 
 class BeneficiaryApiService {
+  private getFranchiseSlug(): string {
+    // Read the same env var that api.ts uses
+    return (import.meta.env.VITE_FRANCHISE_SLUG as string | undefined) || '';
+  }
+
   private getAuthHeaders(): HeadersInit {
     const token = localStorage.getItem('beneficiary_token');
     console.log('🔑 BeneficiaryApi - Getting auth headers');
@@ -93,6 +98,12 @@ class BeneficiaryApiService {
     const headers: HeadersInit = {
       'Content-Type': 'application/json',
     };
+
+    // Always send franchise slug so the backend can identify the tenant
+    const slug = this.getFranchiseSlug();
+    if (slug) {
+      headers['X-Franchise-Slug'] = slug;
+    }
     
     if (token) {
       headers['Authorization'] = `Bearer ${token}`;
@@ -120,7 +131,7 @@ class BeneficiaryApiService {
   async sendOTP(phone: string): Promise<OTPResponse> {
     const response = await fetch(`${API_BASE_URL}/beneficiary/auth/send-otp`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', ...this.getAuthHeaders() },
       body: JSON.stringify({ phone })
     });
 
@@ -135,7 +146,7 @@ class BeneficiaryApiService {
     
     const response = await fetch(`${API_BASE_URL}/beneficiary/auth/verify-otp`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', ...this.getAuthHeaders() },
       body: JSON.stringify({ phone, otp })
     });
 

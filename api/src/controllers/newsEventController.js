@@ -17,6 +17,9 @@ class NewsEventController {
       if (category) query.category = category;
       if (featured !== undefined) query.featured = featured === 'true';
 
+      // Multi-tenant: restrict to current franchise
+      if (req.franchiseId) query.franchise = req.franchiseId;
+
       const newsEvents = await NewsEvent.find(query)
         .populate('createdBy', 'name')
         .populate('updatedBy', 'name')
@@ -84,7 +87,7 @@ class NewsEventController {
     try {
       const { id } = req.params;
       
-      const newsEvent = await NewsEvent.findById(id)
+      const newsEvent = await NewsEvent.findOne({ _id: id, franchise: req.franchiseId })
         .populate('createdBy', 'name')
         .populate('updatedBy', 'name');
 
@@ -133,7 +136,8 @@ class NewsEventController {
         publishDate: publishDate || Date.now(),
         imageUrl: uploadResult.fileUrl,
         imageKey: uploadResult.key,
-        createdBy: userId
+        createdBy: userId,
+        franchise: req.franchiseId || null  // Multi-tenant
       });
 
       await newsEvent.populate('createdBy', 'name');
@@ -155,7 +159,7 @@ class NewsEventController {
       const { title, description, category, status, featured, publishDate } = req.body;
       const userId = req.user._id;
 
-      const newsEvent = await NewsEvent.findById(id);
+      const newsEvent = await NewsEvent.findOne({ _id: id, franchise: req.franchiseId });
       if (!newsEvent) {
         return ResponseHelper.error(res, 'News/Event not found', 404);
       }
@@ -209,7 +213,7 @@ class NewsEventController {
     try {
       const { id } = req.params;
 
-      const newsEvent = await NewsEvent.findById(id);
+      const newsEvent = await NewsEvent.findOne({ _id: id, franchise: req.franchiseId });
       if (!newsEvent) {
         return ResponseHelper.error(res, 'News/Event not found', 404);
       }
@@ -219,7 +223,7 @@ class NewsEventController {
         await deleteFromSpaces(newsEvent.imageKey);
       }
 
-      await NewsEvent.findByIdAndDelete(id);
+      await NewsEvent.findOneAndDelete({ _id: id, franchise: req.franchiseId });
 
       return ResponseHelper.success(res, null, 'News/Event deleted successfully');
     } catch (error) {

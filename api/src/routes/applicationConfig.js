@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const applicationConfigController = require('../controllers/applicationConfigController');
-const { authenticate } = require('../middleware/auth');
+const { authenticate, authorize } = require('../middleware/auth');
 const { hasAnyPermission } = require('../middleware/rbacMiddleware');
 const { uploadSingle } = require('../middleware/upload');
 
@@ -81,6 +81,23 @@ router.delete(
   authenticate,
   hasAnyPermission(['config.write', 'settings.write']),
   applicationConfigController.deleteConfig
+);
+
+// ── Per-franchise Integrations (DXing SMS + SMTP Email) ──────────────────
+// Only the franchise super_admin (or global super admin) may read/write these.
+
+router.get(
+  '/integrations',
+  authenticate,
+  authorize('super_admin'),
+  applicationConfigController.getIntegrationsConfig
+);
+
+router.put(
+  '/integrations',
+  authenticate,
+  authorize('super_admin'),
+  applicationConfigController.updateIntegrationsConfig
 );
 
 module.exports = router;

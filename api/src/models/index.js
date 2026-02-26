@@ -35,6 +35,10 @@ const Role = require('./Role');
 const Permission = require('./Permission');
 const UserRole = require('./UserRole');
 
+// Multi-tenant / Franchise Models
+const Franchise = require('./Franchise');
+const UserFranchise = require('./UserFranchise');
+
 module.exports = {
   User,
   Location,
@@ -68,5 +72,8 @@ module.exports = {
 
   Role,
   Permission,
-  UserRole
+  UserRole,
+
+  Franchise,
+  UserFranchise
 };

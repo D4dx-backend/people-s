@@ -1,4 +1,4 @@
-const { User, Location, Project, Scheme, Role, UserRole } = require('../models');
+const { User, Location, Project, Scheme, Role, UserRole, UserFranchise } = require('../models');
 const authService = require('../services/authService');
 const notificationService = require('../services/notificationService');
 const ResponseHelper = require('../utils/responseHelper');
@@ -97,6 +97,12 @@ class UserController {
       // Pagination
       const skip = (page - 1) * limit;
       const sortOrder = order === 'desc' ? -1 : 1;
+
+      // Franchise scope - restrict to users in this franchise
+      if (req.franchiseId) {
+        const franchiseUserIds = await UserFranchise.find({ franchise: req.franchiseId, isActive: true }).distinct('user');
+        query._id = { $in: franchiseUserIds };
+      }
 
       const users = await User.find(query)
         .populate('adminScope.regions', 'name type')
@@ -286,6 +292,28 @@ class UserController {
       });
 
       await user.save();
+
+      // Create UserFranchise membership if operating within franchise context
+      if (req.franchiseId && userData.role !== 'beneficiary') {
+        try {
+          const existingMembership = await UserFranchise.findOne({ user: user._id, franchise: req.franchiseId });
+          if (!existingMembership) {
+            const membership = new UserFranchise({
+              user: user._id,
+              franchise: req.franchiseId,
+              role: userData.role,
+              adminScope: user.adminScope,
+              assignedBy: currentUser._id,
+              isActive: true
+            });
+            await membership.save();
+            console.log(`✅ UserFranchise membership created for ${user.name} in franchise ${req.franchiseId}`);
+          }
+        } catch (ufError) {
+          console.error('❌ Error creating UserFranchise:', ufError);
+          // Continue even if UserFranchise creation fails
+        }
+      }
 
       // Create UserRole entry to link user with system role
       try {

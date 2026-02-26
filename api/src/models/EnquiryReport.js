@@ -1,10 +1,10 @@
 const mongoose = require('mongoose');
+const franchisePlugin = require('../utils/franchisePlugin');
 
 const enquiryReportSchema = new mongoose.Schema({
   // Basic Information
   reportNumber: {
     type: String,
-    unique: true,
     required: [true, 'Report number is required']
   },
   
@@ -617,5 +617,9 @@ enquiryReportSchema.statics.getPendingReports = function(filters = {}) {
     .populate('application', 'applicationNumber')
     .sort({ 'visitDetails.scheduledDate': 1 });
 };
+
+// Franchise multi-tenancy — compound unique per franchise
+enquiryReportSchema.plugin(franchisePlugin);
+enquiryReportSchema.index({ reportNumber: 1, franchise: 1 }, { unique: true });
 
 module.exports = mongoose.model('EnquiryReport', enquiryReportSchema);

@@ -1,4 +1,5 @@
 const mongoose = require('mongoose');
+const franchisePlugin = require('../utils/franchisePlugin');
 
 const donorFollowUpSchema = new mongoose.Schema({
   // References
@@ -286,5 +287,7 @@ donorFollowUpSchema.statics.getOverdue = function() {
     .populate('donation', 'amount method donationNumber')
     .populate('assignedTo', 'name email phone');
 };
+
+donorFollowUpSchema.plugin(franchisePlugin);
 
 module.exports = mongoose.model('DonorFollowUp', donorFollowUpSchema);

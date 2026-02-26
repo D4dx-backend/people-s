@@ -1,5 +1,6 @@
 const { SchemeTarget, Scheme, Application, FormConfiguration } = require('../models');
 const ResponseHelper = require('../utils/responseHelper');
+const mongoose = require('mongoose');
 
 class SchemeTargetController {
 
@@ -11,12 +12,12 @@ class SchemeTargetController {
     try {
       const { schemeId } = req.params;
 
-      const scheme = await Scheme.findById(schemeId);
+      const scheme = await Scheme.findOne({ _id: schemeId, franchise: req.franchiseId });
       if (!scheme) {
         return ResponseHelper.error(res, 'Scheme not found', 404);
       }
 
-      const target = await SchemeTarget.findOne({ scheme: schemeId })
+      const target = await SchemeTarget.findOne({ scheme: schemeId, franchise: req.franchiseId })
         .populate('createdBy', 'name email')
         .populate('updatedBy', 'name email');
 
@@ -41,7 +42,7 @@ class SchemeTargetController {
       const { totalTarget, description, monthlyTargets } = req.body;
 
       // Validate scheme exists
-      const scheme = await Scheme.findById(schemeId);
+      const scheme = await Scheme.findOne({ _id: schemeId, franchise: req.franchiseId });
       if (!scheme) {
         return ResponseHelper.error(res, 'Scheme not found', 404);
       }
@@ -82,14 +83,15 @@ class SchemeTargetController {
 
       // Upsert the target configuration
       const target = await SchemeTarget.findOneAndUpdate(
-        { scheme: schemeId },
+        { scheme: schemeId, franchise: req.franchiseId },
         {
           scheme: schemeId,
+          franchise: req.franchiseId,
           totalTarget,
           description: description || '',
           monthlyTargets: monthlyTargets || [],
           updatedBy: req.user._id,
-          ...(!await SchemeTarget.exists({ scheme: schemeId }) && { createdBy: req.user._id })
+          ...(!await SchemeTarget.exists({ scheme: schemeId, franchise: req.franchiseId }) && { createdBy: req.user._id })
         },
         { 
           new: true, 
@@ -118,7 +120,7 @@ class SchemeTargetController {
     try {
       const { schemeId } = req.params;
 
-      const result = await SchemeTarget.findOneAndDelete({ scheme: schemeId });
+      const result = await SchemeTarget.findOneAndDelete({ scheme: schemeId, franchise: req.franchiseId });
       if (!result) {
         return ResponseHelper.error(res, 'No targets found for this scheme', 404);
       }
@@ -139,7 +141,7 @@ class SchemeTargetController {
       const { schemeId } = req.params;
 
       // Fetch the target configuration
-      const target = await SchemeTarget.findOne({ scheme: schemeId });
+      const target = await SchemeTarget.findOne({ scheme: schemeId, franchise: req.franchiseId });
       if (!target) {
         return ResponseHelper.error(res, 'No targets configured for this scheme', 404);
       }
@@ -147,6 +149,7 @@ class SchemeTargetController {
       // Count total approved/completed applications for this scheme
       const totalAchieved = await Application.countDocuments({
         scheme: schemeId,
+        franchise: req.franchiseId,
         status: { $in: ['approved', 'disbursed', 'completed'] }
       });
 
@@ -154,7 +157,8 @@ class SchemeTargetController {
       const monthlyAggregation = await Application.aggregate([
         {
           $match: {
-            scheme: new (require('mongoose').Types.ObjectId)(schemeId),
+            scheme: new mongoose.Types.ObjectId(schemeId),
+            franchise: new mongoose.Types.ObjectId(req.franchiseId),
             status: { $in: ['approved', 'disbursed', 'completed'] }
           }
         },
@@ -265,7 +269,7 @@ class SchemeTargetController {
       const { schemeId } = req.params;
 
       // Validate scheme exists
-      const scheme = await Scheme.findById(schemeId);
+      const scheme = await Scheme.findOne({ _id: schemeId, franchise: req.franchiseId });
       if (!scheme) {
         return ResponseHelper.error(res, 'Scheme not found', 404);
       }
@@ -273,6 +277,7 @@ class SchemeTargetController {
       // Fetch the form configuration for this scheme
       const formConfig = await FormConfiguration.findOne({ 
         scheme: schemeId, 
+        franchise: req.franchiseId,
         isRenewalForm: false 
       });
 

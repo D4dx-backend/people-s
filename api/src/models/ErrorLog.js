@@ -1,4 +1,5 @@
 const mongoose = require('mongoose');
+const franchisePlugin = require('../utils/franchisePlugin');
 const crypto = require('crypto');
 
 const errorLogSchema = new mongoose.Schema({
@@ -122,8 +123,8 @@ const errorLogSchema = new mongoose.Schema({
   // Timestamp
   timestamp: {
     type: Date,
-    default: Date.now,
-    index: true
+    default: Date.now
+    // index handled by TTL index below
   }
 }, {
   timestamps: true,
@@ -185,5 +186,7 @@ errorLogSchema.statics.logError = async function(data) {
     return null;
   }
 };
+
+errorLogSchema.plugin(franchisePlugin);
 
 module.exports = mongoose.model('ErrorLog', errorLogSchema);

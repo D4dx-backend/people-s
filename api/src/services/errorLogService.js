@@ -115,6 +115,7 @@ class ErrorLogService {
     statusCode,
     isResolved,
     userId,
+    franchise,
     startDate,
     endDate,
     sortBy = 'lastOccurrence',
@@ -122,6 +123,8 @@ class ErrorLogService {
   } = {}) {
     try {
       const filters = {};
+
+      if (franchise) filters.franchise = franchise;
 
       if (search) {
         filters.$or = [

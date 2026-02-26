@@ -36,51 +36,34 @@ class SchemeController {
         ];
       }
 
-      // Apply role-based access control
+      // Apply regional access control
       if (req.user.role !== 'super_admin' && req.user.role !== 'state_admin') {
-        if (req.user.role === 'scheme_coordinator') {
-          // Scheme coordinators only see their assigned schemes
-          const assignedSchemes = req.user.adminScope?.schemes || [];
-          if (assignedSchemes.length > 0) {
-            filter._id = { $in: assignedSchemes };
-          } else {
-            filter._id = null;
-          }
-        } else if (req.user.role === 'project_coordinator') {
-          // Project coordinators see schemes under their assigned projects
-          const assignedProjects = req.user.adminScope?.projects || [];
-          if (assignedProjects.length > 0) {
-            filter.project = { $in: assignedProjects };
-          } else {
-            filter._id = null;
-          }
-        } else {
-          // Regional admins see schemes in their regions or schemes with no target regions
-          const userRegions = req.user.adminScope?.regions || [];
-          if (userRegions.length > 0) {
-            const regionalFilter = [
-              { targetRegions: { $size: 0 } },
-              { targetRegions: { $in: userRegions } }
+        const userRegions = req.user.adminScope?.regions || [];
+        if (userRegions.length > 0) {
+          // Include schemes with no target regions (applicable to all) or schemes in user's regions
+          const regionalFilter = [
+            { targetRegions: { $size: 0 } }, // Schemes applicable to all regions
+            { targetRegions: { $in: userRegions } } // Schemes in user's regions
+          ];
+          
+          // Merge with existing $or filter if present
+          if (filter.$or) {
+            filter.$and = [
+              { $or: filter.$or },
+              { $or: regionalFilter }
             ];
-
-            if (filter.$or) {
-              filter.$and = [
-                { $or: filter.$or },
-                { $or: regionalFilter }
-              ];
-              delete filter.$or;
-            } else {
-              filter.$or = regionalFilter;
-            }
+            delete filter.$or;
           } else {
-            // No regions assigned – deny access
-            filter._id = { $in: [] };
+            filter.$or = regionalFilter;
           }
         }
       }
 
       const skip = (page - 1) * limit;
 
+      // Multi-tenant: restrict to current franchise
+      if (req.franchiseId) filter.franchise = req.franchiseId;
+      
       const schemes = await Scheme.find(filter)
         .populate('project', 'name code description')
         .populate('targetRegions', 'name type code')
@@ -114,7 +97,7 @@ class SchemeController {
     try {
       const { id } = req.params;
 
-      const scheme = await Scheme.findById(id)
+      const scheme = await Scheme.findOne({ _id: id, franchise: req.franchiseId })
         .populate('project', 'name code description coordinator')
         .populate('targetRegions', 'name type code parent')
         .populate('createdBy', 'name email profile')
@@ -144,12 +127,13 @@ class SchemeController {
     try {
       const schemeData = {
         ...req.body,
-        createdBy: req.user._id
+        createdBy: req.user._id,
+        franchise: req.franchiseId || null  // Multi-tenant
       };
 
       // Validate project exists
       if (schemeData.project) {
-        const project = await Project.findById(schemeData.project);
+        const project = await Project.findOne({ _id: schemeData.project, franchise: req.franchiseId });
         if (!project) {
           return ResponseHelper.error(res, 'Invalid project specified', 400);
         }
@@ -273,7 +257,7 @@ class SchemeController {
       const scheme = new Scheme(schemeData);
       await scheme.save();
 
-      const populatedScheme = await Scheme.findById(scheme._id)
+      const populatedScheme = await Scheme.findOne({ _id: scheme._id, franchise: req.franchiseId })
         .populate('project', 'name code description')
         .populate('targetRegions', 'name type code')
         .populate('createdBy', 'name email');
@@ -307,7 +291,7 @@ class SchemeController {
         updatedBy: req.user._id
       };
 
-      const scheme = await Scheme.findById(id);
+      const scheme = await Scheme.findOne({ _id: id, franchise: req.franchiseId });
       if (!scheme) {
         return ResponseHelper.error(res, 'Scheme not found', 404);
       }
@@ -319,7 +303,7 @@ class SchemeController {
 
       // Validate project if being updated
       if (updateData.project) {
-        const project = await Project.findById(updateData.project);
+        const project = await Project.findOne({ _id: updateData.project, franchise: req.franchiseId });
         if (!project) {
           return ResponseHelper.error(res, 'Invalid project specified', 400);
         }
@@ -357,7 +341,7 @@ class SchemeController {
           });
       }
 
-      const populatedScheme = await Scheme.findById(scheme._id)
+      const populatedScheme = await Scheme.findOne({ _id: scheme._id, franchise: req.franchiseId })
         .populate('project', 'name code description')
         .populate('targetRegions', 'name type code')
         .populate('createdBy', 'name email')
@@ -388,7 +372,7 @@ class SchemeController {
     try {
       const { id } = req.params;
 
-      const scheme = await Scheme.findById(id);
+      const scheme = await Scheme.findOne({ _id: id, franchise: req.franchiseId });
       if (!scheme) {
         return ResponseHelper.error(res, 'Scheme not found', 404);
       }
@@ -403,7 +387,7 @@ class SchemeController {
         return ResponseHelper.error(res, 'Cannot delete scheme with existing applications', 400);
       }
 
-      await Scheme.findByIdAndDelete(id);
+      await Scheme.findOneAndDelete({ _id: id, franchise: req.franchiseId });
 
       return ResponseHelper.success(res, null, 'Scheme deleted successfully');
     } catch (error) {
@@ -421,31 +405,13 @@ class SchemeController {
       // Build filter based on user access
       const filter = {};
       if (req.user.role !== 'super_admin' && req.user.role !== 'state_admin') {
-        if (req.user.role === 'scheme_coordinator') {
-          const assignedSchemes = req.user.adminScope?.schemes || [];
-          if (assignedSchemes.length > 0) {
-            filter._id = { $in: assignedSchemes };
-          } else {
-            filter._id = null;
-          }
-        } else if (req.user.role === 'project_coordinator') {
-          const assignedProjects = req.user.adminScope?.projects || [];
-          if (assignedProjects.length > 0) {
-            filter.project = { $in: assignedProjects };
-          } else {
-            filter._id = null;
-          }
-        } else {
-          const userRegions = req.user.adminScope?.regions || [];
-          if (userRegions.length > 0) {
-            filter.$or = [
-              { targetRegions: { $size: 0 } },
-              { targetRegions: { $in: userRegions } }
-            ];
-          } else {
-            // No regions assigned – deny access
-            filter._id = { $in: [] };
-          }
+        const userRegions = req.user.adminScope?.regions || [];
+        if (userRegions.length > 0) {
+          // Include schemes with no target regions (applicable to all) or schemes in user's regions
+          filter.$or = [
+            { targetRegions: { $size: 0 } }, // Schemes applicable to all regions
+            { targetRegions: { $in: userRegions } } // Schemes in user's regions
+          ];
         }
       }
 
@@ -522,33 +488,15 @@ class SchemeController {
         'applicationSettings.endDate': { $gte: new Date() }
       };
 
-      // Apply role-based access control
+      // Apply regional access control
       if (req.user.role !== 'super_admin' && req.user.role !== 'state_admin') {
-        if (req.user.role === 'scheme_coordinator') {
-          const assignedSchemes = req.user.adminScope?.schemes || [];
-          if (assignedSchemes.length > 0) {
-            filter._id = { $in: assignedSchemes };
-          } else {
-            filter._id = null;
-          }
-        } else if (req.user.role === 'project_coordinator') {
-          const assignedProjects = req.user.adminScope?.projects || [];
-          if (assignedProjects.length > 0) {
-            filter.project = { $in: assignedProjects };
-          } else {
-            filter._id = null;
-          }
-        } else {
-          const userRegions = req.user.adminScope?.regions || [];
-          if (userRegions.length > 0) {
-            filter.$or = [
-              { targetRegions: { $size: 0 } },
-              { targetRegions: { $in: userRegions } }
-            ];
-          } else {
-            // No regions assigned – deny access
-            filter._id = { $in: [] };
-          }
+        const userRegions = req.user.adminScope?.regions || [];
+        if (userRegions.length > 0) {
+          // Include schemes with no target regions (applicable to all) or schemes in user's regions
+          filter.$or = [
+            { targetRegions: { $size: 0 } }, // Schemes applicable to all regions
+            { targetRegions: { $in: userRegions } } // Schemes in user's regions
+          ];
         }
       }
 
@@ -593,7 +541,7 @@ class SchemeController {
     try {
       const { id } = req.params;
 
-      const scheme = await Scheme.findById(id);
+      const scheme = await Scheme.findOne({ _id: id, franchise: req.franchiseId });
       if (!scheme) {
         return ResponseHelper.error(res, 'Scheme not found', 404);
       }

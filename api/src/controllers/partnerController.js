@@ -8,6 +8,9 @@ exports.getAllPartners = async (req, res) => {
     const query = {};
     
     if (status) query.status = status;
+
+    // Multi-tenant: restrict to current franchise
+    if (req.franchiseId) query.franchise = req.franchiseId;
     
     const partners = await Partner.find(query)
       .sort({ order: 1, createdAt: -1 })
@@ -31,7 +34,7 @@ exports.getAllPartners = async (req, res) => {
 // Get public partners (no auth required)
 exports.getPublicPartners = async (req, res) => {
   try {
-    const partners = await Partner.find({ status: 'active' })
+    const partners = await Partner.find({ status: 'active', ...(req.franchiseId && { franchise: req.franchiseId }) })
       .sort({ order: 1, createdAt: -1 })
       .select('name logoUrl link order');
     
@@ -52,7 +55,7 @@ exports.getPublicPartners = async (req, res) => {
 // Get single partner
 exports.getPartnerById = async (req, res) => {
   try {
-    const partner = await Partner.findById(req.params.id)
+    const partner = await Partner.findOne({ _id: req.params.id, franchise: req.franchiseId })
       .populate('createdBy', 'name')
       .populate('updatedBy', 'name');
     
@@ -102,7 +105,8 @@ exports.createPartner = async (req, res) => {
       link,
       order: order || 0,
       status: status || 'active',
-      createdBy: req.user._id
+      createdBy: req.user._id,
+      franchise: req.franchiseId || null  // Multi-tenant
     });
     
     await partner.save();
@@ -126,7 +130,7 @@ exports.createPartner = async (req, res) => {
 exports.updatePartner = async (req, res) => {
   try {
     const { name, link, order, status } = req.body;
-    const partner = await Partner.findById(req.params.id);
+    const partner = await Partner.findOne({ _id: req.params.id, franchise: req.franchiseId });
     
     if (!partner) {
       return res.status(404).json({
@@ -179,7 +183,7 @@ exports.updatePartner = async (req, res) => {
 // Delete partner
 exports.deletePartner = async (req, res) => {
   try {
-    const partner = await Partner.findById(req.params.id);
+    const partner = await Partner.findOne({ _id: req.params.id, franchise: req.franchiseId });
     
     if (!partner) {
       return res.status(404).json({
@@ -193,7 +197,7 @@ exports.deletePartner = async (req, res) => {
       await deleteFromSpaces(partner.logoKey);
     }
     
-    await Partner.findByIdAndDelete(req.params.id);
+    await Partner.findOneAndDelete({ _id: req.params.id, franchise: req.franchiseId });
     
     res.status(200).json({
       success: true,

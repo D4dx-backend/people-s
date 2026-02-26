@@ -1,4 +1,5 @@
 const mongoose = require('mongoose');
+const franchisePlugin = require('../utils/franchisePlugin');
 
 const notificationSchema = new mongoose.Schema({
   // Basic Information
@@ -457,5 +458,7 @@ notificationSchema.pre('save', function(next) {
   
   next();
 });
+
+notificationSchema.plugin(franchisePlugin);
 
 module.exports = mongoose.model('Notification', notificationSchema);

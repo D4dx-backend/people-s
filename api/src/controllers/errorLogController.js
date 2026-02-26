@@ -8,7 +8,8 @@ class ErrorLogController {
    */
   async getErrorLogs(req, res) {
     try {
-      const result = await ErrorLogService.getErrorLogs(req.query);
+      const params = req.franchiseId ? { ...req.query, franchise: req.franchiseId } : req.query;
+      const result = await ErrorLogService.getErrorLogs(params);
       return ResponseHelper.success(res, result, 'Error logs retrieved successfully');
     } catch (error) {
       console.error('❌ Get Error Logs Error:', error);

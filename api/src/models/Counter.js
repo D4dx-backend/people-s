@@ -1,4 +1,5 @@
 const mongoose = require('mongoose');
+const franchisePlugin = require('../utils/franchisePlugin');
 
 /**
  * Counter model for atomic sequential number generation.
@@ -38,5 +39,7 @@ counterSchema.statics.getNextSequence = async function(counterKey) {
   );
   return counter.seq;
 };
+
+counterSchema.plugin(franchisePlugin);
 
 module.exports = mongoose.model('Counter', counterSchema);

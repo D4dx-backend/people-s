@@ -29,7 +29,10 @@
     "validate:nazim": "node src/scripts/validateNazimData.js",
     "import:nazim": "node src/scripts/importNazimData.js",
     "verify:nazim": "node src/scripts/verifyImport.js",
-    "clear:nazim": "node src/scripts/clearNazimData.js"
+    "clear:nazim": "node src/scripts/clearNazimData.js",
+    "franchise:seed": "node src/scripts/seedFranchises.js",
+    "franchise:migrate": "node src/scripts/migrateToMultiTenant.js",
+    "franchise:rollback": "node src/scripts/rollbackMultiTenant.js"
   },
   "keywords": [
     "ngo",

@@ -1,4 +1,5 @@
 const mongoose = require('mongoose');
+const franchisePlugin = require('../utils/franchisePlugin');
 
 const dashboardSchema = new mongoose.Schema({
   // Basic Information
@@ -498,5 +499,7 @@ dashboardSchema.pre('save', function(next) {
   
   next();
 });
+
+dashboardSchema.plugin(franchisePlugin);
 
 module.exports = mongoose.model('Dashboard', dashboardSchema);

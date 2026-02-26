@@ -1,4 +1,5 @@
 const mongoose = require('mongoose');
+const franchisePlugin = require('../utils/franchisePlugin');
 
 /**
  * Value Target Schema
@@ -124,8 +125,9 @@ const schemeTargetSchema = new mongoose.Schema({
   timestamps: true
 });
 
-// Indexes
-schemeTargetSchema.index({ scheme: 1 }, { unique: true });
+// Franchise multi-tenancy
+schemeTargetSchema.plugin(franchisePlugin);
+schemeTargetSchema.index({ scheme: 1, franchise: 1 }, { unique: true });
 schemeTargetSchema.index({ createdAt: -1 });
 
 // Virtual: sum of all monthly targets

@@ -265,6 +265,9 @@ class RegionalAdminController {
         filter.applicationNumber = { $regex: search, $options: 'i' };
       }
 
+      // Franchise scope
+      if (req.franchiseId) filter.franchise = req.franchiseId;
+
       // Pagination
       const skip = (parseInt(page) - 1) * parseInt(limit);
       
@@ -339,7 +342,7 @@ class RegionalAdminController {
       const { id } = req.params;
       const user = req.user;
 
-      const application = await Application.findById(id)
+      const application = await Application.findOne({ _id: id, franchise: req.franchiseId })
         .populate('scheme', 'name category benefits eligibility applicationSettings')
         .populate('beneficiary')
         .populate('project', 'name')
@@ -402,7 +405,7 @@ class RegionalAdminController {
         return ResponseHelper.error(res, 'Invalid status', 400);
       }
 
-      const application = await Application.findById(id)
+      const application = await Application.findOne({ _id: id, franchise: req.franchiseId })
         .populate('scheme', 'name benefits')
         .populate('beneficiary', 'name phone');
 
@@ -515,6 +518,9 @@ class RegionalAdminController {
                       user.profile?.location?.unit;
         filter.unit = unitId;
       }
+
+      // Franchise scope
+      if (req.franchiseId) filter.franchise = req.franchiseId;
 
       // Get application statistics
       const applicationStats = await Application.aggregate([

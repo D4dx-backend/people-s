@@ -454,11 +454,12 @@ class NotificationService {
 
   async getUserNotifications(userId, filters = {}) {
     try {
-      const { type = null, category = null, unreadOnly = false, limit = 50, offset = 0 } = filters;
+      const { type = null, category = null, unreadOnly = false, limit = 50, offset = 0, franchise = null } = filters;
 
       let query = { 'recipients.user': userId };
       if (type) query.type = type;
       if (category) query.category = category;
+      if (franchise) query.franchise = franchise;
       if (unreadOnly) {
         query.recipients = { $elemMatch: { user: userId, status: { $ne: 'read' } } };
       }

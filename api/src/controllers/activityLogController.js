@@ -34,6 +34,7 @@ class ActivityLogController {
       if (endDate) filters.endDate = endDate;
       if (search) filters.search = search;
       if (ipAddress) filters.ipAddress = ipAddress;
+      if (req.franchiseId) filters.franchise = req.franchiseId;  // Multi-tenant
 
       const options = {
         page: parseInt(page),

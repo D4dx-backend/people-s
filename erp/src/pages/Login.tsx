@@ -197,8 +197,14 @@ export default function Login() {
           description: "Welcome back!",
         });
         
-        // Navigate to the intended page or dashboard
-        navigate(from, { replace: true });
+        // Global super admin gets their own dedicated panel
+        const parsedUser = JSON.parse(savedUser);
+        if (parsedUser?.isSuperAdmin) {
+          navigate('/global-admin', { replace: true });
+        } else {
+          // Navigate to the intended page or dashboard
+          navigate(from, { replace: true });
+        }
       }
     } catch (error: any) {
       toast({

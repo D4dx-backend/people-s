@@ -1,5 +1,5 @@
 const authService = require('../services/authService');
-const { User, Location } = require('../models');
+const { User, Location, UserFranchise } = require('../models');
 const ResponseHelper = require('../utils/responseHelper');
 const staticOTPConfig = require('../config/staticOTP');
 const whatsappOTPService = require('../utils/whatsappOtpService');
@@ -41,6 +41,23 @@ class BeneficiaryAuthController {
           isActive: true
         });
         await user.save();
+
+        // Create UserFranchise membership for this franchise
+        if (req.franchiseId) {
+          try {
+            const existingMembership = await UserFranchise.findOne({ user: user._id, franchise: req.franchiseId });
+            if (!existingMembership) {
+              await new UserFranchise({
+                user: user._id,
+                franchise: req.franchiseId,
+                role: 'beneficiary',
+                isActive: true
+              }).save();
+            }
+          } catch (ufErr) {
+            console.error('⚠️  UserFranchise creation failed for beneficiary:', ufErr.message);
+          }
+        }
       }
 
       // PRODUCTION SAFEGUARD: Prevent static OTP in production (except test account)

@@ -80,6 +80,9 @@ const getApplications = async (req, res) => {
     
     // Apply regional filtering (super_admin and state_admin have no restrictions)
     Object.assign(filter, userRegionalFilter);
+
+    // Multi-tenant: restrict results to the current franchise
+    if (req.franchiseId) filter.franchise = req.franchiseId;
     
     console.log('🔍 Final filter:', filter);
 
@@ -132,7 +135,7 @@ const getApplications = async (req, res) => {
 // Get single application
 const getApplication = async (req, res) => {
   try {
-    const application = await Application.findById(req.params.id)
+    const application = await Application.findOne({ _id: req.params.id, franchise: req.franchiseId })
       .populate('beneficiary')
       .populate('scheme', 'name code maxAmount distributionTimeline applicationSettings')
       .populate('project')
@@ -229,7 +232,7 @@ const createApplication = async (req, res) => {
     const { beneficiary, scheme, project, requestedAmount, documents, isRecurring, recurringConfig } = req.body;
 
     // Verify beneficiary exists and is active
-    const beneficiaryDoc = await Beneficiary.findById(beneficiary);
+    const beneficiaryDoc = await Beneficiary.findOne({ _id: beneficiary, franchise: req.franchiseId });
     if (!beneficiaryDoc) {
       return res.status(400).json({ message: 'Beneficiary not found' });
     }
@@ -238,7 +241,7 @@ const createApplication = async (req, res) => {
     }
 
     // Verify scheme exists and is active
-    const schemeDoc = await Scheme.findById(scheme);
+    const schemeDoc = await Scheme.findOne({ _id: scheme, franchise: req.franchiseId });
     if (!schemeDoc) {
       return res.status(400).json({ message: 'Scheme not found' });
     }
@@ -249,7 +252,7 @@ const createApplication = async (req, res) => {
     // Verify project if provided
     let projectDoc = null;
     if (project) {
-      projectDoc = await Project.findById(project);
+      projectDoc = await Project.findOne({ _id: project, franchise: req.franchiseId });
       if (!projectDoc) {
         return res.status(400).json({ message: 'Project not found' });
       }
@@ -290,6 +293,7 @@ const createApplication = async (req, res) => {
       area: beneficiaryDoc.area,
       unit: beneficiaryDoc.unit,
       createdBy: req.user.id,
+      franchise: req.franchiseId || null, // Multi-tenant: assign to current franchise
       // Add recurring configuration
       isRecurring: isRecurring || false,
       recurringConfig: isRecurring ? {
@@ -341,7 +345,7 @@ const createApplication = async (req, res) => {
     beneficiaryDoc.applications.push(application._id);
     await beneficiaryDoc.save();
 
-    const populatedApplication = await Application.findById(application._id)
+    const populatedApplication = await Application.findOne({ _id: application._id, franchise: req.franchiseId })
       .populate('beneficiary', 'name phone')
       .populate('scheme', 'name code distributionTimeline applicationSettings')
       .populate('project', 'name code')
@@ -362,7 +366,7 @@ const updateApplication = async (req, res) => {
       return res.status(400).json({ errors: errors.array() });
     }
 
-    const application = await Application.findById(req.params.id);
+    const application = await Application.findOne({ _id: req.params.id, franchise: req.franchiseId });
     if (!application) {
       return res.status(404).json({ message: 'Application not found' });
     }
@@ -384,7 +388,7 @@ const updateApplication = async (req, res) => {
     // Update fields
     if (requestedAmount !== undefined) {
       // Verify against scheme limits
-      const scheme = await Scheme.findById(application.scheme);
+      const scheme = await Scheme.findOne({ _id: application.scheme, franchise: req.franchiseId });
       if (requestedAmount > scheme.maxAmount) {
         return res.status(400).json({ 
           message: `Requested amount cannot exceed scheme maximum of ₹${scheme.maxAmount}` 
@@ -400,7 +404,7 @@ const updateApplication = async (req, res) => {
 
     await application.save();
 
-    const updatedApplication = await Application.findById(application._id)
+    const updatedApplication = await Application.findOne({ _id: application._id, franchise: req.franchiseId })
       .populate('beneficiary', 'name phone')
       .populate('scheme', 'name code distributionTimeline applicationSettings')
       .populate('project', 'name code')
@@ -423,7 +427,7 @@ const reviewApplication = async (req, res) => {
       return res.status(400).json({ message: 'Invalid review status' });
     }
 
-    const application = await Application.findById(req.params.id);
+    const application = await Application.findOne({ _id: req.params.id, franchise: req.franchiseId });
     if (!application) {
       return res.status(404).json({ message: 'Application not found' });
     }
@@ -448,7 +452,7 @@ const reviewApplication = async (req, res) => {
 
     await application.save();
 
-    const reviewedApplication = await Application.findById(application._id)
+    const reviewedApplication = await Application.findOne({ _id: application._id, franchise: req.franchiseId })
       .populate('beneficiary', 'name phone area')
       .populate('scheme', 'name code distributionTimeline applicationSettings')
       .populate('project', 'name code')
@@ -473,7 +477,7 @@ const approveApplication = async (req, res) => {
   try {
     const { approvedAmount, comments } = req.body;
 
-    const application = await Application.findById(req.params.id);
+    const application = await Application.findOne({ _id: req.params.id, franchise: req.franchiseId });
     if (!application) {
       return res.status(404).json({ message: 'Application not found' });
     }
@@ -514,7 +518,7 @@ const approveApplication = async (req, res) => {
     await updateDistributionTimelineOnApproval(application, approvedAmount);
 
     // Set renewal expiry if scheme supports renewals
-    const scheme = await Scheme.findById(application.scheme);
+    const scheme = await Scheme.findOne({ _id: application.scheme, franchise: req.franchiseId });
     if (scheme?.renewalSettings?.isRenewable) {
       const approvedDate = application.approvedAt;
       const expiryDate = new Date(approvedDate);
@@ -633,7 +637,7 @@ const approveApplication = async (req, res) => {
       // Don't fail the approval if payment creation fails
     }
 
-    const approvedApplication = await Application.findById(application._id)
+    const approvedApplication = await Application.findOne({ _id: application._id, franchise: req.franchiseId })
       .populate('beneficiary', 'name phone')
       .populate('scheme', 'name code distributionTimeline applicationSettings')
       .populate('project', 'name code')
@@ -654,7 +658,7 @@ const approveApplication = async (req, res) => {
 // Delete application
 const deleteApplication = async (req, res) => {
   try {
-    const application = await Application.findById(req.params.id);
+    const application = await Application.findOne({ _id: req.params.id, franchise: req.franchiseId });
     if (!application) {
       return res.status(404).json({ message: 'Application not found' });
     }
@@ -672,12 +676,12 @@ const deleteApplication = async (req, res) => {
     }
 
     // Remove application from beneficiary's applications array
-    await Beneficiary.findByIdAndUpdate(
-      application.beneficiary,
+    await Beneficiary.findOneAndUpdate(
+      { _id: application.beneficiary, franchise: req.franchiseId },
       { $pull: { applications: application._id } }
     );
 
-    await Application.findByIdAndDelete(req.params.id);
+    await Application.findOneAndDelete({ _id: req.params.id, franchise: req.franchiseId });
     res.json({ message: 'Application deleted successfully' });
   } catch (error) {
     console.error('Error deleting application:', error);
@@ -1096,7 +1100,7 @@ const updateDistributionTimelineOnApproval = async (application, approvedAmount)
     
     // Get the latest scheme configuration to ensure we use current timeline settings
     const Scheme = require('../models/Scheme');
-    const scheme = await Scheme.findById(application.scheme);
+    const scheme = await Scheme.findOne({ _id: application.scheme, franchise: application.franchise });
     
     if (scheme && scheme.distributionTimeline && scheme.distributionTimeline.length > 0) {
       // Regenerate timeline based on current scheme configuration
@@ -1272,7 +1276,7 @@ const getAvailableRevertRoles = async (req, res) => {
   try {
     const { id } = req.params;
 
-    const application = await Application.findById(id);
+    const application = await Application.findOne({ _id: id, franchise: req.franchiseId });
     if (!application) {
       return res.status(404).json({
         success: false,
@@ -1362,7 +1366,7 @@ const revertApplicationStage = async (req, res) => {
       });
     }
 
-    const application = await Application.findById(id);
+    const application = await Application.findOne({ _id: id, franchise: req.franchiseId });
     if (!application) {
       return res.status(404).json({
         success: false,
@@ -1499,7 +1503,7 @@ const updateApplicationStage = async (req, res) => {
     const { id, stageId } = req.params;
     const { status, notes } = req.body;
 
-    const application = await Application.findById(id);
+    const application = await Application.findOne({ _id: id, franchise: req.franchiseId });
     if (!application) {
       return res.status(404).json({
         success: false,
@@ -1642,7 +1646,7 @@ const addStageComment = async (req, res) => {
       'state_admin': null
     };
 
-    const application = await Application.findById(id);
+    const application = await Application.findOne({ _id: id, franchise: req.franchiseId });
     if (!application) {
       return res.status(404).json({
         success: false,
@@ -1727,7 +1731,7 @@ const uploadStageDocument = async (req, res) => {
   try {
     const { id, stageId, docIndex } = req.params;
 
-    const application = await Application.findById(id);
+    const application = await Application.findOne({ _id: id, franchise: req.franchiseId });
     if (!application) {
       return res.status(404).json({
         success: false,
@@ -1868,7 +1872,7 @@ const getRenewalHistory = async (req, res) => {
   try {
     const { id } = req.params;
 
-    const application = await Application.findById(id);
+    const application = await Application.findOne({ _id: id, franchise: req.franchiseId });
     if (!application) {
       return res.status(404).json({ success: false, message: 'Application not found' });
     }
@@ -1883,7 +1887,7 @@ const getRenewalHistory = async (req, res) => {
       // Walk up the chain to find the original
       let current = application;
       while (current.isRenewal && current.parentApplication) {
-        current = await Application.findById(current.parentApplication);
+        current = await Application.findOne({ _id: current.parentApplication, franchise: application.franchise });
         if (!current) break;
         rootApplicationId = current._id;
       }
@@ -1938,7 +1942,7 @@ const modifyApprovedApplication = async (req, res) => {
       });
     }
 
-    const application = await Application.findById(req.params.id);
+    const application = await Application.findOne({ _id: req.params.id, franchise: req.franchiseId });
     if (!application) {
       return res.status(404).json({ success: false, message: 'Application not found' });
     }
@@ -2010,7 +2014,7 @@ const modifyApprovedApplication = async (req, res) => {
 
     await application.save();
 
-    const updatedApplication = await Application.findById(application._id)
+    const updatedApplication = await Application.findOne({ _id: application._id, franchise: req.franchiseId })
       .populate('beneficiary', 'name phone')
       .populate('scheme', 'name code distributionTimeline applicationSettings')
       .populate('project', 'name code')

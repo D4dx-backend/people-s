@@ -1,4 +1,5 @@
 const mongoose = require('mongoose');
+const franchisePlugin = require('../utils/franchisePlugin');
 
 const beneficiarySchema = new mongoose.Schema({
   // Basic Information
@@ -10,7 +11,6 @@ const beneficiarySchema = new mongoose.Schema({
   phone: {
     type: String,
     required: true,
-    unique: true,
     trim: true
   },
   
@@ -93,5 +93,9 @@ beneficiarySchema.virtual('locationPath').get(function() {
 
 // Ensure virtual fields are serialized
 beneficiarySchema.set('toJSON', { virtuals: true });
+
+// Franchise multi-tenancy — compound unique: same phone can exist in different franchises
+beneficiarySchema.plugin(franchisePlugin);
+beneficiarySchema.index({ phone: 1, franchise: 1 }, { unique: true });
 
 module.exports = mongoose.model('Beneficiary', beneficiarySchema);

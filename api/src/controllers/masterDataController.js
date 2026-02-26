@@ -43,6 +43,9 @@ const getMasterData = async (req, res) => {
 
     const skip = (parseInt(page) - 1) * parseInt(limit);
 
+    // Multi-tenant: restrict to current franchise
+    if (req.franchiseId) filter.franchise = req.franchiseId;
+
     const [masterDataList, total] = await Promise.all([
       MasterData.find(filter)
         .populate('targetRegions', 'name code type')
@@ -86,7 +89,7 @@ const getMasterData = async (req, res) => {
  */
 const getMasterDataById = async (req, res) => {
   try {
-    const masterData = await MasterData.findById(req.params.id)
+    const masterData = await MasterData.findOne({ _id: req.params.id, franchise: req.franchiseId })
       .populate('targetRegions', 'name code type')
       .populate('targetProjects', 'name code')
       .populate('targetSchemes', 'name code')
@@ -139,7 +142,8 @@ const createMasterData = async (req, res) => {
 
     const masterDataData = {
       ...req.body,
-      createdBy: req.user._id
+      createdBy: req.user._id,
+      franchise: req.franchiseId || null  // Multi-tenant
     };
 
     const masterData = new MasterData(masterDataData);
@@ -194,7 +198,7 @@ const updateMasterData = async (req, res) => {
       });
     }
 
-    const masterData = await MasterData.findById(req.params.id);
+    const masterData = await MasterData.findOne({ _id: req.params.id, franchise: req.franchiseId });
     
     if (!masterData) {
       return res.status(404).json({
@@ -257,7 +261,7 @@ const updateMasterData = async (req, res) => {
  */
 const deleteMasterData = async (req, res) => {
   try {
-    const masterData = await MasterData.findById(req.params.id);
+    const masterData = await MasterData.findOne({ _id: req.params.id, franchise: req.franchiseId });
     
     if (!masterData) {
       return res.status(404).json({
@@ -282,7 +286,7 @@ const deleteMasterData = async (req, res) => {
       });
     }
 
-    await MasterData.findByIdAndDelete(req.params.id);
+    await MasterData.findOneAndDelete({ _id: req.params.id, franchise: req.franchiseId });
 
     res.json({
       success: true,
@@ -351,7 +355,7 @@ const getMasterDataByType = async (req, res) => {
  */
 const cloneMasterData = async (req, res) => {
   try {
-    const originalMasterData = await MasterData.findById(req.params.id);
+    const originalMasterData = await MasterData.findOne({ _id: req.params.id, franchise: req.franchiseId });
     
     if (!originalMasterData) {
       return res.status(404).json({

@@ -10,6 +10,40 @@ if (!API_BASE_URL) {
   );
 }
 
+// ── Franchise slug detection ─────────────────────────────────────────────────
+/**
+ * Derives the franchise slug from the current hostname.
+ *
+ * Rules (mirrors tenantResolver.js on the backend):
+ *  1. VITE_FRANCHISE_SLUG env var — useful for local dev (e.g. VITE_FRANCHISE_SLUG=people)
+ *  2. First subdomain segment when there are 3+ labels in the hostname
+ *     e.g. "people.peopleerp.com" → "people"
+ *  3. Falls back to undefined (no header sent) — backend will 404 for protected routes
+ */
+function getFranchiseSlug(): string | undefined {
+  // Hard override for local development / testing
+  const envSlug = import.meta.env.VITE_FRANCHISE_SLUG as string | undefined;
+  if (envSlug) return envSlug;
+
+  const hostname = window.location.hostname;
+
+  // Ignore pure localhost / IP addresses
+  if (hostname === 'localhost' || /^\d{1,3}(\.\d{1,3}){3}$/.test(hostname)) {
+    return undefined;
+  }
+
+  const parts = hostname.split('.');
+  if (parts.length >= 3) {
+    const sub = parts[0].toLowerCase();
+    // Skip generic subdomains
+    if (sub !== 'www' && sub !== 'api' && sub !== 'app') {
+      return sub;
+    }
+  }
+
+  return undefined;
+}
+
 // Types
 export interface User {
   id: string;
@@ -17,6 +51,10 @@ export interface User {
   email?: string; // Made optional
   phone: string;
   role: string;
+  /** True only for the platform-wide super admin — can manage all franchises */
+  isSuperAdmin?: boolean;
+  /** Franchise the user is currently authenticated against */
+  franchiseId?: string | null;
   adminScope?: {
     level: string;
     regions: string[];
@@ -288,6 +326,12 @@ class ApiClient {
     if (currentToken) {
       this.token = currentToken; // Update cached token
       headers.Authorization = `Bearer ${currentToken}`;
+    }
+
+    // Multi-tenant: tell the backend which franchise this request belongs to
+    const slug = getFranchiseSlug();
+    if (slug) {
+      headers['X-Franchise-Slug'] = slug;
     }
 
     return headers;
@@ -1901,7 +1945,47 @@ export const config = {
       body: formData,
       headers: {} // Let browser set Content-Type for FormData
     });
-  }
+  },
+  // Per-franchise integrations: DXing SMS + SMTP email
+  getIntegrations: () => apiClient.request('/config/integrations'),
+  updateIntegrations: (data: {
+    smsConfig?: { dxingApiKey?: string; dxingApiSecret?: string; enabled?: boolean };
+    emailConfig?: { smtpHost?: string; smtpPort?: number | string; smtpUser?: string; smtpPass?: string; enabled?: boolean };
+  }) => apiClient.request('/config/integrations', { method: 'PUT', body: JSON.stringify(data) })
+};
+
+// ── Global Super Admin API ─────────────────────────────────────────────────
+// All routes under /api/global/* — accessible only when user.isSuperAdmin = true
+// Global routes skip tenantResolver on the backend, so franchise slug is ignored.
+
+export const globalAdmin = {
+  // Franchise CRUD
+  listFranchises: () => apiClient.request('/global/franchises'),
+  getFranchise: (id: string) => apiClient.request(`/global/franchises/${id}`),
+  createFranchise: (data: { slug: string; displayName: string; orgKey?: string }) =>
+    apiClient.request('/global/franchises', { method: 'POST', body: JSON.stringify(data) }),
+  updateFranchise: (id: string, data: any) =>
+    apiClient.request(`/global/franchises/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
+  deactivateFranchise: (id: string) =>
+    apiClient.request(`/global/franchises/${id}`, { method: 'DELETE' }),
+  getFranchiseStats: (id: string) => apiClient.request(`/global/franchises/${id}/stats`),
+
+  // Franchise admin management
+  listFranchiseAdmins: (franchiseId: string) =>
+    apiClient.request(`/global/franchises/${franchiseId}/admins`),
+  createFranchiseAdmin: (franchiseId: string, data: { name: string; phone: string; email?: string }) =>
+    apiClient.request(`/global/franchises/${franchiseId}/admins`, { method: 'POST', body: JSON.stringify(data) }),
+  deactivateFranchiseAdmin: (franchiseId: string, userId: string) =>
+    apiClient.request(`/global/franchises/${franchiseId}/admins/${userId}`, { method: 'DELETE' }),
+
+  // Domain management
+  addDomain: (franchiseId: string, domain: string) =>
+    apiClient.request(`/global/franchises/${franchiseId}/domains`, { method: 'POST', body: JSON.stringify({ domain }) }),
+  removeDomain: (franchiseId: string, domain: string) =>
+    apiClient.request(`/global/franchises/${franchiseId}/domains`, { method: 'DELETE', body: JSON.stringify({ domain }) }),
+
+  // Global overview
+  getGlobalStats: () => apiClient.request('/global/stats'),
 };
 
 // Speech-to-Text API

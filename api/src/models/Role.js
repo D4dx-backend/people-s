@@ -1,11 +1,11 @@
 const mongoose = require('mongoose');
+const franchisePlugin = require('../utils/franchisePlugin');
 
 const roleSchema = new mongoose.Schema({
   // Basic Role Information
   name: {
     type: String,
     required: [true, 'Role name is required'],
-    unique: true,
     trim: true,
     maxlength: [50, 'Role name cannot exceed 50 characters']
   },
@@ -261,5 +261,9 @@ roleSchema.statics.createSystemRole = async function(roleData) {
   
   return await role.save();
 };
+
+// Franchise multi-tenancy — compound unique: same role name per franchise
+roleSchema.plugin(franchisePlugin);
+roleSchema.index({ name: 1, franchise: 1 }, { unique: true });
 
 module.exports = mongoose.model('Role', roleSchema);

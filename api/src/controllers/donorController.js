@@ -44,6 +44,9 @@ class DonorController {
       const limitNum = parseInt(limit);
       const skip = (pageNum - 1) * limitNum;
 
+      // Multi-tenant: restrict to current franchise
+      if (req.franchiseId) filter.franchise = req.franchiseId;
+
       // Get donors with pagination
       const [donors, total] = await Promise.all([
         Donor.find(filter)
@@ -133,7 +136,7 @@ class DonorController {
         return ResponseHelper.error(res, 'Invalid donor ID', 400);
       }
 
-      const donor = await Donor.findById(id)
+      const donor = await Donor.findOne({ _id: id, franchise: req.franchiseId })
         .populate('preferredPrograms', 'name code description')
         .populate('preferredSchemes', 'name code description')
         .populate('assignedTo', 'name email phone')
@@ -173,13 +176,19 @@ class DonorController {
     try {
       const donorData = {
         ...req.body,
-        createdBy: req.user._id
+        createdBy: req.user._id,
+        franchise: req.franchiseId || null   // Multi-tenant
       };
 
-      // Check if donor with email already exists
-      const existingDonor = await Donor.findOne({ email: donorData.email });
-      if (existingDonor) {
-        return ResponseHelper.error(res, 'Donor with this email already exists', 400);
+      // Check if donor with email already exists (franchise-scoped)
+      const dupQuery = donorData.email
+        ? { email: donorData.email, ...(req.franchiseId && { franchise: req.franchiseId }) }
+        : null;
+      if (dupQuery) {
+        const existingDonor = await Donor.findOne(dupQuery).setOptions({ bypassFranchise: true });
+        if (existingDonor) {
+          return ResponseHelper.error(res, 'Donor with this email already exists', 400);
+        }
       }
 
       const donor = new Donor(donorData);
@@ -232,8 +241,8 @@ class DonorController {
       delete updateData.createdBy;
       delete updateData.createdAt;
 
-      const donor = await Donor.findByIdAndUpdate(
-        id,
+      const donor = await Donor.findOneAndUpdate(
+        { _id: id, franchise: req.franchiseId },
         updateData,
         { new: true, runValidators: true }
       )
@@ -286,7 +295,7 @@ class DonorController {
         return ResponseHelper.error(res, 'Cannot delete donor with existing donations. Consider deactivating instead.', 400);
       }
 
-      const donor = await Donor.findByIdAndDelete(id);
+      const donor = await Donor.findOneAndDelete({ _id: id, franchise: req.franchiseId });
 
       if (!donor) {
         return ResponseHelper.error(res, 'Donor not found', 404);
@@ -728,8 +737,8 @@ class DonorController {
         return ResponseHelper.error(res, 'Invalid status', 400);
       }
 
-      const donor = await Donor.findByIdAndUpdate(
-        id,
+      const donor = await Donor.findOneAndUpdate(
+        { _id: id, franchise: req.franchiseId },
         { status, updatedBy: req.user._id },
         { new: true }
       ).populate('updatedBy', 'name email');
@@ -757,8 +766,8 @@ class DonorController {
         return ResponseHelper.error(res, 'Invalid donor ID', 400);
       }
 
-      const donor = await Donor.findByIdAndUpdate(
-        id,
+      const donor = await Donor.findOneAndUpdate(
+        { _id: id, franchise: req.franchiseId },
         { 
           isVerified: true, 
           verificationDate: new Date(),

@@ -1,5 +1,6 @@
 const mongoose = require('mongoose');
 const Counter = require('./Counter');
+const franchisePlugin = require('../utils/franchisePlugin');
 
 const donationSchema = new mongoose.Schema({
   // Basic Information
@@ -29,8 +30,7 @@ const donationSchema = new mongoose.Schema({
   // Idempotency key to prevent duplicate submissions
   idempotencyKey: {
     type: String,
-    sparse: true,
-    unique: true
+    sparse: true
   },
 
   // Donation Details
@@ -371,7 +371,7 @@ const donationSchema = new mongoose.Schema({
 });
 
 // Indexes
-donationSchema.index({ donationNumber: 1 });
+// donationNumber: unique index defined on field (unique: true)
 donationSchema.index({ donor: 1 });
 donationSchema.index({ project: 1, scheme: 1 });
 donationSchema.index({ status: 1 });
@@ -559,5 +559,10 @@ donationSchema.statics.getStats = function(filters = {}) {
     }
   ]);
 };
+
+// Franchise multi-tenancy — compound unique: numbers are franchise-scoped
+donationSchema.plugin(franchisePlugin);
+donationSchema.index({ donationNumber: 1, franchise: 1 }, { unique: true });
+donationSchema.index({ idempotencyKey: 1, franchise: 1 }, { unique: true, sparse: true });
 
 module.exports = mongoose.model('Donation', donationSchema);

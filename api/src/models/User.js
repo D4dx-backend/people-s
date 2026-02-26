@@ -2,6 +2,13 @@ const mongoose = require('mongoose');
 const bcrypt = require('bcryptjs');
 const staticOTPConfig = require('../config/staticOTP');
 
+// NOTE (multi-tenant): User is now a GLOBAL identity model.
+// Role and adminScope for admin users have moved to UserFranchise (junction model).
+// The `role` and `adminScope` fields below are kept for:
+//   a) Beneficiary users (role = 'beneficiary')
+//   b) Backward-compatibility during migration
+// New code should read req.userFranchise.role / req.userFranchise.adminScope instead.
+
 const userSchema = new mongoose.Schema({
   // Basic Information
   name: {
@@ -135,6 +142,13 @@ const userSchema = new mongoose.Schema({
     type: Boolean,
     default: true
   },
+  // Global super-admin flag — bypasses ALL franchise restrictions.
+  // Set manually by DB admin. NOT a per-franchise role.
+  isSuperAdmin: {
+    type: Boolean,
+    default: false,
+    index: true
+  },
   lastLogin: Date,
   loginAttempts: {
     type: Number,
@@ -188,8 +202,8 @@ const userSchema = new mongoose.Schema({
 });
 
 // Indexes
-userSchema.index({ email: 1 });
-userSchema.index({ phone: 1 });
+// email: sparse index defined on field (sparse: true)
+// phone: unique index defined on field (unique: true)
 userSchema.index({ role: 1 });
 userSchema.index({ 'adminScope.regions': 1 });
 userSchema.index({ isActive: 1 });

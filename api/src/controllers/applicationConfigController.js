@@ -1,6 +1,8 @@
 const ApplicationConfig = require('../models/ApplicationConfig');
 const ResponseHelper = require('../utils/responseHelper');
 const orgConfig = require('../config/orgConfig');
+const Franchise = require('../models/Franchise');
+const franchiseCache = require('../utils/franchiseCache');
 const path = require('path');
 const fs = require('fs');
 
@@ -42,9 +44,13 @@ class ApplicationConfigController {
    */
   getPublicConfigs = async (req, res) => {
     try {
+      // ── Franchise-aware config lookup ───────────────────────────────────
+      const franchiseFilter = req.franchiseId ? { franchise: req.franchiseId } : {};
+
       const configs = await ApplicationConfig.find({
         scope: 'global',
-        isEditable: true
+        isEditable: true,
+        ...franchiseFilter
       }).select('category key value label dataType -_id');
       
       // Transform to nested object structure
@@ -56,30 +62,75 @@ class ApplicationConfigController {
         return acc;
       }, {});
 
-      // Attach org branding (driven by ORG_NAME env var)
-      configMap.org = {
-        key: orgConfig.key,
-        displayName: orgConfig.displayName,
-        erpTitle: orgConfig.erpTitle,
-        erpSubtitle: orgConfig.erpSubtitle,
-        tagline: orgConfig.tagline,
-        regNumber: orgConfig.regNumber,
-        email: orgConfig.email,
-        supportEmail: orgConfig.supportEmail,
-        paymentsEmail: orgConfig.paymentsEmail,
-        phone: orgConfig.phone,
-        address: orgConfig.address,
-        website: orgConfig.website,
-        websiteUrl: orgConfig.websiteUrl,
-        defaultTheme: orgConfig.defaultTheme,
-        copyrightText: orgConfig.copyrightText,
-        logoUrl: `/assets/${orgConfig.logoFilename}`,
-        heroSubtext: orgConfig.heroSubtext,
-        aboutText: orgConfig.aboutText,
-        footerText: orgConfig.footerText,
-        communityLabel: orgConfig.communityLabel,
-        communityDescription: orgConfig.communityDescription,
-      };
+      // ── Org branding: prefer franchise DB record over orgConfig env fallback
+      let brandingOrg;
+      if (req.franchiseId) {
+        try {
+          // Try cache first for performance
+          let franchise = await franchiseCache.getFranchiseBranding(req.franchiseId);
+          if (!franchise) {
+            franchise = await Franchise.findById(req.franchiseId).select(
+              'slug displayName erpTitle erpSubtitle tagline defaultTheme customTheme settings'
+            ).lean();
+            if (franchise) await franchiseCache.getFranchiseBranding(req.franchiseId); // prime cache
+          }
+
+          if (franchise) {
+            const s = franchise.settings || {};
+            brandingOrg = {
+              key: franchise.slug,
+              displayName: franchise.displayName,
+              erpTitle: franchise.erpTitle || franchise.displayName,
+              erpSubtitle: franchise.erpSubtitle || orgConfig.erpSubtitle,
+              tagline: franchise.tagline || '',
+              regNumber: s.regNumber || '',
+              email: s.contactEmail || '',
+              supportEmail: s.supportEmail || '',
+              paymentsEmail: s.paymentsEmail || '',
+              phone: s.contactPhone || '',
+              address: s.address || '',
+              website: s.websiteUrl || '',
+              websiteUrl: s.websiteUrl || '',
+              defaultTheme: franchise.defaultTheme || 'blue',
+              customTheme: franchise.customTheme || null,
+              copyrightText: `© ${new Date().getFullYear()} ${s.copyrightHolder || franchise.displayName}. All rights reserved.`,
+              logoUrl: franchise.logoUrl || `/assets/logo-placeholder.png`,
+              footerText: s.footerText || '',
+            };
+          }
+        } catch (brandingErr) {
+          console.error('⚠ Failed to load franchise branding:', brandingErr.message);
+        }
+      }
+
+      // Fallback to orgConfig (env-based) if no franchise branding found
+      if (!brandingOrg) {
+        brandingOrg = {
+          key: orgConfig.key,
+          displayName: orgConfig.displayName,
+          erpTitle: orgConfig.erpTitle,
+          erpSubtitle: orgConfig.erpSubtitle,
+          tagline: orgConfig.tagline,
+          regNumber: orgConfig.regNumber,
+          email: orgConfig.email,
+          supportEmail: orgConfig.supportEmail,
+          paymentsEmail: orgConfig.paymentsEmail,
+          phone: orgConfig.phone,
+          address: orgConfig.address,
+          website: orgConfig.website,
+          websiteUrl: orgConfig.websiteUrl,
+          defaultTheme: orgConfig.defaultTheme,
+          copyrightText: orgConfig.copyrightText,
+          logoUrl: `/assets/${orgConfig.logoFilename}`,
+          heroSubtext: orgConfig.heroSubtext,
+          aboutText: orgConfig.aboutText,
+          footerText: orgConfig.footerText,
+          communityLabel: orgConfig.communityLabel,
+          communityDescription: orgConfig.communityDescription,
+        };
+      }
+
+      configMap.org = brandingOrg;
 
       return ResponseHelper.success(
         res,
@@ -103,7 +154,7 @@ class ApplicationConfigController {
    */
   getConfigById = async (req, res) => {
     try {
-      const config = await ApplicationConfig.findById(req.params.id)
+      const config = await ApplicationConfig.findOne({ _id: req.params.id, franchise: req.franchiseId })
         .populate('updatedBy', 'name email');
       
       if (!config) {
@@ -139,7 +190,7 @@ class ApplicationConfigController {
         return ResponseHelper.error(res, 'Value is required', 400);
       }
       
-      const config = await ApplicationConfig.findById(req.params.id);
+      const config = await ApplicationConfig.findOne({ _id: req.params.id, franchise: req.franchiseId });
       
       if (!config) {
         return ResponseHelper.error(res, 'Configuration not found', 404);
@@ -217,7 +268,7 @@ class ApplicationConfigController {
       
       for (const { id, value } of configs) {
         try {
-          const config = await ApplicationConfig.findById(id);
+          const config = await ApplicationConfig.findOne({ _id: id, franchise: req.franchiseId });
           
           if (!config) {
             errors.push({ id, error: 'Configuration not found' });
@@ -320,7 +371,7 @@ class ApplicationConfigController {
    */
   deleteConfig = async (req, res) => {
     try {
-      const config = await ApplicationConfig.findById(req.params.id);
+      const config = await ApplicationConfig.findOne({ _id: req.params.id, franchise: req.franchiseId });
       
       if (!config) {
         return ResponseHelper.error(res, 'Configuration not found', 404);
@@ -427,6 +478,118 @@ class ApplicationConfigController {
         500,
         error.message
       );
+    }
+  }
+
+  /**
+   * Get per-franchise integrations config (DXing SMS + SMTP Email)
+   * GET /api/config/integrations
+   * Access: super_admin of the franchise only
+   *
+   * Returns values MASKED for security — actual secrets are never sent to client.
+   * A non-empty "*****" means a value IS saved; empty string means NOT configured.
+   */
+  getIntegrationsConfig = async (req, res) => {
+    try {
+      if (!req.franchiseId) {
+        return ResponseHelper.error(res, 'Franchise context required', 400);
+      }
+
+      // Explicitly fetch the sensitive fields that are select:false by default
+      const franchise = await Franchise.findById(req.franchiseId)
+        .select('settings.smsConfig settings.emailConfig')
+        .lean();
+
+      if (!franchise) {
+        return ResponseHelper.error(res, 'Franchise not found', 404);
+      }
+
+      const sms   = franchise.settings?.smsConfig   || {};
+      const email = franchise.settings?.emailConfig || {};
+
+      // Mask actual credential values — just indicate whether they are set
+      const mask = (v) => (v ? '*****' : '');
+
+      return ResponseHelper.success(res, {
+        smsConfig: {
+          dxingApiKey:    mask(sms.dxingApiKey),
+          dxingApiSecret: mask(sms.dxingApiSecret),
+          enabled:        !!sms.enabled,
+          isConfigured:   !!(sms.dxingApiKey && sms.dxingApiSecret),
+        },
+        emailConfig: {
+          smtpHost: email.smtpHost || '',
+          smtpPort: email.smtpPort || '',
+          smtpUser: email.smtpUser || '',
+          smtpPass: mask(email.smtpPass),
+          enabled:  !!email.enabled,
+          isConfigured: !!(email.smtpHost && email.smtpUser && email.smtpPass),
+        },
+      }, 'Integrations config retrieved');
+    } catch (error) {
+      console.error('Error fetching integrations config:', error);
+      return ResponseHelper.error(res, 'Failed to fetch integrations config', 500, error.message);
+    }
+  }
+
+  /**
+   * Update per-franchise integrations config (DXing SMS + SMTP Email)
+   * PUT /api/config/integrations
+   * Access: super_admin of the franchise only
+   *
+   * Omitting a field (undefined) keeps the existing value.
+   * Sending empty string ("") clears the field.
+   */
+  updateIntegrationsConfig = async (req, res) => {
+    try {
+      if (!req.franchiseId) {
+        return ResponseHelper.error(res, 'Franchise context required', 400);
+      }
+
+      const { smsConfig, emailConfig } = req.body;
+
+      const update = {};
+
+      if (smsConfig !== undefined) {
+        if (smsConfig.dxingApiKey    !== undefined) update['settings.smsConfig.dxingApiKey']    = smsConfig.dxingApiKey;
+        if (smsConfig.dxingApiSecret !== undefined) update['settings.smsConfig.dxingApiSecret'] = smsConfig.dxingApiSecret;
+        if (smsConfig.enabled        !== undefined) update['settings.smsConfig.enabled']        = !!smsConfig.enabled;
+      }
+
+      if (emailConfig !== undefined) {
+        if (emailConfig.smtpHost !== undefined) update['settings.emailConfig.smtpHost'] = emailConfig.smtpHost;
+        if (emailConfig.smtpPort !== undefined) update['settings.emailConfig.smtpPort'] = Number(emailConfig.smtpPort) || 587;
+        if (emailConfig.smtpUser !== undefined) update['settings.emailConfig.smtpUser'] = emailConfig.smtpUser;
+        if (emailConfig.smtpPass !== undefined) update['settings.emailConfig.smtpPass'] = emailConfig.smtpPass;
+        if (emailConfig.enabled  !== undefined) update['settings.emailConfig.enabled']  = !!emailConfig.enabled;
+      }
+
+      if (Object.keys(update).length === 0) {
+        return ResponseHelper.error(res, 'No fields to update', 400);
+      }
+
+      // Use the native MongoDB collection directly to bypass Mongoose's
+      // path-collision error when writing nested dot-notation paths into a
+      // sub-document that also has select:false fields registered at the
+      // parent schema level (e.g. settings.smsConfig vs settings.smsConfig.dxingApiKey).
+      const mongoose = require('mongoose');
+      await Franchise.collection.updateOne(
+        { _id: new mongoose.Types.ObjectId(req.franchiseId.toString()) },
+        { $set: update }
+      );
+      const franchise = await Franchise.findById(req.franchiseId);
+
+      if (!franchise) {
+        return ResponseHelper.error(res, 'Franchise not found', 404);
+      }
+
+      // Invalidate cache so service picks up new credentials on next request
+      franchiseCache.invalidateFranchise(franchise);
+
+      return ResponseHelper.success(res, { updated: true }, 'Integrations settings saved successfully');
+    } catch (error) {
+      console.error('Error updating integrations config:', error);
+      return ResponseHelper.error(res, 'Failed to update integrations config', 500, error.message);
     }
   }
 }

@@ -1,4 +1,5 @@
 const mongoose = require('mongoose');
+const franchisePlugin = require('../utils/franchisePlugin');
 
 const brochureSchema = new mongoose.Schema({
   title: {
@@ -65,6 +66,7 @@ const brochureSchema = new mongoose.Schema({
 });
 
 brochureSchema.index({ status: 1, createdAt: -1 });
+brochureSchema.plugin(franchisePlugin);
 brochureSchema.index({ category: 1 });
 
 module.exports = mongoose.model('Brochure', brochureSchema);

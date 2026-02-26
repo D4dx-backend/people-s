@@ -1,11 +1,11 @@
 const mongoose = require('mongoose');
 const Counter = require('./Counter');
+const franchisePlugin = require('../utils/franchisePlugin');
 
 const paymentSchema = new mongoose.Schema({
   // Basic Information
   paymentNumber: {
     type: String,
-    unique: true,
     required: [true, 'Payment number is required']
   },
   
@@ -559,5 +559,9 @@ paymentSchema.statics.getForReconciliation = function(filters = {}) {
     .populate('beneficiary', 'personalInfo contact financial.bankAccount')
     .sort({ 'timeline.completedAt': 1 });
 };
+
+// Franchise multi-tenancy — compound unique per franchise
+paymentSchema.plugin(franchisePlugin);
+paymentSchema.index({ paymentNumber: 1, franchise: 1 }, { unique: true });
 
 module.exports = mongoose.model('Payment', paymentSchema);

@@ -16,7 +16,7 @@ exports.generateSchedule = async (req, res) => {
     const { recurringConfig } = req.body;
     
     // Check if application exists
-    const application = await Application.findById(applicationId)
+    const application = await Application.findOne({ _id: applicationId, franchise: req.franchiseId })
       .populate('beneficiary scheme project state district area unit');
     
     if (!application) {
@@ -70,6 +70,9 @@ exports.getRecurringApplications = async (req, res) => {
     
     // Remove undefined filters
     Object.keys(filters).forEach(key => filters[key] === undefined && delete filters[key]);
+
+    // Multi-tenant: scope to franchise
+    if (req.franchiseId) filters.franchise = req.franchiseId;
     
     const applications = await recurringPaymentService.getRecurringApplications(filters);
     
@@ -103,7 +106,7 @@ exports.getApplicationSchedule = async (req, res) => {
     }
     
     // Get application details
-    const application = await Application.findById(applicationId)
+    const application = await Application.findOne({ _id: applicationId, franchise: req.franchiseId })
       .populate('beneficiary scheme project')
       .select('applicationNumber recurringConfig status');
     
@@ -144,6 +147,7 @@ exports.getUpcomingPayments = async (req, res) => {
     };
     
     Object.keys(filters).forEach(key => filters[key] === undefined && delete filters[key]);
+    if (req.franchiseId) filters.franchise = req.franchiseId;  // Multi-tenant
     
     const payments = await recurringPaymentService.getUpcomingPayments(days, filters);
     
@@ -175,6 +179,7 @@ exports.getOverduePayments = async (req, res) => {
     };
     
     Object.keys(filters).forEach(key => filters[key] === undefined && delete filters[key]);
+    if (req.franchiseId) filters.franchise = req.franchiseId;  // Multi-tenant
     
     const payments = await recurringPaymentService.getOverduePayments(filters);
     
@@ -359,7 +364,7 @@ exports.getRecurringPayment = async (req, res) => {
   try {
     const { paymentId } = req.params;
     
-    const payment = await RecurringPayment.findById(paymentId)
+    const payment = await RecurringPayment.findOne({ _id: paymentId, franchise: req.franchiseId })
       .populate('application', 'applicationNumber status')
       .populate('beneficiary', 'name phone email applicationNumber')
       .populate('scheme', 'name')

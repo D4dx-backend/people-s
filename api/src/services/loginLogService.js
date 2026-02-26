@@ -91,7 +91,9 @@ class LoginLogService {
         otpDetails,
         sessionId,
         metadata,
-        timestamp: new Date()
+        timestamp: new Date(),
+        // Multi-tenant: attach franchise from request context
+        franchise: req?.franchiseId || null
       };
 
       return await LoginLog.logEvent(logData);
@@ -118,11 +120,14 @@ class LoginLogService {
     endDate,
     failureReason,
     deviceType,
+    franchise,
     sortBy = 'timestamp',
     sortOrder = 'desc'
   } = {}) {
     try {
       const filters = {};
+
+      if (franchise) filters.franchise = franchise;
 
       if (search) {
         filters.$or = [

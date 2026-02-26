@@ -1,128 +1,6 @@
 const { Project, Scheme, Application, Payment, User, Beneficiary, RecurringPayment } = require('../models');
 const ResponseHelper = require('../utils/responseHelper');
 
-/**
- * Build scope-based filters for the current user.
- * Returns { applicationFilter, projectFilter, schemeFilter, beneficiaryFilter, paymentFilter }
- */
-async function buildScopeFilters(user) {
-  const role = user.role;
-
-  // Super admin sees everything
-  if (role === 'super_admin') {
-    return { applicationFilter: {}, projectFilter: {}, schemeFilter: {}, beneficiaryFilter: {}, paymentFilter: {} };
-  }
-
-  const getId = (ref) => {
-    if (!ref) return null;
-    if (typeof ref === 'object' && ref._id) return ref._id;
-    return ref;
-  };
-
-  // State admin: scoped to their assigned state
-  if (role === 'state_admin') {
-    const stateId = getId(user.adminScope?.state);
-    const regions = user.adminScope?.regions || [];
-    const resolvedStateId = stateId || (regions.length > 0 ? getId(regions[0]) : null);
-    if (resolvedStateId) {
-      const stateFilter = { state: resolvedStateId };
-      return {
-        applicationFilter: stateFilter,
-        projectFilter: {},
-        schemeFilter: {},
-        beneficiaryFilter: stateFilter,
-        paymentFilter: {}
-      };
-    }
-    // No state assigned – fail closed: return no records
-    const noMatch = { _id: { $exists: false } };
-    return { applicationFilter: noMatch, projectFilter: noMatch, schemeFilter: noMatch, beneficiaryFilter: noMatch, paymentFilter: noMatch };
-  }
-
-  // Project coordinator: scoped to assigned projects
-  if (role === 'project_coordinator') {
-    const projectIds = user.adminScope?.projects || [];
-    const pFilter = projectIds.length > 0 ? { _id: { $in: projectIds } } : { _id: null };
-    const appFilter = projectIds.length > 0 ? { project: { $in: projectIds } } : { _id: null };
-    return {
-      applicationFilter: appFilter,
-      projectFilter: pFilter,
-      schemeFilter: projectIds.length > 0 ? { project: { $in: projectIds } } : { _id: null },
-      beneficiaryFilter: {}, // coordinators don't have beneficiary scope
-      paymentFilter: projectIds.length > 0 ? { project: { $in: projectIds } } : { _id: null }
-    };
-  }
-
-  // Scheme coordinator: scoped to assigned schemes
-  if (role === 'scheme_coordinator') {
-    const schemeIds = user.adminScope?.schemes || [];
-    const sFilter = schemeIds.length > 0 ? { _id: { $in: schemeIds } } : { _id: null };
-    const appFilter = schemeIds.length > 0 ? { scheme: { $in: schemeIds } } : { _id: null };
-    return {
-      applicationFilter: appFilter,
-      projectFilter: {}, // scheme coordinators don't filter projects directly
-      schemeFilter: sFilter,
-      beneficiaryFilter: {},
-      paymentFilter: schemeIds.length > 0 ? { scheme: { $in: schemeIds } } : { _id: null }
-    };
-  }
-
-  // Regional admins: district, area, unit
-  const noMatch = { _id: { $exists: false } };
-  const applicationFilter = {};
-  const beneficiaryFilter = {};
-  let regionalScopeFound = false;
-
-  if (role === 'district_admin') {
-    const districtId = getId(user.adminScope?.district);
-    if (districtId) {
-      applicationFilter.district = districtId;
-      beneficiaryFilter.district = districtId;
-      regionalScopeFound = true;
-    }
-  } else if (role === 'area_admin') {
-    const areaId = getId(user.adminScope?.area);
-    if (areaId) {
-      applicationFilter.area = areaId;
-      beneficiaryFilter.area = areaId;
-      regionalScopeFound = true;
-    }
-  } else if (role === 'unit_admin') {
-    const unitId = getId(user.adminScope?.unit);
-    if (unitId) {
-      applicationFilter.unit = unitId;
-      beneficiaryFilter.unit = unitId;
-      regionalScopeFound = true;
-    }
-  } else {
-    // Unknown role with regional scope - fail closed
-    return { applicationFilter: noMatch, projectFilter: noMatch, schemeFilter: noMatch, beneficiaryFilter: noMatch, paymentFilter: noMatch };
-  }
-
-  // If scope id was missing, deny access entirely
-  if (!regionalScopeFound) {
-    return { applicationFilter: noMatch, projectFilter: noMatch, schemeFilter: noMatch, beneficiaryFilter: noMatch, paymentFilter: noMatch };
-  }
-
-  // Regional admins see projects/schemes in their regions
-  const userRegions = user.adminScope?.regions || [];
-  const projectFilter = userRegions.length > 0 ? { targetRegions: { $in: userRegions } } : {};
-  const schemeFilter = userRegions.length > 0 ? {
-    $or: [{ targetRegions: { $size: 0 } }, { targetRegions: { $in: userRegions } }]
-  } : {};
-
-  // Payment model doesn't have district/area/unit fields directly,
-  // so filter payments by projects in the user's regions
-  let paymentFilter = {};
-  if (userRegions.length > 0) {
-    const regionProjects = await Project.find({ targetRegions: { $in: userRegions } }).select('_id').lean();
-    const regionProjectIds = regionProjects.map(p => p._id);
-    paymentFilter = regionProjectIds.length > 0 ? { project: { $in: regionProjectIds } } : { _id: null };
-  }
-
-  return { applicationFilter, projectFilter, schemeFilter, beneficiaryFilter, paymentFilter };
-}
-
 class DashboardController {
   /**
    * Get dashboard overview statistics
@@ -131,9 +9,20 @@ class DashboardController {
   async getOverview(req, res) {
     try {
       const user = req.user;
-      const { applicationFilter, projectFilter, schemeFilter, beneficiaryFilter, paymentFilter } = await buildScopeFilters(user);
+      
+      // Build location-based filter for area/district admins
+      let locationFilter = {};
+      if (user.role === 'area_admin' && user.adminScope?.area) {
+        locationFilter = { 'location.area': user.adminScope.area };
+      } else if (user.role === 'district_admin' && user.adminScope?.district) {
+        locationFilter = { 'location.district': user.adminScope.district };
+      }
+      // super_admin and state_admin can see all data (no filter)
 
-      // Get counts for main entities with scope filters
+      // Franchise scope
+      if (req.franchiseId) locationFilter.franchise = req.franchiseId;
+      
+      // Get counts for main entities with location filter
       const [
         totalProjects,
         totalSchemes,
@@ -141,17 +30,16 @@ class DashboardController {
         totalBeneficiaries,
         totalUsers
       ] = await Promise.all([
-        Project.countDocuments(projectFilter),
-        Scheme.countDocuments(schemeFilter),
-        Application.countDocuments(applicationFilter),
-        Beneficiary.countDocuments(beneficiaryFilter),
-        // Only super/state admins see total users; others see 0
-        (user.role === 'super_admin' || user.role === 'state_admin') ? User.countDocuments() : Promise.resolve(0)
+        Project.countDocuments(req.franchiseId ? { franchise: req.franchiseId } : {}),
+        Scheme.countDocuments(req.franchiseId ? { franchise: req.franchiseId } : {}),
+        Application.countDocuments(locationFilter),
+        Beneficiary.countDocuments(locationFilter),
+        User.countDocuments()
       ]);
 
-      // Get application status breakdown with scope filter
+      // Get application status breakdown with location filter
       const applicationStats = await Application.aggregate([
-        { $match: applicationFilter },
+        { $match: locationFilter },
         {
           $group: {
             _id: '$status',
@@ -162,7 +50,7 @@ class DashboardController {
 
       // Get scheme-based application count by status
       const schemeBasedStats = await Application.aggregate([
-        { $match: applicationFilter },
+        { $match: locationFilter },
         {
           $group: {
             _id: {
@@ -205,9 +93,9 @@ class DashboardController {
         }
       ]);
 
-      // Get total budget and spending (scoped to accessible projects)
+      // Get total budget and spending
       const budgetStats = await Project.aggregate([
-        { $match: projectFilter },
+        ...(req.franchiseId ? [{ $match: { franchise: req.franchiseId } }] : []),
         {
           $group: {
             _id: null,
@@ -217,7 +105,7 @@ class DashboardController {
         }
       ]);
 
-      // Get recent activity counts (scoped)
+      // Get recent activity counts
       const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
       const [
         recentApplications,
@@ -225,10 +113,10 @@ class DashboardController {
         recentRecurringPayments,
         recentBeneficiaries
       ] = await Promise.all([
-        Application.countDocuments({ ...applicationFilter, createdAt: { $gte: thirtyDaysAgo } }),
-        Payment.countDocuments({ ...paymentFilter, createdAt: { $gte: thirtyDaysAgo } }),
-        RecurringPayment.countDocuments({ ...paymentFilter, createdAt: { $gte: thirtyDaysAgo } }),
-        Beneficiary.countDocuments({ ...beneficiaryFilter, createdAt: { $gte: thirtyDaysAgo } })
+        Application.countDocuments({ ...locationFilter, createdAt: { $gte: thirtyDaysAgo } }),
+        Payment.countDocuments({ createdAt: { $gte: thirtyDaysAgo } }),
+        RecurringPayment.countDocuments({ createdAt: { $gte: thirtyDaysAgo } }),
+        Beneficiary.countDocuments({ ...locationFilter, createdAt: { $gte: thirtyDaysAgo } })
       ]);
 
       const budget = budgetStats[0] || { totalBudget: 0, totalSpent: 0 };
@@ -305,9 +193,19 @@ class DashboardController {
     try {
       const { limit = 10 } = req.query;
       const user = req.user;
-      const { applicationFilter } = await buildScopeFilters(user);
+      
+      // Build location-based filter for area/district admins
+      let locationFilter = {};
+      if (user.role === 'area_admin' && user.adminScope?.area) {
+        locationFilter = { 'location.area': user.adminScope.area };
+      } else if (user.role === 'district_admin' && user.adminScope?.district) {
+        locationFilter = { 'location.district': user.adminScope.district };
+      }
 
-      const applications = await Application.find(applicationFilter)
+      // Franchise scope
+      if (req.franchiseId) locationFilter.franchise = req.franchiseId;
+
+      const applications = await Application.find(locationFilter)
         .populate('beneficiary', 'name phone')
         .populate('scheme', 'name')
         .populate('project', 'name')
@@ -338,9 +236,9 @@ class DashboardController {
   async getRecentPayments(req, res) {
     try {
       const { limit = 10 } = req.query;
-      const { paymentFilter } = await buildScopeFilters(req.user);
 
-      // Fetch both regular and recurring payments (scoped)
+      // Fetch both regular and recurring payments
+      const paymentFilter = req.franchiseId ? { franchise: req.franchiseId } : {};
       const [payments, recurringPayments] = await Promise.all([
         Payment.find(paymentFilter)
           .populate('beneficiary', 'name')
@@ -401,14 +299,13 @@ class DashboardController {
   async getMonthlyTrends(req, res) {
     try {
       const { months = 6 } = req.query;
-      const { applicationFilter, paymentFilter } = await buildScopeFilters(req.user);
       const startDate = new Date();
       startDate.setMonth(startDate.getMonth() - months);
 
-      // Get application trends (scoped)
+      // Get application trends
       const applicationTrends = await Application.aggregate([
         {
-          $match: { ...applicationFilter, createdAt: { $gte: startDate } }
+          $match: { createdAt: { $gte: startDate }, ...(req.franchiseId ? { franchise: req.franchiseId } : {}) }
         },
         {
           $group: {
@@ -427,13 +324,13 @@ class DashboardController {
         }
       ]);
 
-      // Get payment trends (scoped)
+      // Get payment trends
       const paymentTrends = await Payment.aggregate([
         {
-          $match: {
-            ...paymentFilter,
+          $match: { 
             createdAt: { $gte: startDate },
-            status: 'completed'
+            status: 'completed',
+            ...(req.franchiseId ? { franchise: req.franchiseId } : {})
           }
         },
         {
@@ -477,8 +374,9 @@ class DashboardController {
    */
   async getProjectPerformance(req, res) {
     try {
-      const { projectFilter } = await buildScopeFilters(req.user);
-      const projects = await Project.find({ status: 'active', ...projectFilter })
+      const projectFilter = { status: 'active' };
+      if (req.franchiseId) projectFilter.franchise = req.franchiseId;
+      const projects = await Project.find(projectFilter)
         .select('name budget statistics')
         .sort({ 'budget.total': -1 })
         .limit(10);

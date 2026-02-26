@@ -1,11 +1,11 @@
 const mongoose = require('mongoose');
+const franchisePlugin = require('../utils/franchisePlugin');
 
 const applicationSchema = new mongoose.Schema({
   // Application Details
   applicationNumber: {
     type: String,
-    required: true,
-    unique: true
+    required: true
   },
   
   // Beneficiary
@@ -601,5 +601,9 @@ applicationSchema.pre('save', async function(next) {
   }
   next();
 });
+
+// Franchise multi-tenancy — compound unique per franchise
+applicationSchema.plugin(franchisePlugin);
+applicationSchema.index({ applicationNumber: 1, franchise: 1 }, { unique: true });
 
 module.exports = mongoose.model('Application', applicationSchema);

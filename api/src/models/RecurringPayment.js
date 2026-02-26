@@ -1,4 +1,5 @@
 const mongoose = require('mongoose');
+const franchisePlugin = require('../utils/franchisePlugin');
 
 const recurringPaymentSchema = new mongoose.Schema({
   // References
@@ -206,7 +207,9 @@ const recurringPaymentSchema = new mongoose.Schema({
 });
 
 // Compound Indexes for better query performance
-recurringPaymentSchema.index({ application: 1, paymentNumber: 1 }, { unique: true });
+// Franchise multi-tenancy
+recurringPaymentSchema.plugin(franchisePlugin);
+recurringPaymentSchema.index({ application: 1, paymentNumber: 1, franchise: 1 }, { unique: true });
 recurringPaymentSchema.index({ status: 1, scheduledDate: 1 });
 recurringPaymentSchema.index({ status: 1, dueDate: 1 });
 recurringPaymentSchema.index({ beneficiary: 1, status: 1 });
