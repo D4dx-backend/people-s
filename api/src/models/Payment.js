@@ -1,10 +1,11 @@
 const mongoose = require('mongoose');
+const Counter = require('./Counter');
+const franchisePlugin = require('../utils/franchisePlugin');
 
 const paymentSchema = new mongoose.Schema({
   // Basic Information
   paymentNumber: {
     type: String,
-    unique: true,
     required: [true, 'Payment number is required']
   },
   
@@ -34,7 +35,8 @@ const paymentSchema = new mongoose.Schema({
   amount: {
     type: Number,
     required: [true, 'Payment amount is required'],
-    min: [0, 'Payment amount cannot be negative']
+    min: [1, 'Payment amount must be at least 1'],
+    max: [100000000, 'Payment amount exceeds maximum limit']
   },
   currency: {
     type: String,
@@ -374,23 +376,19 @@ paymentSchema.virtual('approvalStatus').get(function() {
   return 'approved';
 });
 
-// Pre-save middleware to generate payment number
+// Pre-save middleware to generate payment number (atomic via Counter model)
 paymentSchema.pre('save', async function(next) {
   if (this.isNew && !this.paymentNumber) {
     try {
       const year = new Date().getFullYear();
       const month = String(new Date().getMonth() + 1).padStart(2, '0');
       
-      // Count payments for current month
-      const count = await this.constructor.countDocuments({
-        createdAt: {
-          $gte: new Date(year, new Date().getMonth(), 1),
-          $lt: new Date(year, new Date().getMonth() + 1, 1)
-        }
-      });
+      // Atomic counter-based sequence generation (no race conditions)
+      const counterKey = `payment_${year}_${month}`;
+      const seq = await Counter.getNextSequence(counterKey);
       
       // Format: PAY_YYYY_MM_SEQUENCE
-      const sequence = String(count + 1).padStart(5, '0');
+      const sequence = String(seq).padStart(5, '0');
       this.paymentNumber = `PAY_${year}_${month}_${sequence}`;
       
       next();
@@ -561,5 +559,9 @@ paymentSchema.statics.getForReconciliation = function(filters = {}) {
     .populate('beneficiary', 'personalInfo contact financial.bankAccount')
     .sort({ 'timeline.completedAt': 1 });
 };
+
+// Franchise multi-tenancy — compound unique per franchise
+paymentSchema.plugin(franchisePlugin);
+paymentSchema.index({ paymentNumber: 1, franchise: 1 }, { unique: true });
 
 module.exports = mongoose.model('Payment', paymentSchema);

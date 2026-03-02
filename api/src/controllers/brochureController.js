@@ -16,6 +16,9 @@ class BrochureController {
       if (status) query.status = status;
       if (category) query.category = category;
 
+      // Multi-tenant: restrict to current franchise
+      if (req.franchiseId) query.franchise = req.franchiseId;
+
       const brochures = await Brochure.find(query)
         .populate('createdBy', 'name')
         .populate('updatedBy', 'name')
@@ -83,7 +86,7 @@ class BrochureController {
     try {
       const { id } = req.params;
       
-      const brochure = await Brochure.findById(id)
+      const brochure = await Brochure.findOne({ _id: id, franchise: req.franchiseId })
         .populate('createdBy', 'name')
         .populate('updatedBy', 'name');
 
@@ -129,7 +132,8 @@ class BrochureController {
         fileKey: uploadResult.key,
         fileName: req.file.originalname,
         fileSize: uploadResult.size,
-        createdBy: userId
+        createdBy: userId,
+        franchise: req.franchiseId || null  // Multi-tenant
       });
 
       await brochure.populate('createdBy', 'name');
@@ -151,7 +155,7 @@ class BrochureController {
       const { title, description, category, status } = req.body;
       const userId = req.user._id;
 
-      const brochure = await Brochure.findById(id);
+      const brochure = await Brochure.findOne({ _id: id, franchise: req.franchiseId });
       if (!brochure) {
         return ResponseHelper.error(res, 'Brochure not found', 404);
       }
@@ -206,7 +210,7 @@ class BrochureController {
     try {
       const { id } = req.params;
 
-      const brochure = await Brochure.findById(id);
+      const brochure = await Brochure.findOne({ _id: id, franchise: req.franchiseId });
       if (!brochure) {
         return ResponseHelper.error(res, 'Brochure not found', 404);
       }
@@ -216,7 +220,7 @@ class BrochureController {
         await deleteFromSpaces(brochure.fileKey);
       }
 
-      await Brochure.findByIdAndDelete(id);
+      await Brochure.findOneAndDelete({ _id: id, franchise: req.franchiseId });
 
       return ResponseHelper.success(res, null, 'Brochure deleted successfully');
     } catch (error) {
@@ -233,7 +237,7 @@ class BrochureController {
     try {
       const { id } = req.params;
 
-      const brochure = await Brochure.findById(id);
+      const brochure = await Brochure.findOne({ _id: id, franchise: req.franchiseId });
       if (!brochure) {
         return ResponseHelper.error(res, 'Brochure not found', 404);
       }

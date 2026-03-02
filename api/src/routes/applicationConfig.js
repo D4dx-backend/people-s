@@ -1,8 +1,9 @@
 const express = require('express');
 const router = express.Router();
 const applicationConfigController = require('../controllers/applicationConfigController');
-const { authenticate } = require('../middleware/auth');
+const { authenticate, authorize } = require('../middleware/auth');
 const { hasAnyPermission } = require('../middleware/rbacMiddleware');
+const { uploadSingle } = require('../middleware/upload');
 
 /**
  * Test route to verify public routes work
@@ -16,6 +17,19 @@ router.get('/test', (req, res) => {
  * No authentication required
  */
 router.get('/public', applicationConfigController.getPublicConfigs);
+
+/**
+ * @route   POST /api/config/logo
+ * @desc    Upload organization logo (saves to assets folder)
+ * @access  Private (settings.write)
+ */
+router.post(
+  '/logo',
+  authenticate,
+  hasAnyPermission(['config.write', 'settings.write']),
+  uploadSingle('logo'),
+  applicationConfigController.uploadLogo
+);
 
 /**
  * Protected routes - Require authentication and permissions
@@ -67,6 +81,23 @@ router.delete(
   authenticate,
   hasAnyPermission(['config.write', 'settings.write']),
   applicationConfigController.deleteConfig
+);
+
+// ── Per-franchise Integrations (DXing SMS + SMTP Email) ──────────────────
+// Only the franchise super_admin (or global super admin) may read/write these.
+
+router.get(
+  '/integrations',
+  authenticate,
+  authorize('super_admin'),
+  applicationConfigController.getIntegrationsConfig
+);
+
+router.put(
+  '/integrations',
+  authenticate,
+  authorize('super_admin'),
+  applicationConfigController.updateIntegrationsConfig
 );
 
 module.exports = router;

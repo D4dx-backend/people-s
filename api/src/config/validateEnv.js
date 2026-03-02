@@ -76,6 +76,17 @@ const optionalEnvVars = {
   SMS_ENABLED: 'Enable SMS service (true/false)',
   MAX_OTP_ATTEMPTS: 'Maximum OTP attempts per day',
   OTP_RATE_LIMIT_SECONDS: 'Minimum interval between OTP requests in seconds',
+
+  // Multi-Org Configuration
+  ORG_NAME: 'Organization key (baithuzzakath or people_foundation)',
+  ORG_DISPLAY_NAME: 'Override org display name',
+  ORG_EMAIL: 'Override org contact email',
+  ORG_PHONE: 'Override org phone number',
+  ORG_WEBSITE: 'Override org website display string',
+  ORG_WEBSITE_URL: 'Override org full website URL',
+  ORG_ADDRESS: 'Override org address',
+  ORG_LOGO_FILENAME: 'Override org logo filename',
+  ORG_DEFAULT_THEME: 'Override default theme (blue, green, purple)',
 };
 
 /**

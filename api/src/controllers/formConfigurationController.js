@@ -18,7 +18,7 @@ class FormConfigurationController {
       });
 
       // First, verify the scheme exists and user has access
-      const scheme = await Scheme.findById(schemeId);
+      const scheme = await Scheme.findOne({ _id: schemeId, franchise: req.franchiseId });
       
       if (!scheme) {
         console.log('❌ Scheme not found:', schemeId);
@@ -142,7 +142,7 @@ class FormConfigurationController {
       const formData = req.body;
 
       // First, verify the scheme exists and user has access
-      const scheme = await Scheme.findById(schemeId);
+      const scheme = await Scheme.findOne({ _id: schemeId, franchise: req.franchiseId });
       
       if (!scheme) {
         return ResponseHelper.error(res, 'Scheme not found', 404);
@@ -179,6 +179,7 @@ class FormConfigurationController {
         formConfig = new FormConfiguration({
           ...formData,
           scheme: schemeId,
+          franchise: req.franchiseId || null,  // Multi-tenant
           createdBy: req.user._id,
           updatedBy: req.user._id,
           version: 1
@@ -222,7 +223,7 @@ class FormConfigurationController {
       const { schemeId } = req.params;
 
       // First, verify the scheme exists and user has access
-      const scheme = await Scheme.findById(schemeId);
+      const scheme = await Scheme.findOne({ _id: schemeId, franchise: req.franchiseId });
       
       if (!scheme) {
         return ResponseHelper.error(res, 'Scheme not found', 404);
@@ -241,7 +242,7 @@ class FormConfigurationController {
       }
 
       // Update scheme status
-      await Scheme.findByIdAndUpdate(schemeId, {
+      await Scheme.findOneAndUpdate({ _id: schemeId, franchise: req.franchiseId }, {
         hasFormConfiguration: false,
         formConfigurationUpdated: null
       });
@@ -265,7 +266,7 @@ class FormConfigurationController {
       const { isPublished } = req.body;
 
       // First, verify the scheme exists and user has access
-      const scheme = await Scheme.findById(schemeId);
+      const scheme = await Scheme.findOne({ _id: schemeId, franchise: req.franchiseId });
       
       if (!scheme) {
         return ResponseHelper.error(res, 'Scheme not found', 404);
@@ -309,7 +310,7 @@ class FormConfigurationController {
       const { schemeId } = req.params;
 
       // First, verify the scheme exists and user has access
-      const scheme = await Scheme.findById(schemeId);
+      const scheme = await Scheme.findOne({ _id: schemeId, franchise: req.franchiseId });
       
       if (!scheme) {
         return ResponseHelper.error(res, 'Scheme not found', 404);
@@ -369,6 +370,9 @@ class FormConfigurationController {
         ];
       }
 
+      // Franchise scope
+      if (req.franchiseId) filter.franchise = req.franchiseId;
+
       const skip = (page - 1) * limit;
       
       const formConfigs = await FormConfiguration.find(filter)
@@ -411,8 +415,8 @@ class FormConfigurationController {
 
       // Verify both schemes exist and user has access
       const [sourceScheme, targetScheme] = await Promise.all([
-        Scheme.findById(schemeId),
-        Scheme.findById(targetSchemeId)
+        Scheme.findOne({ _id: schemeId, franchise: req.franchiseId }),
+        Scheme.findOne({ _id: targetSchemeId, franchise: req.franchiseId })
       ]);
 
       if (!sourceScheme) {
@@ -480,7 +484,7 @@ class FormConfigurationController {
     try {
       const { schemeId } = req.params;
 
-      const scheme = await Scheme.findById(schemeId);
+      const scheme = await Scheme.findOne({ _id: schemeId, franchise: req.franchiseId });
       if (!scheme) {
         return ResponseHelper.error(res, 'Scheme not found', 404);
       }
@@ -520,7 +524,7 @@ class FormConfigurationController {
       const { schemeId } = req.params;
       const formData = req.body;
 
-      const scheme = await Scheme.findById(schemeId);
+      const scheme = await Scheme.findOne({ _id: schemeId, franchise: req.franchiseId });
       if (!scheme) {
         return ResponseHelper.error(res, 'Scheme not found', 404);
       }
@@ -602,7 +606,7 @@ class FormConfigurationController {
     try {
       const { schemeId } = req.params;
 
-      const scheme = await Scheme.findById(schemeId);
+      const scheme = await Scheme.findOne({ _id: schemeId, franchise: req.franchiseId });
       if (!scheme) {
         return ResponseHelper.error(res, 'Scheme not found', 404);
       }
@@ -617,7 +621,7 @@ class FormConfigurationController {
         return ResponseHelper.error(res, 'Renewal form configuration not found', 404);
       }
 
-      await Scheme.findByIdAndUpdate(schemeId, {
+      await Scheme.findOneAndUpdate({ _id: schemeId, franchise: req.franchiseId }, {
         'renewalSettings.renewalFormConfigured': false
       });
 

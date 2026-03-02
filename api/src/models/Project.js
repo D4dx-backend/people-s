@@ -1,4 +1,5 @@
 const mongoose = require('mongoose');
+const franchisePlugin = require('../utils/franchisePlugin');
 
 const projectSchema = new mongoose.Schema({
   // Basic Information
@@ -11,7 +12,6 @@ const projectSchema = new mongoose.Schema({
   code: {
     type: String,
     required: [true, 'Project code is required'],
-    unique: true,
     uppercase: true,
     match: [/^[A-Z0-9_-]+$/, 'Project code can only contain uppercase letters, numbers, hyphens and underscores']
   },
@@ -460,5 +460,9 @@ projectSchema.pre('save', function(next) {
   
   next();
 });
+
+// Franchise multi-tenancy — compound unique: same code can exist in different franchises
+projectSchema.plugin(franchisePlugin);
+projectSchema.index({ code: 1, franchise: 1 }, { unique: true });
 
 module.exports = mongoose.model('Project', projectSchema);

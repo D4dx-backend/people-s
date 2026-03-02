@@ -12,6 +12,7 @@ class RBACController {
       const { category, type, isActive = true } = req.query;
       
       const filter = { isActive };
+      if (req.franchiseId) filter.franchise = req.franchiseId;
       if (category) filter.category = category;
       if (type) filter.type = type;
 
@@ -25,13 +26,15 @@ class RBACController {
         
         // Count total users with this role
         const totalUsers = await UserRole.countDocuments({ 
-          role: role._id 
+          role: role._id,
+          ...(req.franchiseId && { franchise: req.franchiseId })
         });
         
         // Count active users with this role
         const activeUsers = await UserRole.countDocuments({ 
           role: role._id,
           isActive: true,
+          ...(req.franchiseId && { franchise: req.franchiseId }),
           $or: [
             { validUntil: { $exists: false } },
             { validUntil: null },
@@ -64,7 +67,9 @@ class RBACController {
     try {
       const { id } = req.params;
       
-      const role = await Role.findById(id)
+      const roleQuery = { _id: id };
+      if (req.franchiseId) roleQuery.franchise = req.franchiseId;
+      const role = await Role.findOne(roleQuery)
         .populate('permissions')
         .populate('inheritsFrom', 'name displayName')
         .populate('createdBy', 'name')
@@ -88,6 +93,7 @@ class RBACController {
   async createRole(req, res) {
     try {
       const roleData = req.body;
+      if (req.franchiseId) roleData.franchise = req.franchiseId;
       const createdBy = req.user._id;
 
       const role = await rbacService.createCustomRole(roleData, createdBy);
@@ -160,6 +166,7 @@ class RBACController {
       const { module, category, scope, securityLevel } = req.query;
       
       const filter = { isActive: true };
+      if (req.franchiseId) filter.franchise = req.franchiseId;
       if (module) filter.module = module;
       if (category) filter.category = category;
       if (scope) filter.scope = scope;
@@ -195,7 +202,9 @@ class RBACController {
     try {
       const { id } = req.params;
       
-      const permission = await Permission.findById(id)
+      const permQuery = { _id: id };
+      if (req.franchiseId) permQuery.franchise = req.franchiseId;
+      const permission = await Permission.findOne(permQuery)
         .populate('dependencies.requires', 'name displayName')
         .populate('dependencies.conflicts', 'name displayName')
         .populate('dependencies.implies', 'name displayName');
@@ -337,7 +346,9 @@ class RBACController {
       const { permissionId, reason, expiresAt } = req.body;
       const grantedBy = req.user._id;
 
-      const userRole = await UserRole.findById(userRoleId);
+      const addPermQuery = { _id: userRoleId };
+      if (req.franchiseId) addPermQuery.franchise = req.franchiseId;
+      const userRole = await UserRole.findOne(addPermQuery);
       if (!userRole) {
         return ResponseHelper.error(res, 'User role assignment not found', 404);
       }
@@ -362,7 +373,9 @@ class RBACController {
       const { permissionId, reason, expiresAt } = req.body;
       const restrictedBy = req.user._id;
 
-      const userRole = await UserRole.findById(userRoleId);
+      const userRoleQuery = { _id: userRoleId };
+      if (req.franchiseId) userRoleQuery.franchise = req.franchiseId;
+      const userRole = await UserRole.findOne(userRoleQuery);
       if (!userRole) {
         return ResponseHelper.error(res, 'User role assignment not found', 404);
       }
@@ -416,6 +429,7 @@ class RBACController {
    */
   async getRBACStats(req, res) {
     try {
+      const franchiseFilter = req.franchiseId ? { franchise: req.franchiseId } : {};
       const [
         totalRoles,
         activeRoles,
@@ -425,13 +439,13 @@ class RBACController {
         totalUserRoles,
         activeUserRoles
       ] = await Promise.all([
-        Role.countDocuments(),
-        Role.countDocuments({ isActive: true }),
-        Role.countDocuments({ type: 'custom', isActive: true }),
-        Permission.countDocuments(),
-        Permission.countDocuments({ isActive: true }),
-        UserRole.countDocuments(),
-        UserRole.countDocuments({ isActive: true, approvalStatus: 'approved' })
+        Role.countDocuments({ ...franchiseFilter }),
+        Role.countDocuments({ isActive: true, ...franchiseFilter }),
+        Role.countDocuments({ type: 'custom', isActive: true, ...franchiseFilter }),
+        Permission.countDocuments({ ...franchiseFilter }),
+        Permission.countDocuments({ isActive: true, ...franchiseFilter }),
+        UserRole.countDocuments({ ...franchiseFilter }),
+        UserRole.countDocuments({ isActive: true, approvalStatus: 'approved', ...franchiseFilter })
       ]);
 
       const stats = {

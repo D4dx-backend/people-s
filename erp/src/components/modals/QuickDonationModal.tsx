@@ -20,7 +20,7 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "@/hooks/use-toast";
-import { donors } from "@/lib/api";
+import { donors, donations } from "@/lib/api";
 
 interface QuickDonationModalProps {
   open: boolean;
@@ -151,50 +151,79 @@ export function QuickDonationModal({
         notes: formData.notes || `Quick donation: ₹${formData.amount} via ${formData.method}${formData.purpose ? ` for ${formData.purpose}` : ''}`
       };
       
-      // Create or update donor
-      const response = await donors.create(donorData);
-      
-      if (response.success) {
-        toast({
-          title: "Success",
-          description: "Donor information saved successfully! You can now proceed with the donation.",
-        });
-        
-        onSuccess?.();
-        onOpenChange(false);
-        
-        // Reset form
-        setFormData({
-          name: '',
-          phone: '',
-          email: '',
-          amount: 0,
-          method: 'upi',
-          purpose: '',
-          notes: '',
-          anonymousDonation: false,
-          communicationConsent: true,
-        });
+      // Step 1: Create or find donor
+      let donorId: string | null = null;
+      try {
+        const donorResponse = await donors.create(donorData);
+        if (donorResponse.success && donorResponse.data) {
+          donorId = donorResponse.data.donor?._id || donorResponse.data.donor?.id || donorResponse.data._id || donorResponse.data.id;
+        }
+      } catch (donorError: any) {
+        // If donor already exists, that's okay — try to continue
+        if (!donorError.message?.includes('already exists')) {
+          throw donorError;
+        }
       }
-    } catch (error: any) {
-      console.error('Quick donation error:', error);
-      
-      // Handle duplicate donor case
-      if (error.message?.includes('already exists')) {
+
+      // Step 2: Create the actual donation record
+      const donationData = {
+        donor: donorId,
+        donorId: donorId,
+        amount: formData.amount,
+        method: formData.method,
+        notes: formData.notes || '',
+        isAnonymous: formData.anonymousDonation,
+        purpose: formData.purpose || undefined,
+      };
+
+      try {
+        const donationResponse = await donations.create(donationData);
+        
+        if (donationResponse.success) {
+          toast({
+            title: "Success",
+            description: `Donation of ₹${formData.amount} recorded successfully!`,
+          });
+        } else {
+          // Donation creation failed but donor was created
+          toast({
+            title: "Partial Success",
+            description: "Donor saved but donation record could not be created. Please add the donation manually.",
+            variant: "default",
+          });
+        }
+      } catch (donationError: any) {
+        // Donor was created but donation failed
+        console.error('Donation creation failed:', donationError);
         toast({
-          title: "Donor Exists",
-          description: "A donor with this phone/email already exists. The donation will be linked to the existing donor.",
+          title: "Partial Success",
+          description: "Donor saved but donation record could not be created. Please add the donation manually.",
           variant: "default",
         });
-        onSuccess?.();
-        onOpenChange(false);
-      } else {
-        toast({
-          title: "Error",
-          description: error.message || "Failed to save donor information. Please try again.",
-          variant: "destructive",
-        });
       }
+      
+      onSuccess?.();
+      onOpenChange(false);
+      
+      // Reset form
+      setFormData({
+        name: '',
+        phone: '',
+        email: '',
+        amount: 0,
+        method: 'upi',
+        purpose: '',
+        notes: '',
+        anonymousDonation: false,
+        communicationConsent: true,
+      });
+    } catch (error: any) {
+      console.error('Quick donation error:', error);
+      toast({
+        title: "Error",
+        description: error.message || "Failed to save donation. Please try again.",
+        variant: "destructive",
+      });
     } finally {
       setLoading(false);
     }
@@ -385,7 +414,7 @@ export function QuickDonationModal({
             className="bg-gradient-primary"
           >
             {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-            Save Donor & Continue
+            Save Donor & Donation
           </Button>
         </DialogFooter>
       </DialogContent>

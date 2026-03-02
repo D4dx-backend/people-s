@@ -23,8 +23,9 @@ class RBACService {
 
   /**
    * Create all system permissions
+   * @param {string|null} franchiseId - Scope permissions to a franchise (null = global)
    */
-  async createSystemPermissions() {
+  async createSystemPermissions(franchiseId = null) {
     const systemPermissions = [
       // User Management Permissions
       {
@@ -1113,18 +1114,25 @@ class RBACService {
 
     // Create permissions if they don't exist
     for (const permissionData of systemPermissions) {
-      const existingPermission = await Permission.findOne({ name: permissionData.name });
+      const query = franchiseId
+        ? { name: permissionData.name, franchise: franchiseId }
+        : { name: permissionData.name, franchise: { $exists: false } };
+      const existingPermission = await Permission.findOne(query).setOptions({ bypassFranchise: true });
       if (!existingPermission) {
-        await Permission.createSystemPermission(permissionData);
-        console.log(`✅ Created permission: ${permissionData.name}`);
+        await Permission.createSystemPermission({
+          ...permissionData,
+          ...(franchiseId && { franchise: franchiseId })
+        });
+        console.log(`✅ Created permission: ${permissionData.name}${franchiseId ? ` [franchise ${franchiseId}]` : ''}`);
       }
     }
   }
 
   /**
    * Create system roles with predefined permissions
+   * @param {string|null} franchiseId - Scope roles to a franchise (null = global)
    */
-  async createSystemRoles() {
+  async createSystemRoles(franchiseId = null) {
     const systemRoles = [
       {
         name: 'super_admin',
@@ -1435,20 +1443,27 @@ class RBACService {
 
     // Create roles with permissions
     for (const roleData of systemRoles) {
-      const existingRole = await Role.findOne({ name: roleData.name });
+      const roleQuery = franchiseId
+        ? { name: roleData.name, franchise: franchiseId }
+        : { name: roleData.name, franchise: { $exists: false } };
+      const existingRole = await Role.findOne(roleQuery).setOptions({ bypassFranchise: true });
       
       if (!existingRole) {
         // Get permission IDs
         const permissionIds = [];
         
         if (roleData.name === 'super_admin') {
-          // Super admin gets all permissions
-          const allPermissions = await Permission.find({ isActive: true });
+          // Super admin gets all permissions in scope
+          const permQuery = franchiseId ? { franchise: franchiseId, isActive: true } : { isActive: true };
+          const allPermissions = await Permission.find(permQuery).setOptions({ bypassFranchise: true });
           permissionIds.push(...allPermissions.map(p => p._id));
         } else {
           // Get specific permissions for this role
           for (const permissionName of roleData.permissions) {
-            const permission = await Permission.findOne({ name: permissionName });
+            const permQuery = franchiseId
+              ? { name: permissionName, franchise: franchiseId }
+              : { name: permissionName, franchise: { $exists: false } };
+            const permission = await Permission.findOne(permQuery).setOptions({ bypassFranchise: true });
             if (permission) {
               permissionIds.push(permission._id);
             }
@@ -1457,25 +1472,30 @@ class RBACService {
         
         const role = await Role.createSystemRole({
           ...roleData,
-          permissions: permissionIds
+          permissions: permissionIds,
+          ...(franchiseId && { franchise: franchiseId })
         });
         
-        console.log(`✅ Created role: ${roleData.name} with ${permissionIds.length} permissions`);
+        console.log(`✅ Created role: ${roleData.name} with ${permissionIds.length} permissions${franchiseId ? ` [franchise ${franchiseId}]` : ''}`);
       } else {
         // Update existing role if it's modifiable or if it's a system role that needs permission updates
         const shouldUpdate = existingRole.type === 'system' && (existingRole.constraints.isModifiable !== false);
         
-        if (shouldUpdate || existingRole.name === 'area_admin' || existingRole.name === 'district_admin' || existingRole.name === 'unit_admin') {
+        if (shouldUpdate || existingRole.name === 'super_admin' || existingRole.name === 'area_admin' || existingRole.name === 'district_admin' || existingRole.name === 'unit_admin') {
           const permissionIds = [];
           
           if (roleData.name === 'super_admin') {
             // Super admin gets all permissions
-            const allPermissions = await Permission.find({ isActive: true });
+            const permQuery = franchiseId ? { franchise: franchiseId, isActive: true } : { isActive: true };
+            const allPermissions = await Permission.find(permQuery).setOptions({ bypassFranchise: true });
             permissionIds.push(...allPermissions.map(p => p._id));
           } else {
             // Get specific permissions for this role
             for (const permissionName of roleData.permissions) {
-              const permission = await Permission.findOne({ name: permissionName });
+              const permQuery = franchiseId
+                ? { name: permissionName, franchise: franchiseId }
+                : { name: permissionName, franchise: { $exists: false } };
+              const permission = await Permission.findOne(permQuery).setOptions({ bypassFranchise: true });
               if (permission) {
                 permissionIds.push(permission._id);
               }
@@ -1791,6 +1811,21 @@ class RBACService {
    */
   async cleanupExpiredAssignments() {
     return await UserRole.cleanupExpired();
+  }
+
+  /**
+   * Initialize RBAC for a single franchise (idempotent).
+   * Creates franchise-scoped copies of all system permissions and roles.
+   * Called automatically when a new franchise is created.
+   *
+   * @param {string} franchiseId - Franchise ObjectId
+   */
+  async initializeFranchiseRBAC(franchiseId) {
+    if (!franchiseId) throw new Error('franchiseId is required for initializeFranchiseRBAC');
+    console.log(`🔐 Initializing RBAC for franchise ${franchiseId}...`);
+    await this.createSystemPermissions(franchiseId);
+    await this.createSystemRoles(franchiseId);
+    console.log(`✅ RBAC initialized for franchise ${franchiseId}`);
   }
 }
 

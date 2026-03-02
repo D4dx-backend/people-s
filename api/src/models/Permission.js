@@ -1,11 +1,11 @@
 const mongoose = require('mongoose');
+const franchisePlugin = require('../utils/franchisePlugin');
 
 const permissionSchema = new mongoose.Schema({
   // Basic Permission Information
   name: {
     type: String,
     required: [true, 'Permission name is required'],
-    unique: true,
     trim: true,
     maxlength: [100, 'Permission name cannot exceed 100 characters']
   },
@@ -335,5 +335,9 @@ permissionSchema.statics.bulkCreatePermissions = async function(permissionsData)
   
   return await this.insertMany(permissions, { ordered: false });
 };
+
+// Franchise multi-tenancy — compound unique: same permission name per franchise
+permissionSchema.plugin(franchisePlugin);
+permissionSchema.index({ name: 1, franchise: 1 }, { unique: true });
 
 module.exports = mongoose.model('Permission', permissionSchema);

@@ -1,4 +1,5 @@
 const mongoose = require('mongoose');
+const franchisePlugin = require('../utils/franchisePlugin');
 
 const applicationConfigSchema = new mongoose.Schema({
   // Configuration category
@@ -68,7 +69,8 @@ const applicationConfigSchema = new mongoose.Schema({
   timestamps: true
 });
 
-// Compound index for unique key per category
-applicationConfigSchema.index({ category: 1, key: 1 }, { unique: true });
+// Franchise multi-tenancy
+applicationConfigSchema.plugin(franchisePlugin);
+applicationConfigSchema.index({ category: 1, key: 1, franchise: 1 }, { unique: true });
 
 module.exports = mongoose.model('ApplicationConfig', applicationConfigSchema);

@@ -21,12 +21,22 @@
 require('dotenv').config();
 const mongoose = require('mongoose');
 const { User, Location, Project, Scheme, Beneficiary, Role, UserRole, Permission } = require('../models');
+const Franchise    = require('../models/Franchise');
+const UserFranchise = require('../models/UserFranchise');
 const SeedData = require('../utils/seedData');
 const rbacService = require('../services/rbacService');
 
+// ── Global Super Admin (platform-wide, no franchise) ──────────────────────
+const GLOBAL_SUPER_ADMIN_PHONE = '9876543211';
+const GLOBAL_SUPER_ADMIN_EMAIL = 'globaladmin@platform.org';
+
+// ── BZ franchise admin (Baithuzzakath) ─────────────────────────────────────
+const BZ_ADMIN_PHONE = '9876543210';   // super_admin for bz franchise
+const BZ_ADMIN_EMAIL = 'admin@baithuzzakath.org';
+
 // One canonical phone per role (Indian 10-digit); used for upsert so re-run is safe
 const ROLE_PHONES = {
-  super_admin: '9876543200',
+  super_admin: '9876543200',  // People franchise super_admin (NOT global super admin)
   state_admin: '9876543201',
   district_admin: '9876543202',
   area_admin: '9876543203',
@@ -155,7 +165,7 @@ async function assignUserRolesForMigratedUsers() {
 async function ensureMinimalProjectAndScheme() {
   let created = 0;
   const stateAdmin = await User.findOne({ role: 'state_admin' });
-  const kerala = await Location.findOne({ type: 'state', code: 'KL' });
+  const kerala = await Location.findOne({ $or: [{ code: 'KL' }, { name: /^Kerala$/i, type: 'state' }] });
   if (!stateAdmin || !kerala) return;
 
   if ((await Project.countDocuments()) === 0) {
@@ -231,13 +241,16 @@ async function ensureMinimalProjectAndScheme() {
 }
 
 async function migrateRoleUsers() {
-  const kerala = await Location.findOne({ type: 'state', code: 'KL' });
-  const tvm = await Location.findOne({ type: 'district', code: 'TVM' });
-  const tvmCity = await Location.findOne({ type: 'area', code: 'TVM_CITY' });
-  const pettahUnit = await Location.findOne({ type: 'unit', code: 'TVM_CITY_PTH' });
+  // Look up by code first, fall back to name — tolerates both old and new seeds
+  const kerala    = await Location.findOne({ $or: [{ code: 'KL' }, { name: /^Kerala$/i, type: 'state' }] });
+  const tvm       = await Location.findOne({ $or: [{ code: 'TVM' }, { name: /THIRUVANANTHAPURAM/i, type: 'district' }] });
+  const tvmCity   = await Location.findOne({ $or: [{ code: 'TVM_CITY' }, { name: /Thiruvananthapuram/i, type: 'area' }] })
+                 || await Location.findOne({ type: 'area' }); // any area as fallback
+  const pettahUnit = await Location.findOne({ $or: [{ code: 'TVM_CITY_PTH' }, { name: /Thiruvananthapuram/i, type: 'unit' }] })
+                  || await Location.findOne({ type: 'unit' }); // any unit as fallback
 
   if (!kerala || !tvm || !tvmCity || !pettahUnit) {
-    throw new Error('Required locations (Kerala, TVM, TVM_CITY, TVM_CITY_PTH) not found. Run location seed first.');
+    throw new Error('Required locations (Kerala, TVM district, an area, a unit) not found. Run location seed first.');
   }
 
   // Get project/scheme for coordinators (optional; assign if present)
@@ -275,6 +288,8 @@ async function migrateRoleUsers() {
 
     if (role === 'super_admin') {
       Object.assign(baseUser, {
+        // People franchise super_admin — franchise-level only, not global
+        isSuperAdmin: false,
         adminScope: {
           level: 'super',
           permissions: {
@@ -388,6 +403,12 @@ async function migrateRoleUsers() {
 
     if (existing) {
       if (existing.role === role) {
+        // Ensure isSuperAdmin is FALSE on the franchise super_admin (9876543200)
+        if (role === 'super_admin' && existing.isSuperAdmin) {
+          existing.isSuperAdmin = false;
+          await existing.save();
+          console.log(`   🔧 ${role}: cleared isSuperAdmin (${phone}) — global admin is now ${GLOBAL_SUPER_ADMIN_PHONE}`);
+        }
         skipped++;
         console.log(`   ⏭️  ${role}: already exists (${phone})`);
       } else {
@@ -395,6 +416,7 @@ async function migrateRoleUsers() {
         existing.name = baseUser.name;
         if (baseUser.email) existing.email = baseUser.email;
         if (baseUser.adminScope) existing.adminScope = baseUser.adminScope;
+        if (role === 'super_admin') existing.isSuperAdmin = false; // franchise admin only
         await existing.save();
         updated++;
         console.log(`   🔄 ${role}: updated existing user (${phone})`);
@@ -407,6 +429,133 @@ async function migrateRoleUsers() {
   }
 
   return { created, updated, skipped };
+}
+
+/**
+ * Ensure a dedicated Global Super Admin user (isSuperAdmin=true) exists.
+ * Phone: 9876543211  — NOT linked to any franchise.
+ * 9876543200 is the People franchise super_admin and must NOT have isSuperAdmin.
+ */
+async function ensureGlobalSuperAdmin() {
+  let globalAdmin = await User.findOne({ phone: GLOBAL_SUPER_ADMIN_PHONE });
+  if (!globalAdmin) {
+    globalAdmin = await User.create({
+      name: 'Global Super Admin',
+      phone: GLOBAL_SUPER_ADMIN_PHONE,
+      email: GLOBAL_SUPER_ADMIN_EMAIL,
+      role: 'super_admin',
+      password: null,
+      isVerified: true,
+      isActive: true,
+      isSuperAdmin: true,
+    });
+    console.log(`   ✅ Global Super Admin created (${GLOBAL_SUPER_ADMIN_PHONE})`);
+  } else {
+    if (!globalAdmin.isSuperAdmin) {
+      globalAdmin.isSuperAdmin = true;
+      await globalAdmin.save();
+      console.log(`   🔧 Global Super Admin: set isSuperAdmin=true on ${GLOBAL_SUPER_ADMIN_PHONE}`);
+    } else {
+      console.log(`   ⏭️  Global Super Admin already exists (${GLOBAL_SUPER_ADMIN_PHONE})`);
+    }
+  }
+
+  // Also ensure 9876543200 (People franchise admin) does NOT have isSuperAdmin
+  const peopleAdmin = await User.findOne({ phone: ROLE_PHONES.super_admin });
+  if (peopleAdmin && peopleAdmin.isSuperAdmin) {
+    peopleAdmin.isSuperAdmin = false;
+    await peopleAdmin.save();
+    console.log(`   🔧 Cleared isSuperAdmin from People franchise admin (${ROLE_PHONES.super_admin})`);
+  }
+}
+
+/**
+ * Step to create/ensure UserFranchise memberships:
+ *  - All seeded role users → People's Foundation franchise (super_admin...scheme_coordinator)
+ *  - BZ admin user        → Baithuzzakath franchise (super_admin)
+ */
+async function ensureFranchiseMemberships() {
+  const peopleFranchise = await Franchise.findOne({ slug: 'people' });
+  const bzFranchise     = await Franchise.findOne({ slug: 'bz' });
+
+  if (!peopleFranchise) {
+    console.warn('   ⚠️  "people" franchise not found — run npm run franchise:seed first');
+    return;
+  }
+
+  const adminRoles = [
+    'super_admin', 'state_admin', 'district_admin',
+    'area_admin', 'unit_admin', 'project_coordinator', 'scheme_coordinator'
+  ];
+
+  // ── People franchise: link all admin role users ──────────────────────────
+  for (const role of adminRoles) {
+    const phone = ROLE_PHONES[role];
+    const user  = await User.findOne({ phone });
+    if (!user) { console.warn(`   ⚠️  User ${phone} (${role}) not found, skipping`); continue; }
+
+    const existing = await UserFranchise.findOne({ user: user._id, franchise: peopleFranchise._id });
+    if (existing) {
+      console.log(`   ⏭️  people / ${role} (${phone}): already linked`);
+    } else {
+      await UserFranchise.create({
+        user: user._id,
+        franchise: peopleFranchise._id,
+        role,
+        isActive: true,
+        adminScope: user.adminScope || undefined
+      });
+      console.log(`   ✅ people / ${role} (${phone}): linked`);
+    }
+  }
+
+  // ── BZ franchise: ensure bz super_admin user exists ─────────────────────
+  if (!bzFranchise) {
+    console.warn('   ⚠️  "bz" franchise not found — run npm run franchise:seed first');
+    return;
+  }
+
+  let bzUser = await User.findOne({ phone: BZ_ADMIN_PHONE });
+  if (!bzUser) {
+    bzUser = await User.create({
+      name: 'BZ Super Admin',
+      phone: BZ_ADMIN_PHONE,
+      email: BZ_ADMIN_EMAIL,
+      role: 'super_admin',
+      password: null,
+      isVerified: true,
+      isActive: true,
+      isSuperAdmin: false,   // bz admin is only a franchise admin, not global
+      adminScope: {
+        level: 'super',
+        permissions: {
+          canCreateUsers: true,
+          canManageProjects: true,
+          canManageSchemes: true,
+          canApproveApplications: true,
+          canViewReports: true,
+          canManageFinances: true
+        }
+      }
+    });
+    console.log(`   ✅ bz / super_admin (${BZ_ADMIN_PHONE}): user created`);
+  } else {
+    console.log(`   ⏭️  bz / super_admin (${BZ_ADMIN_PHONE}): user already exists`);
+  }
+
+  const bzExisting = await UserFranchise.findOne({ user: bzUser._id, franchise: bzFranchise._id });
+  if (!bzExisting) {
+    await UserFranchise.create({
+      user: bzUser._id,
+      franchise: bzFranchise._id,
+      role: 'super_admin',
+      isActive: true,
+      adminScope: bzUser.adminScope
+    });
+    console.log(`   ✅ bz / super_admin linked to bz franchise`);
+  } else {
+    console.log(`   ⏭️  bz / super_admin already linked to bz franchise`);
+  }
 }
 
 async function migrateBeneficiariesToUsers() {
@@ -482,6 +631,14 @@ async function run() {
     await assignUserRolesForMigratedUsers();
     console.log('');
 
+    console.log('📋 Step 5b: Ensuring UserFranchise memberships (people + bz admins)...');
+    await ensureFranchiseMemberships();
+    console.log('');
+
+    console.log('📋 Step 5c: Ensuring Global Super Admin user (9876543211, isSuperAdmin=true)...');
+    await ensureGlobalSuperAdmin();
+    console.log('');
+
     if (migrateBeneficiaries) {
       console.log('📋 Step 6: Creating User (beneficiary) for each Beneficiary without a User...');
       const bResult = await migrateBeneficiariesToUsers();
@@ -501,9 +658,19 @@ async function run() {
     console.log('✅ User migration completed successfully.');
     console.log('');
     console.log('📋 Migrated role users (login via OTP with these phones):');
+    console.log('');
+    console.log('   🌐 GLOBAL SUPER ADMIN (platform-wide, /api/global/* access):');
+    console.log('      Phone: %s  (isSuperAdmin=true, no franchise)', GLOBAL_SUPER_ADMIN_PHONE);
+    console.log('');
+    console.log("   🏢 PEOPLE'S FOUNDATION franchise admins:");
     Object.entries(ROLE_PHONES).forEach(([role, phone]) => {
-      console.log('   %s: %s', role.padEnd(22), phone);
+      console.log('      %s: %s', role.padEnd(22), phone);
     });
+    console.log('');
+    console.log('   🏢 BAITHUZZAKATH franchise admin:');
+    console.log('      super_admin:            %s', BZ_ADMIN_PHONE);
+    console.log('');
+    console.log('   Login: enter phone → receive OTP in console (dev mode) → enter OTP');
 
     await mongoose.connection.close();
     console.log('\n✅ Database connection closed.');

@@ -13,7 +13,13 @@ if (!fs.existsSync(uploadDir)) {
 // Configure multer disk storage
 const diskStorage = multer.diskStorage({
   destination: (req, file, cb) => {
-    cb(null, uploadDir);
+    // Multi-tenant: store in franchise-specific subdirectory
+    const franchiseSlug = req.franchise?.slug || req.franchiseId?.toString() || 'global';
+    const franchiseUploadDir = path.join(uploadDir, franchiseSlug);
+    if (!fs.existsSync(franchiseUploadDir)) {
+      fs.mkdirSync(franchiseUploadDir, { recursive: true });
+    }
+    cb(null, franchiseUploadDir);
   },
   filename: (req, file, cb) => {
     const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);

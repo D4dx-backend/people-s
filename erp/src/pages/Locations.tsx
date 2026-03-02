@@ -332,7 +332,7 @@ export default function Locations() {
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-lg font-bold">Location Management</h1>
-          <p className="text-muted-foreground mt-1">Manage districts, areas, and units across Kerala</p>
+          <p className="text-muted-foreground mt-1">Manage districts, areas, and units across all regions</p>
         </div>
         <DropdownMenu>
           <DropdownMenuTrigger asChild>

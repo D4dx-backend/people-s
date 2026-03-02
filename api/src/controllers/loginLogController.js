@@ -8,7 +8,8 @@ class LoginLogController {
    */
   async getLoginLogs(req, res) {
     try {
-      const result = await LoginLogService.getLoginLogs(req.query);
+      const params = req.franchiseId ? { ...req.query, franchise: req.franchiseId } : req.query;
+      const result = await LoginLogService.getLoginLogs(params);
       return ResponseHelper.success(res, result, 'Login logs retrieved successfully');
     } catch (error) {
       console.error('❌ Get Login Logs Error:', error);

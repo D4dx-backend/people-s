@@ -1,11 +1,13 @@
 const mongoose = require('mongoose');
+const franchisePlugin = require('../utils/franchisePlugin');
+const orgConfig = require('../config/orgConfig');
 
 const websiteSettingsSchema = new mongoose.Schema({
   // About Us Section
   aboutUs: {
     title: {
       type: String,
-      default: "About People's Foundation ERP"
+      default: function() { return `About ${orgConfig.erpTitle}`; }
     },
     description: {
       type: String,
@@ -86,5 +88,7 @@ const websiteSettingsSchema = new mongoose.Schema({
 }, {
   timestamps: true
 });
+
+websiteSettingsSchema.plugin(franchisePlugin);
 
 module.exports = mongoose.model('WebsiteSettings', websiteSettingsSchema);

@@ -3,6 +3,7 @@ const bcrypt = require('bcryptjs');
 const crypto = require('crypto');
 const { User } = require('../models');
 const config = require('../config/environment');
+const orgConfig = require('../config/orgConfig');
 const staticOTPConfig = require('../config/staticOTP');
 const whatsappOTPService = require('../utils/whatsappOtpService');
 
@@ -10,51 +11,61 @@ class AuthService {
   /**
    * Generate single JWT token (for beneficiary auth)
    * @param {Object} user - User object
+   * @param {string|null} franchiseId - Active franchise ObjectId
+   * @param {Object|null} userFranchise - UserFranchise membership doc
    * @returns {string} Access token
    */
-  generateToken(user) {
+  generateToken(user, franchiseId = null, userFranchise = null) {
     const payload = {
       userId: user._id,
       email: user.email,
       phone: user.phone,
-      role: user.role,
-      adminScope: user.adminScope
+      // Prefer franchise-specific role when available
+      role: userFranchise?.role || user.role,
+      adminScope: userFranchise?.adminScope || user.adminScope,
+      franchiseId: franchiseId ? String(franchiseId) : null,
+      isSuperAdmin: !!user.isSuperAdmin,
     };
 
     return jwt.sign(payload, config.JWT_SECRET, {
       expiresIn: config.JWT_EXPIRE,
-      issuer: 'baithuzzakath-api',
-      audience: 'baithuzzakath-client'
+      issuer: 'erp-api',
+      audience: 'erp-client'
     });
   }
 
   /**
    * Generate JWT tokens
    * @param {Object} user - User object
+   * @param {string|null} franchiseId - Active franchise ObjectId
+   * @param {Object|null} userFranchise - UserFranchise membership doc
    * @returns {Object} Access and refresh tokens
    */
-  generateTokens(user) {
+  generateTokens(user, franchiseId = null, userFranchise = null) {
     const payload = {
       userId: user._id,
       email: user.email,
       phone: user.phone,
-      role: user.role,
-      adminScope: user.adminScope
+      // Prefer franchise-specific role/scope when available
+      role: userFranchise?.role || user.role,
+      adminScope: userFranchise?.adminScope || user.adminScope,
+      franchiseId: franchiseId ? String(franchiseId) : null,
+      isSuperAdmin: !!user.isSuperAdmin,
     };
 
     const accessToken = jwt.sign(payload, config.JWT_SECRET, {
       expiresIn: config.JWT_EXPIRE,
-      issuer: 'baithuzzakath-api',
-      audience: 'baithuzzakath-client'
+      issuer: 'erp-api',
+      audience: 'erp-client'
     });
 
     const refreshToken = jwt.sign(
-      { userId: user._id, type: 'refresh' },
+      { userId: user._id, type: 'refresh', franchiseId: franchiseId ? String(franchiseId) : null },
       config.JWT_SECRET,
       {
         expiresIn: config.JWT_REFRESH_EXPIRE,
-        issuer: 'baithuzzakath-api',
-        audience: 'baithuzzakath-client'
+        issuer: 'erp-api',
+        audience: 'erp-client'
       }
     );
 
@@ -72,10 +83,9 @@ class AuthService {
    */
   verifyToken(token) {
     try {
-      return jwt.verify(token, config.JWT_SECRET, {
-        issuer: 'baithuzzakath-api',
-        audience: 'baithuzzakath-client'
-      });
+      // Accept tokens from any issuer — JWT_SECRET provides auth security.
+      // This avoids breakage when switching ORG_NAME between deployments.
+      return jwt.verify(token, config.JWT_SECRET);
     } catch (error) {
       throw new Error('Invalid or expired token');
     }
@@ -247,7 +257,14 @@ class AuthService {
    * @param {string} purpose - OTP purpose
    * @returns {Promise<Object>} Authentication result
    */
-  async verifyOTPAndLogin(phone, otp, purpose = 'login') {
+  /**
+   * Verify OTP and log user in for a specific franchise.
+   * @param {string} phone
+   * @param {string} otp
+   * @param {string} purpose
+   * @param {string|null} franchiseId - ObjectId of the franchise (from req.franchiseId)
+   */
+  async verifyOTPAndLogin(phone, otp, purpose = 'login', franchiseId = null) {
     try {
       const user = await User.findOne({ phone });
       
@@ -297,8 +314,29 @@ class AuthService {
       await user.resetLoginAttempts();
       await user.save();
 
-      // Generate authentication tokens
-      const tokens = this.generateTokens(user);
+      // ── Franchise-aware token generation ─────────────────────────────────
+      let userFranchise = null;
+      let effectiveRole = user.role;
+      let effectiveAdminScope = user.adminScope;
+
+      if (franchiseId && user.role !== 'beneficiary' && !user.isSuperAdmin) {
+        try {
+          const UserFranchise = require('../models/UserFranchise');
+          userFranchise = await UserFranchise.getMembership(user._id, franchiseId);
+          if (!userFranchise) {
+            throw new Error('You do not have access to this organization. Please contact the administrator.');
+          }
+          effectiveRole = userFranchise.role;
+          effectiveAdminScope = userFranchise.adminScope;
+        } catch (membershipErr) {
+          // Re-throw access-denied errors; swallow lookup errors gracefully
+          if (membershipErr.message.includes('access to this organization')) throw membershipErr;
+          console.error('⚠ UserFranchise lookup failed during login:', membershipErr.message);
+        }
+      }
+
+      // Generate authentication tokens with franchise context
+      const tokens = this.generateTokens(user, franchiseId, userFranchise);
 
       // Prepare user data for response (exclude sensitive fields)
       const userData = {
@@ -306,12 +344,14 @@ class AuthService {
         name: user.name,
         email: user.email,
         phone: user.phone,
-        role: user.role,
-        adminScope: user.adminScope,
+        role: effectiveRole,
+        adminScope: effectiveAdminScope,
+        franchiseId: franchiseId || null,
         profile: user.profile,
         isVerified: user.isVerified,
         isActive: user.isActive,
-        lastLogin: user.lastLogin
+        lastLogin: user.lastLogin,
+        isSuperAdmin: !!user.isSuperAdmin,
       };
 
       return {
@@ -419,7 +459,7 @@ class AuthService {
 
       return {
         success: true,
-        message: "Registration completed successfully! Welcome to People's Foundation ERP.",
+        message: `Registration completed successfully! Welcome to ${orgConfig.erpTitle}.`,
         user: userData,
         tokens,
         authMethod: 'otp_only'
@@ -549,8 +589,19 @@ class AuthService {
         throw new Error('User not found or inactive');
       }
 
-      // Generate new tokens
-      const tokens = this.generateTokens(user);
+      // Restore franchise context from refresh token
+      let userFranchise = null;
+      if (decoded.franchiseId) {
+        const UserFranchise = require('../models/UserFranchise');
+        userFranchise = await UserFranchise.findOne({
+          user: user._id,
+          franchise: decoded.franchiseId,
+          isActive: true
+        });
+      }
+
+      // Generate new tokens with franchise context preserved
+      const tokens = this.generateTokens(user, decoded.franchiseId || null, userFranchise);
 
       return {
         success: true,

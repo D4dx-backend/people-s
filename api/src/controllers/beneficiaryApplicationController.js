@@ -17,7 +17,8 @@ class BeneficiaryApplicationController {
       // Build query for active schemes
       const today = new Date();
       const query = {
-        status: 'active'
+        status: 'active',
+        franchise: req.franchiseId
       };
 
       if (category && category !== 'all') {
@@ -62,6 +63,7 @@ class BeneficiaryApplicationController {
           // Count approved/completed beneficiaries
           const beneficiariesCount = await Application.countDocuments({
             scheme: scheme._id,
+            franchise: req.franchiseId,
             status: { $in: ['approved', 'completed'] }
           });
 
@@ -69,12 +71,14 @@ class BeneficiaryApplicationController {
           const existingApplication = await Application.findOne({
             scheme: scheme._id,
             applicant: req.user._id,
+            franchise: req.franchiseId,
             status: { $nin: ['rejected', 'cancelled'] }
           });
 
           // Check for draft specifically (beneficiary-based lookup)
           const draftApplication = await Application.findOne({
             scheme: scheme._id,
+            franchise: req.franchiseId,
             status: 'draft'
           }).populate('beneficiary', 'phone').then(app => {
             if (app && app.beneficiary?.phone === req.user.phone) return app;
@@ -84,6 +88,7 @@ class BeneficiaryApplicationController {
           // Check if scheme has a valid form configuration in database
           const hasValidFormConfig = await FormConfiguration.findOne({
             scheme: scheme._id,
+            franchise: req.franchiseId,
             enabled: true,
             pages: { $exists: true, $ne: [] }
           });
@@ -219,7 +224,8 @@ class BeneficiaryApplicationController {
       // Check if scheme is active - simplified to match the schemes list
       const scheme = await Scheme.findOne({
         _id: id,
-        status: 'active'
+        status: 'active',
+        franchise: req.franchiseId
       })
         .populate('project', 'name description')
         .select(`
@@ -242,6 +248,7 @@ class BeneficiaryApplicationController {
       // Get form configuration - ONLY from database, no defaults
       const formConfig = await FormConfiguration.findOne({ 
         scheme: scheme._id,
+        franchise: req.franchiseId,
         enabled: true
       }).select('title description pages submissionSettings isPublished scoringConfig');
 
@@ -271,6 +278,7 @@ class BeneficiaryApplicationController {
       // Get beneficiary count
       const beneficiariesCount = await Application.countDocuments({
         scheme: scheme._id,
+        franchise: req.franchiseId,
         status: { $in: ['approved', 'completed'] }
       });
 
@@ -278,6 +286,7 @@ class BeneficiaryApplicationController {
       const existingApplication = await Application.findOne({
         scheme: scheme._id,
         applicant: req.user._id,
+        franchise: req.franchiseId,
         status: { $nin: ['rejected', 'cancelled'] }
       });
 
@@ -378,7 +387,7 @@ class BeneficiaryApplicationController {
       }
 
       // Check if scheme exists and is active
-      const scheme = await Scheme.findById(schemeId).populate('project');
+      const scheme = await Scheme.findOne({ _id: schemeId, franchise: req.franchiseId }).populate('project');
       if (!scheme) {
         return ResponseHelper.error(res, 'Scheme not found', 404);
       }
@@ -396,7 +405,7 @@ class BeneficiaryApplicationController {
       }
 
       // Find or create beneficiary record
-      let beneficiary = await Beneficiary.findOne({ phone: req.user.phone });
+      let beneficiary = await Beneficiary.findOne({ phone: req.user.phone, franchise: req.franchiseId });
       
       if (!beneficiary) {
         // Get state from district's parent
@@ -409,6 +418,7 @@ class BeneficiaryApplicationController {
         beneficiary = new Beneficiary({
           name: req.user.name,
           phone: req.user.phone,
+          franchise: req.franchiseId,
           state: district.parent, // State is parent of district
           district: user.profile.location.district,
           area: user.profile.location.area,
@@ -435,6 +445,7 @@ class BeneficiaryApplicationController {
       const existingApplication = await Application.findOne({
         scheme: schemeId,
         beneficiary: beneficiary._id,
+        franchise: req.franchiseId,
         status: { $nin: ['rejected', 'cancelled'] }
       });
 
@@ -480,9 +491,11 @@ class BeneficiaryApplicationController {
 
           // Calculate eligibility score if form has scoring enabled
           try {
-            const formConfig = await FormConfiguration.findOne({
-              scheme: schemeId,
-              enabled: true
+            const formConfig = await FormConfiguration.findOne({ 
+              scheme: schemeId, 
+              franchise: req.franchiseId,
+              enabled: true,
+              'scoringConfig.enabled': true 
             });
             if (formConfig) {
               const scoreResult = calculateApplicationScore(formData, formConfig);
@@ -536,7 +549,7 @@ class BeneficiaryApplicationController {
       const requestedAmount = parsedAmount || scheme.benefits?.amount || 0;
 
       // Generate application number manually to avoid pre-save middleware issues
-      const applicationCount = await Application.countDocuments();
+      const applicationCount = await Application.countDocuments({ franchise: req.franchiseId });
       const year = new Date().getFullYear();
       const applicationNumber = `APP${year}${String(applicationCount + 1).padStart(6, '0')}`;
 
@@ -551,6 +564,7 @@ class BeneficiaryApplicationController {
         applicationNumber: applicationNumber,
         beneficiary: beneficiary._id,
         scheme: schemeId,
+        franchise: req.franchiseId,
         project: scheme.project?._id || scheme.project, // Handle if project is populated or just ID
         requestedAmount: requestedAmount,
         formData: formData, // ✅ SAVE THE FORM DATA!
@@ -595,9 +609,11 @@ class BeneficiaryApplicationController {
 
       // Calculate eligibility score if form has scoring enabled
       try {
-        const formConfig = await FormConfiguration.findOne({
-          scheme: schemeId,
-          enabled: true
+        const formConfig = await FormConfiguration.findOne({ 
+          scheme: schemeId, 
+          franchise: req.franchiseId,
+          enabled: true,
+          'scoringConfig.enabled': true 
         });
 
         if (formConfig) {
@@ -678,7 +694,7 @@ class BeneficiaryApplicationController {
       const userId = req.user._id;
 
       // Find beneficiary record
-      const beneficiary = await Beneficiary.findOne({ phone: req.user.phone });
+      const beneficiary = await Beneficiary.findOne({ phone: req.user.phone, franchise: req.franchiseId });
       if (!beneficiary) {
         return ResponseHelper.success(res, {
           applications: [],
@@ -692,7 +708,7 @@ class BeneficiaryApplicationController {
       }
 
       // Build query
-      const query = { beneficiary: beneficiary._id };
+      const query = { beneficiary: beneficiary._id, franchise: req.franchiseId };
       if (status && status !== 'all') {
         query.status = status;
       }
@@ -753,14 +769,15 @@ class BeneficiaryApplicationController {
       }
 
       // Find beneficiary record
-      const beneficiary = await Beneficiary.findOne({ phone: req.user.phone });
+      const beneficiary = await Beneficiary.findOne({ phone: req.user.phone, franchise: req.franchiseId });
       if (!beneficiary) {
         return ResponseHelper.error(res, 'Beneficiary record not found', 404);
       }
 
       const application = await Application.findOne({
         _id: id,
-        beneficiary: beneficiary._id
+        beneficiary: beneficiary._id,
+        franchise: req.franchiseId
       })
         .populate('scheme', 'name description category benefits eligibility')
         .populate('reviewedBy', 'name role')
@@ -787,7 +804,7 @@ class BeneficiaryApplicationController {
       const { applicationId } = req.params;
 
       // Find application by applicationNumber (not applicationId)
-      const application = await Application.findOne({ applicationNumber: applicationId })
+      const application = await Application.findOne({ applicationNumber: applicationId, franchise: req.franchiseId })
         .populate('scheme', 'name category benefits')
         .populate('beneficiary', 'name phone')
         .select('applicationNumber scheme status createdAt reviewedAt approvedAt requestedAmount approvedAmount');
@@ -797,7 +814,7 @@ class BeneficiaryApplicationController {
       }
 
       // Find beneficiary record to verify ownership
-      const beneficiary = await Beneficiary.findOne({ phone: req.user.phone });
+      const beneficiary = await Beneficiary.findOne({ phone: req.user.phone, franchise: req.franchiseId });
       if (!beneficiary || application.beneficiary._id.toString() !== beneficiary._id.toString()) {
         return ResponseHelper.error(res, 'Access denied', 403);
       }
@@ -843,7 +860,8 @@ class BeneficiaryApplicationController {
 
       const application = await Application.findOne({
         _id: id,
-        applicant: applicantId
+        applicant: applicantId,
+        franchise: req.franchiseId
       });
 
       if (!application) {
@@ -888,7 +906,7 @@ class BeneficiaryApplicationController {
       const userId = req.user._id;
 
       // Find beneficiary record
-      const beneficiary = await Beneficiary.findOne({ phone: req.user.phone });
+      const beneficiary = await Beneficiary.findOne({ phone: req.user.phone, franchise: req.franchiseId });
       if (!beneficiary) {
         return ResponseHelper.success(res, { 
           stats: {
@@ -904,7 +922,7 @@ class BeneficiaryApplicationController {
       }
 
       const stats = await Application.aggregate([
-        { $match: { beneficiary: beneficiary._id, status: { $ne: 'draft' } } },
+        { $match: { beneficiary: beneficiary._id, franchise: new mongoose.Types.ObjectId(req.franchiseId), status: { $ne: 'draft' } } },
         {
           $group: {
             _id: '$status',
@@ -948,13 +966,14 @@ class BeneficiaryApplicationController {
    */
   async getRenewalDueApplications(req, res) {
     try {
-      const beneficiary = await Beneficiary.findOne({ phone: req.user.phone });
+      const beneficiary = await Beneficiary.findOne({ phone: req.user.phone, franchise: req.franchiseId });
       if (!beneficiary) {
         return ResponseHelper.success(res, { applications: [] }, 'No renewal-due applications');
       }
 
       const applications = await Application.find({
         beneficiary: beneficiary._id,
+        franchise: req.franchiseId,
         renewalStatus: { $in: ['due_for_renewal', 'active'] },
         expiryDate: { $ne: null }
       })
@@ -991,7 +1010,7 @@ class BeneficiaryApplicationController {
     try {
       const { id } = req.params;
 
-      const beneficiary = await Beneficiary.findOne({ phone: req.user.phone });
+      const beneficiary = await Beneficiary.findOne({ phone: req.user.phone, franchise: req.franchiseId });
       if (!beneficiary) {
         return ResponseHelper.error(res, 'Beneficiary not found', 404);
       }
@@ -999,7 +1018,8 @@ class BeneficiaryApplicationController {
       // Find the application
       const application = await Application.findOne({
         _id: id,
-        beneficiary: beneficiary._id
+        beneficiary: beneficiary._id,
+        franchise: req.franchiseId
       }).populate('scheme', 'name code renewalSettings');
 
       if (!application) {
@@ -1007,7 +1027,7 @@ class BeneficiaryApplicationController {
       }
 
       // Verify scheme supports renewals
-      const scheme = await Scheme.findById(application.scheme._id || application.scheme);
+      const scheme = await Scheme.findOne({ _id: application.scheme._id || application.scheme, franchise: req.franchiseId });
       if (!scheme?.renewalSettings?.isRenewable) {
         return ResponseHelper.error(res, 'This scheme does not support renewals', 400);
       }
@@ -1021,6 +1041,7 @@ class BeneficiaryApplicationController {
       if (scheme.renewalSettings.maxRenewals > 0) {
         const renewalCount = await Application.countDocuments({
           parentApplication: application._id,
+          franchise: req.franchiseId,
           isRenewal: true
         });
         if (renewalCount >= scheme.renewalSettings.maxRenewals) {
@@ -1031,6 +1052,7 @@ class BeneficiaryApplicationController {
       // Get renewal form configuration (separate form for renewals)
       let formConfig = await FormConfiguration.findOne({
         scheme: scheme._id,
+        franchise: req.franchiseId,
         isRenewalForm: true
       });
 
@@ -1038,6 +1060,7 @@ class BeneficiaryApplicationController {
       if (!formConfig) {
         formConfig = await FormConfiguration.findOne({
           scheme: scheme._id,
+          franchise: req.franchiseId,
           isRenewalForm: { $ne: true }
         });
       }
@@ -1085,7 +1108,7 @@ class BeneficiaryApplicationController {
         return ResponseHelper.error(res, 'Form data is required', 400);
       }
 
-      const beneficiary = await Beneficiary.findOne({ phone: req.user.phone });
+      const beneficiary = await Beneficiary.findOne({ phone: req.user.phone, franchise: req.franchiseId });
       if (!beneficiary) {
         return ResponseHelper.error(res, 'Beneficiary not found', 404);
       }
@@ -1093,7 +1116,8 @@ class BeneficiaryApplicationController {
       // Find the parent application
       const parentApplication = await Application.findOne({
         _id: id,
-        beneficiary: beneficiary._id
+        beneficiary: beneficiary._id,
+        franchise: req.franchiseId
       }).populate('scheme');
 
       if (!parentApplication) {
@@ -1101,7 +1125,7 @@ class BeneficiaryApplicationController {
       }
 
       // Verify scheme supports renewals
-      const scheme = await Scheme.findById(parentApplication.scheme._id || parentApplication.scheme);
+      const scheme = await Scheme.findOne({ _id: parentApplication.scheme._id || parentApplication.scheme, franchise: req.franchiseId });
       if (!scheme?.renewalSettings?.isRenewable) {
         return ResponseHelper.error(res, 'This scheme does not support renewals', 400);
       }
@@ -1115,6 +1139,7 @@ class BeneficiaryApplicationController {
       if (scheme.renewalSettings.maxRenewals > 0) {
         const renewalCount = await Application.countDocuments({
           parentApplication: parentApplication._id,
+          franchise: req.franchiseId,
           isRenewal: true
         });
         if (renewalCount >= scheme.renewalSettings.maxRenewals) {
@@ -1125,6 +1150,7 @@ class BeneficiaryApplicationController {
       // Check if there's already a pending renewal
       const existingRenewal = await Application.findOne({
         parentApplication: parentApplication._id,
+        franchise: req.franchiseId,
         isRenewal: true,
         status: { $nin: ['rejected', 'cancelled'] }
       });
@@ -1133,7 +1159,7 @@ class BeneficiaryApplicationController {
       }
 
       // Generate application number
-      const applicationCount = await Application.countDocuments();
+      const applicationCount = await Application.countDocuments({ franchise: req.franchiseId });
       const year = new Date().getFullYear();
       const applicationNumber = `APP${year}${String(applicationCount + 1).padStart(6, '0')}`;
 
@@ -1159,6 +1185,7 @@ class BeneficiaryApplicationController {
         applicationNumber,
         beneficiary: beneficiary._id,
         scheme: scheme._id,
+        franchise: req.franchiseId,
         project: parentApplication.project,
         requestedAmount,
         formData,
@@ -1240,7 +1267,7 @@ class BeneficiaryApplicationController {
       }
 
       // Check if scheme exists and is active
-      const scheme = await Scheme.findById(schemeId);
+      const scheme = await Scheme.findOne({ _id: schemeId, franchise: req.franchiseId });
       if (!scheme) {
         return ResponseHelper.error(res, 'Scheme not found', 404);
       }
@@ -1256,7 +1283,7 @@ class BeneficiaryApplicationController {
       }
 
       // Find or create beneficiary record
-      let beneficiary = await Beneficiary.findOne({ phone: req.user.phone });
+      let beneficiary = await Beneficiary.findOne({ phone: req.user.phone, franchise: req.franchiseId });
       if (!beneficiary) {
         const district = await Location.findById(user.profile.location.district);
         if (!district || !district.parent) {
@@ -1265,6 +1292,7 @@ class BeneficiaryApplicationController {
         beneficiary = new Beneficiary({
           name: req.user.name,
           phone: req.user.phone,
+          franchise: req.franchiseId,
           state: district.parent,
           district: user.profile.location.district,
           area: user.profile.location.area,
@@ -1280,6 +1308,7 @@ class BeneficiaryApplicationController {
       let existingDraft = await Application.findOne({
         scheme: schemeId,
         beneficiary: beneficiary._id,
+        franchise: req.franchiseId,
         status: 'draft'
       });
 
@@ -1317,6 +1346,7 @@ class BeneficiaryApplicationController {
       const existingApp = await Application.findOne({
         scheme: schemeId,
         beneficiary: beneficiary._id,
+        franchise: req.franchiseId,
         status: { $nin: ['rejected', 'cancelled', 'draft'] }
       });
 
@@ -1325,7 +1355,7 @@ class BeneficiaryApplicationController {
       }
 
       // Generate application number
-      const applicationCount = await Application.countDocuments();
+      const applicationCount = await Application.countDocuments({ franchise: req.franchiseId });
       const year = new Date().getFullYear();
       const applicationNumber = `APP${year}${String(applicationCount + 1).padStart(6, '0')}`;
 
@@ -1334,6 +1364,7 @@ class BeneficiaryApplicationController {
         applicationNumber,
         beneficiary: beneficiary._id,
         scheme: schemeId,
+        franchise: req.franchiseId,
         project: scheme.project,
         requestedAmount: 0,
         formData: formData || {},
@@ -1388,7 +1419,7 @@ class BeneficiaryApplicationController {
       }
 
       // Find beneficiary
-      const beneficiary = await Beneficiary.findOne({ phone: req.user.phone });
+      const beneficiary = await Beneficiary.findOne({ phone: req.user.phone, franchise: req.franchiseId });
       if (!beneficiary) {
         return ResponseHelper.error(res, 'Beneficiary record not found', 404);
       }
@@ -1396,6 +1427,7 @@ class BeneficiaryApplicationController {
       const draft = await Application.findOne({
         _id: id,
         beneficiary: beneficiary._id,
+        franchise: req.franchiseId,
         status: 'draft'
       });
 
@@ -1451,7 +1483,7 @@ class BeneficiaryApplicationController {
       }
 
       // Find beneficiary
-      const beneficiary = await Beneficiary.findOne({ phone: req.user.phone });
+      const beneficiary = await Beneficiary.findOne({ phone: req.user.phone, franchise: req.franchiseId });
       if (!beneficiary) {
         return ResponseHelper.success(res, { draft: null }, 'No draft found');
       }
@@ -1459,6 +1491,7 @@ class BeneficiaryApplicationController {
       const draft = await Application.findOne({
         scheme: schemeId,
         beneficiary: beneficiary._id,
+        franchise: req.franchiseId,
         status: 'draft'
       }).populate('scheme', 'name category');
 
@@ -1498,7 +1531,7 @@ class BeneficiaryApplicationController {
       }
 
       // Find beneficiary
-      const beneficiary = await Beneficiary.findOne({ phone: req.user.phone });
+      const beneficiary = await Beneficiary.findOne({ phone: req.user.phone, franchise: req.franchiseId });
       if (!beneficiary) {
         return ResponseHelper.error(res, 'Beneficiary record not found', 404);
       }
@@ -1506,6 +1539,7 @@ class BeneficiaryApplicationController {
       const draft = await Application.findOneAndDelete({
         _id: id,
         beneficiary: beneficiary._id,
+        franchise: req.franchiseId,
         status: 'draft'
       });
 

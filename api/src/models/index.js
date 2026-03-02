@@ -18,6 +18,7 @@ const DonorFollowUp = require('./DonorFollowUp');
 const ActivityLog = require('./ActivityLog');
 const MasterData = require('./MasterData');
 const RecurringPayment = require('./RecurringPayment');
+const Counter = require('./Counter');
 const LoginLog = require('./LoginLog');
 const ErrorLog = require('./ErrorLog');
 const SchemeTarget = require('./SchemeTarget');
@@ -33,6 +34,10 @@ const Banner = require('./Banner');
 const Role = require('./Role');
 const Permission = require('./Permission');
 const UserRole = require('./UserRole');
+
+// Multi-tenant / Franchise Models
+const Franchise = require('./Franchise');
+const UserFranchise = require('./UserFranchise');
 
 module.exports = {
   User,
@@ -54,6 +59,7 @@ module.exports = {
   ActivityLog,
   MasterData,
   RecurringPayment,
+  Counter,
   LoginLog,
   ErrorLog,
   SchemeTarget,
@@ -66,5 +72,8 @@ module.exports = {
 
   Role,
   Permission,
-  UserRole
+  UserRole,
+
+  Franchise,
+  UserFranchise
 };

@@ -22,7 +22,7 @@ class RBACMiddleware {
         }
 
         // Super admin and state admin have all permissions - bypass check
-        if (req.user.role === 'super_admin' || req.user.role === 'state_admin') {
+        if ((req.user.isSuperAdmin || req.userRole === 'super_admin' || req.userRole === 'state_admin')) {
           req.checkedPermission = permissionName;
           return next();
         }
@@ -77,7 +77,7 @@ class RBACMiddleware {
         }
 
         // Super admin and state admin have all permissions - bypass check
-        if (req.user.role === 'super_admin' || req.user.role === 'state_admin') {
+        if ((req.user.isSuperAdmin || req.userRole === 'super_admin' || req.userRole === 'state_admin')) {
           req.grantedPermission = permissions[0];
           return next();
         }
@@ -197,7 +197,7 @@ class RBACMiddleware {
         }
 
         // Super admin and state admin have global access
-        if (req.user.role === 'super_admin' || req.user.role === 'state_admin') {
+        if ((req.user.isSuperAdmin || req.userRole === 'super_admin' || req.userRole === 'state_admin')) {
           return next();
         }
 

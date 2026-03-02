@@ -1,4 +1,5 @@
 const mongoose = require('mongoose');
+const franchisePlugin = require('../utils/franchisePlugin');
 
 const bannerSchema = new mongoose.Schema({
   title: {
@@ -44,6 +45,7 @@ const bannerSchema = new mongoose.Schema({
 });
 
 // Index for efficient querying
+bannerSchema.plugin(franchisePlugin);
 bannerSchema.index({ status: 1, order: 1 });
 
 module.exports = mongoose.model('Banner', bannerSchema);

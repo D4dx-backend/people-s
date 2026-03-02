@@ -1,4 +1,5 @@
 const mongoose = require('mongoose');
+const franchisePlugin = require('../utils/franchisePlugin');
 
 const masterDataSchema = new mongoose.Schema({
   // Master Data Type
@@ -308,5 +309,7 @@ masterDataSchema.pre('save', function(next) {
   
   next();
 });
+
+masterDataSchema.plugin(franchisePlugin);
 
 module.exports = mongoose.model('MasterData', masterDataSchema);

@@ -91,8 +91,8 @@ class AuthController {
         return ResponseHelper.error(res, 'Phone number and OTP are required', 400);
       }
 
-      // Verify OTP and authenticate
-      const result = await authService.verifyOTPAndLogin(phone, otp, purpose);
+      // Verify OTP and authenticate (pass franchiseId for franchise-specific role lookup)
+      const result = await authService.verifyOTPAndLogin(phone, otp, purpose, req.franchiseId || null);
 
       // Log successful login to login logs
       await LoginLogService.logLoginEvent({

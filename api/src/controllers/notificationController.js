@@ -14,7 +14,8 @@ class NotificationController {
         category: category || null,
         unreadOnly: unreadOnly === 'true' || unreadOnly === true,
         limit: limit ? parseInt(limit, 10) : 50,
-        offset: offset ? parseInt(offset, 10) : 0
+        offset: offset ? parseInt(offset, 10) : 0,
+        franchise: req.franchiseId || null  // Multi-tenant
       });
       return ResponseHelper.success(res, { notifications }, 'Notifications retrieved successfully');
     } catch (error) {

@@ -43,6 +43,9 @@ const getBeneficiaries = async (req, res) => {
     const userRegionalFilter = getUserRegionalFilter(req.user);
     Object.assign(filter, userRegionalFilter);
 
+    // Multi-tenant: Beneficiaries are franchise-scoped
+    if (req.franchiseId) filter.franchise = req.franchiseId;
+
     const skip = (parseInt(page) - 1) * parseInt(limit);
     
     // If project or scheme filters are applied, we need to filter by applications
@@ -53,6 +56,7 @@ const getBeneficiaries = async (req, res) => {
       const applicationFilter = {};
       if (project) applicationFilter.project = project;
       if (scheme) applicationFilter.scheme = scheme;
+      if (req.franchiseId) applicationFilter.franchise = req.franchiseId;
       
       const applications = await Application.find(applicationFilter).distinct('beneficiary');
       filter._id = { $in: applications };
@@ -148,7 +152,9 @@ const getBeneficiaries = async (req, res) => {
 // Get single beneficiary
 const getBeneficiary = async (req, res) => {
   try {
-    const beneficiary = await Beneficiary.findById(req.params.id)
+    const beneficiaryQuery = { _id: req.params.id };
+    if (req.franchiseId) beneficiaryQuery.franchise = req.franchiseId;
+    const beneficiary = await Beneficiary.findOne(beneficiaryQuery)
       .populate('state', 'name code')
       .populate('district', 'name code')
       .populate('area', 'name code')
@@ -193,7 +199,9 @@ const createBeneficiary = async (req, res) => {
     const { name, phone, state, district, area, unit } = req.body;
 
     // Check if phone already exists in Beneficiary collection
-    const existingBeneficiary = await Beneficiary.findOne({ phone });
+    const benefPhoneQuery = { phone };
+    if (req.franchiseId) benefPhoneQuery.franchise = req.franchiseId;
+    const existingBeneficiary = await Beneficiary.findOne(benefPhoneQuery);
     if (existingBeneficiary) {
       return ResponseHelper.error(res, 'Phone number already registered', 400);
     }
@@ -280,13 +288,14 @@ const createBeneficiary = async (req, res) => {
       unit,
       status: 'active',
       isVerified: true, // Admin-created beneficiaries are pre-verified
-      createdBy: req.user._id || req.user.id
+      createdBy: req.user._id || req.user.id,
+      franchise: req.franchiseId || null
     });
 
     await beneficiary.save();
     console.log(`✅ Created Beneficiary record: ${name} (${phone}), Beneficiary ID: ${beneficiary._id}`);
 
-    const populatedBeneficiary = await Beneficiary.findById(beneficiary._id)
+    const populatedBeneficiary = await Beneficiary.findOne({ _id: beneficiary._id, franchise: req.franchiseId })
       .populate('state', 'name code')
       .populate('district', 'name code')
       .populate('area', 'name code')
@@ -308,7 +317,9 @@ const updateBeneficiary = async (req, res) => {
       return ResponseHelper.validationError(res, errors.array());
     }
 
-    const beneficiary = await Beneficiary.findById(req.params.id);
+    const updateQuery = { _id: req.params.id };
+    if (req.franchiseId) updateQuery.franchise = req.franchiseId;
+    const beneficiary = await Beneficiary.findOne(updateQuery);
     if (!beneficiary) {
       return res.status(404).json({ message: 'Beneficiary not found' });
     }
@@ -322,10 +333,9 @@ const updateBeneficiary = async (req, res) => {
 
     // Check if phone already exists (excluding current beneficiary)
     if (phone && phone !== beneficiary.phone) {
-      const existingBeneficiary = await Beneficiary.findOne({ 
-        phone, 
-        _id: { $ne: req.params.id } 
-      });
+      const dupQuery = { phone, _id: { $ne: req.params.id } };
+      if (req.franchiseId) dupQuery.franchise = req.franchiseId;
+      const existingBeneficiary = await Beneficiary.findOne(dupQuery);
       if (existingBeneficiary) {
         return res.status(400).json({ message: 'Phone number already registered' });
       }
@@ -367,7 +377,7 @@ const updateBeneficiary = async (req, res) => {
 
     await beneficiary.save();
 
-    const updatedBeneficiary = await Beneficiary.findById(beneficiary._id)
+    const updatedBeneficiary = await Beneficiary.findOne({ _id: beneficiary._id, franchise: req.franchiseId })
       .populate('state', 'name code')
       .populate('district', 'name code')
       .populate('area', 'name code')
@@ -386,7 +396,9 @@ const updateBeneficiary = async (req, res) => {
 // Delete beneficiary
 const deleteBeneficiary = async (req, res) => {
   try {
-    const beneficiary = await Beneficiary.findById(req.params.id);
+    const delQuery = { _id: req.params.id };
+    if (req.franchiseId) delQuery.franchise = req.franchiseId;
+    const beneficiary = await Beneficiary.findOne(delQuery);
     if (!beneficiary) {
       return res.status(404).json({ message: 'Beneficiary not found' });
     }
@@ -403,7 +415,7 @@ const deleteBeneficiary = async (req, res) => {
       });
     }
 
-    await Beneficiary.findByIdAndDelete(req.params.id);
+    await Beneficiary.findOneAndDelete({ _id: req.params.id, franchise: req.franchiseId });
     res.json({ message: 'Beneficiary deleted successfully' });
   } catch (error) {
     console.error('Error deleting beneficiary:', error);
@@ -414,7 +426,9 @@ const deleteBeneficiary = async (req, res) => {
 // Verify beneficiary
 const verifyBeneficiary = async (req, res) => {
   try {
-    const beneficiary = await Beneficiary.findById(req.params.id);
+    const verifyQuery = { _id: req.params.id };
+    if (req.franchiseId) verifyQuery.franchise = req.franchiseId;
+    const beneficiary = await Beneficiary.findOne(verifyQuery);
     if (!beneficiary) {
       return res.status(404).json({ message: 'Beneficiary not found' });
     }
@@ -432,7 +446,7 @@ const verifyBeneficiary = async (req, res) => {
 
     await beneficiary.save();
 
-    const verifiedBeneficiary = await Beneficiary.findById(beneficiary._id)
+    const verifiedBeneficiary = await Beneficiary.findOne({ _id: beneficiary._id, franchise: req.franchiseId })
       .populate('state', 'name code')
       .populate('district', 'name code')
       .populate('area', 'name code')
@@ -589,13 +603,15 @@ const exportBeneficiaries = async (req, res) => {
     // Apply user's regional access restrictions
     const userRegionalFilter = getUserRegionalFilter(req.user);
     Object.assign(filter, userRegionalFilter);
-    
+    if (req.franchiseId) filter.franchise = req.franchiseId;
+
     // If project or scheme filters are applied, we need to filter by applications
     if (project || scheme) {
       const Application = require('../models/Application');
       const applicationFilter = {};
       if (project) applicationFilter.project = project;
       if (scheme) applicationFilter.scheme = scheme;
+      if (req.franchiseId) applicationFilter.franchise = req.franchiseId;
       
       const applications = await Application.find(applicationFilter).distinct('beneficiary');
       filter._id = { $in: applications };

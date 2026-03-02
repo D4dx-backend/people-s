@@ -1,4 +1,5 @@
 const mongoose = require('mongoose');
+const franchisePlugin = require('../utils/franchisePlugin');
 
 const activityLogSchema = new mongoose.Schema({
   // User who performed the action
@@ -233,8 +234,8 @@ const activityLogSchema = new mongoose.Schema({
   // Timestamps
   timestamp: {
     type: Date,
-    default: Date.now,
-    index: true
+    default: Date.now
+    // index handled by TTL index below
   },
   
   // Soft delete
@@ -367,5 +368,8 @@ activityLogSchema.statics.getUserActivity = async function(userId, options = {})
 
 // TTL index for automatic cleanup (optional - keep logs for 1 year)
 activityLogSchema.index({ timestamp: 1 }, { expireAfterSeconds: 365 * 24 * 60 * 60 });
+
+// Franchise multi-tenancy
+activityLogSchema.plugin(franchisePlugin);
 
 module.exports = mongoose.model('ActivityLog', activityLogSchema);

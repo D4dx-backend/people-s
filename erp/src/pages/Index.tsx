@@ -2,7 +2,9 @@ import { ArrowRight, Shield, Users, TrendingUp, Heart, FileText, IndianRupee, Ma
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import logo from "@/assets/logo.png";
+import { useConfig } from "@/contexts/ConfigContext";
+import { useOrgLogoUrl } from "@/hooks/useOrgLogoUrl";
+import defaultLogo from "@/assets/logo.png";
 import { useNavigate } from "react-router-dom";
 
 const featuredSchemes = [
@@ -37,6 +39,8 @@ const activeProjects = [
 
 export default function Index() {
   const navigate = useNavigate();
+  const { org } = useConfig();
+  const orgLogoUrl = useOrgLogoUrl();
 
   return (
     <div className="min-h-screen bg-background">
@@ -44,10 +48,10 @@ export default function Index() {
       <header className="border-b border-border/40 bg-background/80 sticky top-0 z-50 shadow-sm backdrop-blur-xl">
         <div className="container relative mx-auto px-4 py-3 flex justify-between items-center">
           <div className="flex items-center gap-3">
-            <img src={logo} alt="People's Foundation ERP" className="h-12 w-12 rounded-2xl shadow-sm" />
+            <img src={orgLogoUrl} alt={org.erpTitle} className="h-12 w-12 rounded-2xl shadow-sm" onError={(e) => { (e.target as HTMLImageElement).src = defaultLogo; }} />
             <div>
-              <h1 className="text-lg font-bold">People's Foundation ERP</h1>
-              <p className="text-xs text-muted-foreground hidden sm:block">Empowering Communities</p>
+              <h1 className="text-lg font-bold">{org.erpTitle}</h1>
+              <p className="text-xs text-muted-foreground hidden sm:block">{org.tagline}</p>
             </div>
           </div>
           <div className="flex gap-2">
@@ -71,20 +75,21 @@ export default function Index() {
         <div className="container relative mx-auto px-4 py-20 md:py-28">
           <div className="flex flex-col items-center text-center space-y-6">
             <img 
-              src={logo} 
-              alt="People's Foundation ERP" 
+              src={orgLogoUrl} 
+              alt={org.erpTitle} 
               className="h-24 w-24 md:h-32 md:w-32 rounded-3xl shadow-glow animate-in zoom-in duration-500"
+              onError={(e) => { (e.target as HTMLImageElement).src = defaultLogo; }}
             />
             
             <div className="space-y-3 animate-in fade-in slide-in-from-bottom duration-700">
               <h1 className="text-3xl md:text-5xl font-bold text-primary-foreground">
-                People's Foundation ERP
+                {org.erpTitle}
               </h1>
               <p className="text-lg md:text-xl text-primary-foreground/90 max-w-2xl">
-                Empowering Communities Through Zakat and Charitable Programs
+                {org.tagline}
               </p>
               <p className="text-base text-primary-foreground/80 max-w-xl">
-                Transforming lives through transparent distribution of Zakat, supporting education, healthcare, and livelihood initiatives across Kerala
+                {org.heroSubtext}
               </p>
             </div>
 
@@ -115,12 +120,9 @@ export default function Index() {
       <section className="py-12 md:py-16 bg-background">
         <div className="container mx-auto px-4">
           <div className="max-w-3xl mx-auto text-center mb-12">
-            <h2 className="text-2xl md:text-3xl font-bold mb-4">About People's Foundation ERP</h2>
+            <h2 className="text-2xl md:text-3xl font-bold mb-4">About {org.erpTitle}</h2>
             <p className="text-muted-foreground leading-relaxed">
-              People's Foundation ERP is dedicated to the transparent and effective distribution of Zakat funds 
-              to support the underprivileged communities across Kerala. We run comprehensive programs in 
-              education, healthcare, housing, and livelihood development, ensuring that assistance reaches 
-              those who need it most.
+              {org.aboutText}
             </p>
           </div>
 
@@ -134,7 +136,7 @@ export default function Index() {
               {
                 icon: Users,
                 title: "Community Focused",
-                description: "Direct support to families and individuals in need across Kerala",
+                description: "Direct support to families and individuals in need across all regions",
               },
               {
                 icon: TrendingUp,
@@ -143,8 +145,8 @@ export default function Index() {
               },
               {
                 icon: Heart,
-                title: "Islamic Values",
-                description: "Guided by Islamic principles of charity, compassion, and social justice",
+                title: org.communityLabel,
+                description: org.communityDescription,
               },
             ].map((feature, idx) => (
               <Card key={idx} className="group hover:shadow-glow transition-all duration-300 hover:-translate-y-1">
@@ -209,7 +211,7 @@ export default function Index() {
         <div className="container mx-auto px-4">
           <div className="text-center mb-10">
             <h2 className="text-2xl md:text-3xl font-bold mb-3">Active Projects</h2>
-            <p className="text-muted-foreground">Ongoing initiatives making a difference across Kerala</p>
+            <p className="text-muted-foreground">Ongoing initiatives making a difference</p>
           </div>
 
           <div className="grid gap-6 md:grid-cols-3 max-w-4xl mx-auto">
@@ -285,14 +287,14 @@ export default function Index() {
           <div className="grid gap-8 md:grid-cols-3 mb-8">
             <div>
               <div className="flex items-center gap-3 mb-4">
-                <img src={logo} alt="Logo" className="h-10 w-10 rounded-2xl shadow-sm" />
+                <img src={orgLogoUrl} alt="Logo" className="h-10 w-10 rounded-2xl shadow-sm" onError={(e) => { (e.target as HTMLImageElement).src = defaultLogo; }} />
                 <div>
-                  <h3 className="font-bold">People's Foundation ERP</h3>
-                  <p className="text-xs text-muted-foreground">Empowering Communities</p>
+                  <h3 className="font-bold">{org.erpTitle}</h3>
+                  <p className="text-xs text-muted-foreground">{org.tagline}</p>
                 </div>
               </div>
               <p className="text-sm text-muted-foreground">
-                Dedicated to transparent Zakat distribution and community welfare across Kerala
+                {org.footerText}
               </p>
             </div>
             
@@ -316,22 +318,22 @@ export default function Index() {
               <div className="space-y-2 text-sm text-muted-foreground">
                 <div className="flex items-center gap-2">
                   <Phone className="h-4 w-4" />
-                  <span>+91 1234567890</span>
+                  <span>{org.phone}</span>
                 </div>
                 <div className="flex items-center gap-2">
                   <Mail className="h-4 w-4" />
-                  <span>info@baithuzzakath.org</span>
+                  <span>{org.email}</span>
                 </div>
                 <div className="flex items-center gap-2">
                   <MapPin className="h-4 w-4" />
-                  <span>Kerala, India</span>
+                  <span>{org.address}</span>
                 </div>
               </div>
             </div>
           </div>
           
           <div className="border-t pt-6 text-center text-sm text-muted-foreground">
-            <p>&copy; 2025 People's Foundation ERP. All rights reserved.</p>
+            <p>{org.copyrightText}</p>
           </div>
         </div>
       </footer>

@@ -1,4 +1,5 @@
 const mongoose = require('mongoose');
+const franchisePlugin = require('../utils/franchisePlugin');
 
 const interviewSchema = new mongoose.Schema({
   // Application Reference
@@ -10,8 +11,7 @@ const interviewSchema = new mongoose.Schema({
   
   // Interview Details
   interviewNumber: {
-    type: String,
-    unique: true
+    type: String
   },
   
   // Scheduling Information
@@ -213,5 +213,9 @@ interviewSchema.statics.getActiveInterview = function(applicationId) {
     .populate('scheduledBy', 'name')
     .populate('interviewers', 'name');
 };
+
+// Franchise multi-tenancy — compound unique per franchise
+interviewSchema.plugin(franchisePlugin);
+interviewSchema.index({ interviewNumber: 1, franchise: 1 }, { unique: true });
 
 module.exports = mongoose.model('Interview', interviewSchema);

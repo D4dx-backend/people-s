@@ -8,7 +8,9 @@ import { Input } from "@/components/ui/input";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { beneficiaryApi } from "@/services/beneficiaryApi";
-import logo from "@/assets/logo.png";
+import { useConfig } from "@/contexts/ConfigContext";
+import { useOrgLogoUrl } from "@/hooks/useOrgLogoUrl";
+import defaultLogo from "@/assets/logo.png";
 import { toast } from "@/hooks/use-toast";
 
 // Interfaces for API data
@@ -44,6 +46,7 @@ interface Stats {
 
 export default function BeneficiaryDashboard() {
   const navigate = useNavigate();
+  const orgLogoUrl = useOrgLogoUrl();
   const [searchId, setSearchId] = useState("");
   const [notificationOpen, setNotificationOpen] = useState(false);
   const [interviewOpen, setInterviewOpen] = useState(false);
@@ -176,7 +179,7 @@ export default function BeneficiaryDashboard() {
       <header className="border-b bg-card sticky top-0 z-50 shadow-sm">
         <div className="container mx-auto px-3 py-3 flex justify-between items-center">
           <div className="flex items-center gap-2">
-            <img src={logo} alt="Logo" className="h-10 w-10 rounded-full" />
+            <img src={orgLogoUrl} alt="Logo" className="h-10 w-10 rounded-full" onError={(e) => { (e.target as HTMLImageElement).src = defaultLogo; }} />
             <div>
               <h1 className="text-lg font-bold">Beneficiary Portal</h1>
               <p className="text-xs text-muted-foreground hidden sm:block">+91 {phoneNumber}</p>

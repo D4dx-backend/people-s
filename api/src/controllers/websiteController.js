@@ -1,5 +1,6 @@
 const WebsiteSettings = require('../models/WebsiteSettings');
 const ResponseHelper = require('../utils/responseHelper');
+const orgConfig = require('../config/orgConfig');
 
 class WebsiteController {
   /**
@@ -8,14 +9,15 @@ class WebsiteController {
    */
   async getSettings(req, res) {
     try {
-      let settings = await WebsiteSettings.findOne().populate('updatedBy', 'name');
+      let settings = await WebsiteSettings.findOne({ franchise: req.franchiseId }).populate('updatedBy', 'name');
       
       // Create default settings if none exist
       if (!settings) {
         settings = await WebsiteSettings.create({
+          franchise: req.franchiseId || null,
           aboutUs: {
-            title: "About People's Foundation ERP",
-            description: 'Empowering Communities Through Zakat and Charitable Programs'
+            title: `About ${orgConfig.erpTitle}`,
+            description: orgConfig.tagline
           },
           counts: [],
           contactDetails: {},
@@ -36,7 +38,7 @@ class WebsiteController {
    */
   async getPublicSettings(req, res) {
     try {
-      const settings = await WebsiteSettings.findOne()
+      const settings = await WebsiteSettings.findOne({ franchise: req.franchiseId })
         .select('-updatedBy -__v -createdAt -updatedAt');
       
       if (!settings) {
@@ -80,10 +82,10 @@ class WebsiteController {
         socialMedia = JSON.parse(socialMedia);
       }
 
-      let settings = await WebsiteSettings.findOne();
+      let settings = await WebsiteSettings.findOne({ franchise: req.franchiseId });
       
       if (!settings) {
-        settings = new WebsiteSettings();
+        settings = new WebsiteSettings({ franchise: req.franchiseId || null });
       }
 
       // Update fields
@@ -113,9 +115,9 @@ class WebsiteController {
       const { title, count, icon } = req.body;
       const userId = req.user._id;
 
-      let settings = await WebsiteSettings.findOne();
+      let settings = await WebsiteSettings.findOne({ franchise: req.franchiseId });
       if (!settings) {
-        settings = new WebsiteSettings();
+        settings = new WebsiteSettings({ franchise: req.franchiseId || null });
       }
 
       const maxOrder = settings.counts.length > 0 
@@ -149,7 +151,7 @@ class WebsiteController {
       const { title, count, icon, order } = req.body;
       const userId = req.user._id;
 
-      const settings = await WebsiteSettings.findOne();
+      const settings = await WebsiteSettings.findOne({ franchise: req.franchiseId });
       if (!settings) {
         return ResponseHelper.error(res, 'Settings not found', 404);
       }
@@ -183,7 +185,7 @@ class WebsiteController {
       const { id } = req.params;
       const userId = req.user._id;
 
-      const settings = await WebsiteSettings.findOne();
+      const settings = await WebsiteSettings.findOne({ franchise: req.franchiseId });
       if (!settings) {
         return ResponseHelper.error(res, 'Settings not found', 404);
       }

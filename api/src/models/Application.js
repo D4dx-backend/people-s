@@ -1,11 +1,11 @@
 const mongoose = require('mongoose');
+const franchisePlugin = require('../utils/franchisePlugin');
 
 const applicationSchema = new mongoose.Schema({
   // Application Details
   applicationNumber: {
     type: String,
-    required: true,
-    unique: true
+    required: true
   },
   
   // Beneficiary
@@ -138,6 +138,38 @@ const applicationSchema = new mongoose.Schema({
   approvalComments: {
     type: String
   },
+  
+  // Post-approval modification tracking
+  lastModifiedBy: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User'
+  },
+  lastModifiedAt: {
+    type: Date
+  },
+  modificationHistory: [{
+    modifiedBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User'
+    },
+    modifiedAt: {
+      type: Date,
+      default: Date.now
+    },
+    reason: {
+      type: String,
+      required: true
+    },
+    previousAmount: {
+      type: Number
+    },
+    newAmount: {
+      type: Number
+    },
+    previousComments: {
+      type: String
+    }
+  }],
   
   // Committee Approval Information
   interviewReport: {
@@ -569,5 +601,9 @@ applicationSchema.pre('save', async function(next) {
   }
   next();
 });
+
+// Franchise multi-tenancy — compound unique per franchise
+applicationSchema.plugin(franchisePlugin);
+applicationSchema.index({ applicationNumber: 1, franchise: 1 }, { unique: true });
 
 module.exports = mongoose.model('Application', applicationSchema);

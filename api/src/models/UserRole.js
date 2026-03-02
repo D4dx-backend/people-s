@@ -1,4 +1,5 @@
 const mongoose = require('mongoose');
+const franchisePlugin = require('../utils/franchisePlugin');
 
 const userRoleSchema = new mongoose.Schema({
   // User and Role Association
@@ -175,7 +176,9 @@ const userRoleSchema = new mongoose.Schema({
 });
 
 // Compound indexes
-userRoleSchema.index({ user: 1, role: 1 }, { unique: true });
+// Franchise multi-tenancy
+userRoleSchema.plugin(franchisePlugin);
+userRoleSchema.index({ user: 1, role: 1, franchise: 1 }, { unique: true });
 userRoleSchema.index({ user: 1, isActive: 1 });
 userRoleSchema.index({ role: 1, isActive: 1 });
 userRoleSchema.index({ assignedBy: 1 });

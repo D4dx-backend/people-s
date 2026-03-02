@@ -5,7 +5,12 @@ const config = require('../config/environment');
 
 /**
  * Authentication middleware
- * Verifies JWT token and attaches user to request
+ * Verifies JWT token and attaches user to request.
+ *
+ * Multi-tenant update:
+ *  - After finding the User, also loads UserFranchise (franchise-specific role/scope)
+ *  - Sets req.userFranchise and req.userRole for downstream middleware & controllers
+ *  - Global super-admin (user.isSuperAdmin) bypasses franchise membership check
  */
 const authenticate = async (req, res, next) => {
   try {
@@ -69,7 +74,39 @@ const authenticate = async (req, res, next) => {
       });
     }
 
-    // Attach user to request
+    // ── Multi-tenant: load franchise-specific membership ─────────────────────
+    if (req.franchiseId && !user.isSuperAdmin) {
+      // Beneficiaries use the legacy User.role field; admin users use UserFranchise
+      if (user.role !== 'beneficiary') {
+        try {
+          const UserFranchise = require('../models/UserFranchise');
+          const membership = await UserFranchise.getMembership(user._id, req.franchiseId);
+
+          if (!membership) {
+            return res.status(403).json({
+              success: false,
+              message: 'You do not have access to this organization.',
+              code: 'NO_FRANCHISE_MEMBERSHIP'
+            });
+          }
+
+          req.userFranchise = membership;
+          req.userRole = membership.role;
+        } catch (membershipErr) {
+          console.error('⚠ UserFranchise lookup failed:', membershipErr.message);
+          // Fall back gracefully — use token's role
+          req.userRole = decoded.role || user.role;
+        }
+      } else {
+        // Beneficiary — role stays on User model
+        req.userRole = user.role;
+      }
+    } else {
+      // Global super-admin or no franchise context (migration, global routes)
+      req.userRole = user.isSuperAdmin ? 'super_admin' : (decoded.role || user.role);
+    }
+
+    // Attach user and token to request
     req.user = user;
     req.token = token;
     
@@ -104,14 +141,17 @@ const authenticate = async (req, res, next) => {
  */
 const authorize = (...roles) => {
   return (req, res, next) => {
+    // Determine effective role: franchise-specific (set by authenticate) > user model role
+    const effectiveRole = req.userRole || req.user?.role;
+
     console.log('🔍 AUTHORIZATION DEBUG:');
     console.log('- Path:', req.path);
     console.log('- Method:', req.method);
     console.log('- Required roles:', roles);
     console.log('- User exists:', !!req.user);
-    console.log('- User role:', req.user?.role);
+    console.log('- Effective role:', effectiveRole);
     console.log('- User ID:', req.user?._id);
-    console.log('- Role check result:', req.user ? roles.includes(req.user.role) : false);
+    console.log('- Role check result:', effectiveRole ? roles.includes(effectiveRole) : false);
     
     if (!req.user) {
       console.log('❌ No user found in request');
@@ -121,23 +161,23 @@ const authorize = (...roles) => {
       });
     }
 
-    if (!roles.includes(req.user.role)) {
+    // Global super-admin bypasses all role restrictions
+    if (req.user.isSuperAdmin) {
+      console.log('✅ Super-admin bypass');
+      return next();
+    }
+
+    if (!roles.includes(effectiveRole)) {
       console.log('❌ Role check failed');
-      console.log('- User role:', req.user.role);
+      console.log('- Effective role:', effectiveRole);
       console.log('- Required roles:', roles);
-      console.log('- User object:', {
-        id: req.user._id,
-        name: req.user.name,
-        phone: req.user.phone,
-        role: req.user.role
-      });
       return res.status(403).json({
         success: false,
         message: 'Access denied. Insufficient permissions.'
       });
     }
 
-    console.log('✅ Authorization successful for role:', req.user.role);
+    console.log('✅ Authorization successful for role:', effectiveRole);
     next();
   };
 };
@@ -150,14 +190,23 @@ const checkRegionalAccess = (req, res, next) => {
   try {
     const { regionId } = req.params;
     const user = req.user;
+    // Use franchise-specific scope if available
+    const uf = req.userFranchise;
+    const effectiveRole = req.userRole || user.role;
+
+    if (user.isSuperAdmin) return next();
 
     // State admin has access to all regions
-    if (user.role === 'state_admin') {
+    if (effectiveRole === 'state_admin') {
       return next();
     }
 
-    // Check if user has access to the region
-    if (!user.hasRegionAccess(regionId)) {
+    // Check if user has access to the region (prefer franchise scope)
+    const hasAccess = uf
+      ? (uf.adminScope?.regions?.map(String).includes(String(regionId)) || uf.getAdminLevel() === 'state')
+      : user.hasRegionAccess(regionId);
+
+    if (!hasAccess) {
       return res.status(403).json({
         success: false,
         message: 'Access denied. You do not have permission to access this region.'
@@ -182,15 +231,22 @@ const checkProjectAccess = (req, res, next) => {
   try {
     const { projectId } = req.params;
     const user = req.user;
+    const uf = req.userFranchise;
+    const effectiveRole = req.userRole || user.role;
+
+    if (user.isSuperAdmin) return next();
 
     // State admin has access to all projects
-    if (user.role === 'state_admin') {
+    if (effectiveRole === 'state_admin') {
       return next();
     }
 
     // Project coordinator can access assigned projects
-    if (user.role === 'project_coordinator') {
-      if (!user.hasProjectAccess(projectId)) {
+    if (effectiveRole === 'project_coordinator') {
+      const hasAccess = uf
+        ? uf.adminScope?.projects?.map(String).includes(String(projectId))
+        : user.hasProjectAccess(projectId);
+      if (!hasAccess) {
         return res.status(403).json({
           success: false,
           message: 'Access denied. You do not have permission to access this project.'
@@ -219,8 +275,10 @@ const checkResourceOwnership = (resourceField = 'userId') => {
       const resourceId = req.params.id;
 
       // Admin roles can access all resources
+      if (user.isSuperAdmin) return next();
+      const effectiveRole = req.userRole || user.role;
       const adminRoles = ['state_admin', 'district_admin', 'area_admin', 'unit_admin'];
-      if (adminRoles.includes(user.role)) {
+      if (adminRoles.includes(effectiveRole)) {
         return next();
       }
 

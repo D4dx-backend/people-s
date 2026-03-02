@@ -17,12 +17,11 @@ interface ApplicationViewModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   application: any;
-  mode?: "view" | "approve" | "reject" | "edit";
-  onApprove?: (id: string, remarks: string, distributionTimeline?: any[], forwardToCommittee?: boolean, interviewReport?: string, isRecurring?: boolean, recurringConfig?: any) => void;
+  mode?: "view" | "approve" | "reject" | "edit" | "modify";
+  onApprove?: (id: string, remarks: string, distributionTimeline?: any[], forwardToCommittee?: boolean, interviewReport?: string, isRecurring?: boolean, recurringConfig?: any, approvedAmount?: number) => void;
   onReject?: (id: string, remarks: string) => void;
+  onModifyApproved?: (id: string, data: { approvedAmount?: number; comments?: string; reason: string; distributionTimeline?: any[] }) => void;
   previousApplications?: any[];
-  /** Whether the current user has permission to approve/reject applications */
-  canApprove?: boolean;
 }
 
 export function ApplicationViewModal({ 
@@ -32,15 +31,15 @@ export function ApplicationViewModal({
   mode = "view",
   onApprove,
   onReject,
-  previousApplications = [],
-  canApprove = false
+  onModifyApproved,
+  previousApplications = []
 }: ApplicationViewModalProps) {
   const [remarks, setRemarks] = useState("");
   const [forwardToCommittee, setForwardToCommittee] = useState(false);
   const [interviewReport, setInterviewReport] = useState("");
   const [approvedAmount, setApprovedAmount] = useState(0);
-  const [showAction, setShowAction] = useState<"approve" | "reject" | null>(
-    mode === "approve" ? "approve" : mode === "reject" ? "reject" : null
+  const [showAction, setShowAction] = useState<"approve" | "reject" | "modify" | null>(
+    mode === "approve" ? "approve" : mode === "reject" ? "reject" : mode === "modify" ? "modify" : null
   );
   
   // Helper function to calculate date based on days from approval
@@ -61,6 +60,9 @@ export function ApplicationViewModal({
   const [numberOfPayments, setNumberOfPayments] = useState(12);
   const [amountPerPayment, setAmountPerPayment] = useState(0);
   const [recurringStartDate, setRecurringStartDate] = useState('');
+
+  // Modification reason state
+  const [modificationReason, setModificationReason] = useState("");
 
   // Initialize approved amount when application changes
   useEffect(() => {
@@ -198,6 +200,12 @@ Status: ${application?.status || 'N/A'}
 
   const handleApprove = () => {
     if (onApprove) {
+      // Validate approved amount > 0
+      if (!forwardToCommittee && (!approvedAmount || approvedAmount <= 0)) {
+        alert('Approved amount must be greater than zero. Zero amount ആയി approve ചെയ്യാൻ കഴിയില്ല.');
+        return;
+      }
+
       // Validate recurring payment configuration if enabled and not forwarding to committee
       if (!forwardToCommittee && isRecurring && !recurringStartDate) {
         alert('Please select a start date for recurring payments');
@@ -223,11 +231,42 @@ Status: ${application?.status || 'N/A'}
         distributionTimeline: distributionTimeline.length > 0 ? timelineData : undefined
       } : undefined;
       
-      onApprove(application?._id || '', remarks, timelineData, forwardToCommittee, interviewReport, isRecurring, recurringConfig);
+      onApprove(application?._id || '', remarks, timelineData, forwardToCommittee, interviewReport, isRecurring, recurringConfig, approvedAmount);
       setRemarks("");
       setForwardToCommittee(false);
       setInterviewReport("");
       setIsRecurring(false);
+      setShowAction(null);
+      onOpenChange(false);
+    }
+  };
+
+  const handleModifyApproved = () => {
+    if (onModifyApproved && application) {
+      if (!modificationReason.trim()) {
+        alert('Modification reason is required.');
+        return;
+      }
+      if (!approvedAmount || approvedAmount <= 0) {
+        alert('Approved amount must be greater than zero.');
+        return;
+      }
+
+      const timelineData = distributionTimeline.map(phase => ({
+        description: phase.phase,
+        percentage: phase.percentage,
+        amount: Math.round(approvedAmount * (phase.percentage / 100)),
+        expectedDate: phase.date
+      }));
+
+      onModifyApproved(application._id, {
+        approvedAmount,
+        comments: remarks || undefined,
+        reason: modificationReason,
+        distributionTimeline: timelineData
+      });
+      setRemarks("");
+      setModificationReason("");
       setShowAction(null);
       onOpenChange(false);
     }
@@ -457,8 +496,8 @@ Status: ${application?.status || 'N/A'}
             </div>
           </div>
 
-          {/* Money Distribution Timeline - Show only for approve */}
-          {showAction === "approve" && (
+          {/* Money Distribution Timeline - Show only for approve or modify */}
+          {(showAction === "approve" || showAction === "modify") && (
             <>
               <Separator />
               
@@ -472,12 +511,18 @@ Status: ${application?.status || 'N/A'}
                     placeholder="Enter approved amount"
                     value={approvedAmount}
                     onChange={(e) => setApprovedAmount(Number(e.target.value))}
-                    className="pl-10"
+                    className={`pl-10 ${!approvedAmount || approvedAmount <= 0 ? 'border-destructive' : ''}`}
                     min={0}
                     max={application?.requestedAmount}
                     disabled={forwardToCommittee}
                   />
                 </div>
+                {!forwardToCommittee && (!approvedAmount || approvedAmount <= 0) && (
+                  <p className="text-xs text-destructive font-medium flex items-center gap-1">
+                    <AlertCircle className="h-3 w-3" />
+                    Approved amount zero ആണ്, approve ചെയ്യാൻ കഴിയില്ല. Amount zero-യേക്കാൾ കൂടുതൽ ആയിരിക്കണം.
+                  </p>
+                )}
                 <p className="text-xs text-muted-foreground">
                   {forwardToCommittee 
                     ? "Approved amount will be determined by committee" 
@@ -790,8 +835,8 @@ Status: ${application?.status || 'N/A'}
             </>
           )}
 
-          {/* Action Buttons - Only shown to users with approve permission */}
-          {canApprove && (((application?.status === "pending" || application?.status === "interview_scheduled") && mode === "view") || mode === "edit") && !showAction && (
+          {/* Action Buttons - Show in view mode or edit mode */}
+          {(((application?.status === "pending" || application?.status === "interview_scheduled") && mode === "view") || mode === "edit") && !showAction && (
             <>
               <Separator />
               {mode === "edit" && (
@@ -824,6 +869,66 @@ Status: ${application?.status || 'N/A'}
               </div>
             </>
           )}
+
+          {/* Modify Button - Show for approved applications */}
+          {application?.status === "approved" && mode === "modify" && !showAction && (
+            <>
+              <Separator />
+              <div className="mb-4 p-3 bg-amber-50 border border-amber-200 rounded-lg">
+                <div className="flex items-center gap-2 text-amber-800">
+                  <AlertCircle className="h-4 w-4" />
+                  <span className="text-sm font-medium">Modify Approved Application</span>
+                </div>
+                <p className="text-xs text-amber-700 mt-1">
+                  You can modify the approved amount and distribution timeline. A reason for modification is required.
+                </p>
+              </div>
+              <Button 
+                className="bg-amber-600 hover:bg-amber-700 text-white"
+                onClick={() => {
+                  setApprovedAmount(application.approvedAmount || application.requestedAmount);
+                  setShowAction("modify");
+                }}
+              >
+                <FileText className="mr-2 h-4 w-4" />
+                Modify Approved Amount / Timeline
+              </Button>
+            </>
+          )}
+
+          {/* Modification Reason - Show in modify mode */}
+          {showAction === "modify" && (
+            <>
+              <Separator />
+              <div className="space-y-3">
+                <Label className="text-base font-semibold">
+                  Modification Reason <span className="text-destructive">*</span>
+                </Label>
+                <Textarea
+                  placeholder="Enter the reason for modifying this approved application..."
+                  value={modificationReason}
+                  onChange={(e) => setModificationReason(e.target.value)}
+                  rows={3}
+                  className="resize-none"
+                />
+                <p className="text-xs text-muted-foreground">
+                  Provide a clear reason for modifying the approved amount or timeline.
+                </p>
+              </div>
+              <div className="space-y-3">
+                <Label className="text-base font-semibold">
+                  Updated Comments (Optional)
+                </Label>
+                <Textarea
+                  placeholder="Update approval comments if needed..."
+                  value={remarks}
+                  onChange={(e) => setRemarks(e.target.value)}
+                  rows={2}
+                  className="resize-none"
+                />
+              </div>
+            </>
+          )}
         </div>
 
         <DialogFooter>
@@ -832,27 +937,39 @@ Status: ${application?.status || 'N/A'}
               <Button variant="outline" onClick={() => {
                 setShowAction(null);
                 setRemarks("");
-                if (mode !== "view") onOpenChange(false);
+                setModificationReason("");
+                if (mode !== "view" && mode !== "modify") onOpenChange(false);
               }}>
                 Cancel
               </Button>
-              <Button 
-                className={showAction === "approve" ? "bg-success hover:bg-success/90" : ""}
-                variant={showAction === "reject" ? "destructive" : "default"}
-                onClick={showAction === "approve" ? handleApprove : handleReject}
-                disabled={showAction === "approve" 
-                  ? (!remarks.trim() || (forwardToCommittee && !interviewReport.trim())) 
-                  : !remarks.trim()
-                }
-              >
-                {showAction === "approve" ? <CheckCircle className="mr-2 h-4 w-4" /> : <XCircle className="mr-2 h-4 w-4" />}
-                {mode === "edit" 
-                  ? "Update Decision" 
-                  : forwardToCommittee 
-                    ? "Forward to Committee" 
-                    : `Confirm ${showAction === "approve" ? "Approval" : "Rejection"}`
-                }
-              </Button>
+              {showAction === "modify" ? (
+                <Button 
+                  className="bg-amber-600 hover:bg-amber-700 text-white"
+                  onClick={handleModifyApproved}
+                  disabled={!modificationReason.trim() || !approvedAmount || approvedAmount <= 0}
+                >
+                  <CheckCircle className="mr-2 h-4 w-4" />
+                  Confirm Modification
+                </Button>
+              ) : (
+                <Button 
+                  className={showAction === "approve" ? "bg-success hover:bg-success/90" : ""}
+                  variant={showAction === "reject" ? "destructive" : "default"}
+                  onClick={showAction === "approve" ? handleApprove : handleReject}
+                  disabled={showAction === "approve" 
+                    ? (!remarks.trim() || (forwardToCommittee && !interviewReport.trim()) || (!forwardToCommittee && (!approvedAmount || approvedAmount <= 0))) 
+                    : !remarks.trim()
+                  }
+                >
+                  {showAction === "approve" ? <CheckCircle className="mr-2 h-4 w-4" /> : <XCircle className="mr-2 h-4 w-4" />}
+                  {mode === "edit" 
+                    ? "Update Decision" 
+                    : forwardToCommittee 
+                      ? "Forward to Committee" 
+                      : `Confirm ${showAction === "approve" ? "Approval" : "Rejection"}`
+                  }
+                </Button>
+              )}
             </>
           ) : (
             <Button variant="outline" onClick={() => onOpenChange(false)}>Close</Button>

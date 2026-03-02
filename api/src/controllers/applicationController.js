@@ -78,8 +78,11 @@ const getApplications = async (req, res) => {
     const userRegionalFilter = getUserRegionalFilter(req.user);
     console.log('🔍 User regional filter:', userRegionalFilter);
     
-    // Apply regional filtering based on user's scope
+    // Apply regional filtering (super_admin and state_admin have no restrictions)
     Object.assign(filter, userRegionalFilter);
+
+    // Multi-tenant: restrict results to the current franchise
+    if (req.franchiseId) filter.franchise = req.franchiseId;
     
     console.log('🔍 Final filter:', filter);
 
@@ -132,7 +135,7 @@ const getApplications = async (req, res) => {
 // Get single application
 const getApplication = async (req, res) => {
   try {
-    const application = await Application.findById(req.params.id)
+    const application = await Application.findOne({ _id: req.params.id, franchise: req.franchiseId })
       .populate('beneficiary')
       .populate('scheme', 'name code maxAmount distributionTimeline applicationSettings')
       .populate('project')
@@ -229,7 +232,7 @@ const createApplication = async (req, res) => {
     const { beneficiary, scheme, project, requestedAmount, documents, isRecurring, recurringConfig } = req.body;
 
     // Verify beneficiary exists and is active
-    const beneficiaryDoc = await Beneficiary.findById(beneficiary);
+    const beneficiaryDoc = await Beneficiary.findOne({ _id: beneficiary, franchise: req.franchiseId });
     if (!beneficiaryDoc) {
       return res.status(400).json({ message: 'Beneficiary not found' });
     }
@@ -238,7 +241,7 @@ const createApplication = async (req, res) => {
     }
 
     // Verify scheme exists and is active
-    const schemeDoc = await Scheme.findById(scheme);
+    const schemeDoc = await Scheme.findOne({ _id: scheme, franchise: req.franchiseId });
     if (!schemeDoc) {
       return res.status(400).json({ message: 'Scheme not found' });
     }
@@ -249,7 +252,7 @@ const createApplication = async (req, res) => {
     // Verify project if provided
     let projectDoc = null;
     if (project) {
-      projectDoc = await Project.findById(project);
+      projectDoc = await Project.findOne({ _id: project, franchise: req.franchiseId });
       if (!projectDoc) {
         return res.status(400).json({ message: 'Project not found' });
       }
@@ -290,6 +293,7 @@ const createApplication = async (req, res) => {
       area: beneficiaryDoc.area,
       unit: beneficiaryDoc.unit,
       createdBy: req.user.id,
+      franchise: req.franchiseId || null, // Multi-tenant: assign to current franchise
       // Add recurring configuration
       isRecurring: isRecurring || false,
       recurringConfig: isRecurring ? {
@@ -306,9 +310,10 @@ const createApplication = async (req, res) => {
     // Calculate eligibility score if form has scoring enabled
     if (req.body.formData) {
       try {
-        const formConfig = await FormConfiguration.findOne({
-          scheme: scheme,
-          enabled: true
+        const formConfig = await FormConfiguration.findOne({ 
+          scheme: scheme, 
+          enabled: true,
+          'scoringConfig.enabled': true 
         });
         if (formConfig) {
           const scoreResult = calculateApplicationScore(req.body.formData, formConfig);
@@ -340,7 +345,7 @@ const createApplication = async (req, res) => {
     beneficiaryDoc.applications.push(application._id);
     await beneficiaryDoc.save();
 
-    const populatedApplication = await Application.findById(application._id)
+    const populatedApplication = await Application.findOne({ _id: application._id, franchise: req.franchiseId })
       .populate('beneficiary', 'name phone')
       .populate('scheme', 'name code distributionTimeline applicationSettings')
       .populate('project', 'name code')
@@ -361,7 +366,7 @@ const updateApplication = async (req, res) => {
       return res.status(400).json({ errors: errors.array() });
     }
 
-    const application = await Application.findById(req.params.id);
+    const application = await Application.findOne({ _id: req.params.id, franchise: req.franchiseId });
     if (!application) {
       return res.status(404).json({ message: 'Application not found' });
     }
@@ -383,7 +388,7 @@ const updateApplication = async (req, res) => {
     // Update fields
     if (requestedAmount !== undefined) {
       // Verify against scheme limits
-      const scheme = await Scheme.findById(application.scheme);
+      const scheme = await Scheme.findOne({ _id: application.scheme, franchise: req.franchiseId });
       if (requestedAmount > scheme.maxAmount) {
         return res.status(400).json({ 
           message: `Requested amount cannot exceed scheme maximum of ₹${scheme.maxAmount}` 
@@ -399,7 +404,7 @@ const updateApplication = async (req, res) => {
 
     await application.save();
 
-    const updatedApplication = await Application.findById(application._id)
+    const updatedApplication = await Application.findOne({ _id: application._id, franchise: req.franchiseId })
       .populate('beneficiary', 'name phone')
       .populate('scheme', 'name code distributionTimeline applicationSettings')
       .populate('project', 'name code')
@@ -422,7 +427,7 @@ const reviewApplication = async (req, res) => {
       return res.status(400).json({ message: 'Invalid review status' });
     }
 
-    const application = await Application.findById(req.params.id);
+    const application = await Application.findOne({ _id: req.params.id, franchise: req.franchiseId });
     if (!application) {
       return res.status(404).json({ message: 'Application not found' });
     }
@@ -447,7 +452,7 @@ const reviewApplication = async (req, res) => {
 
     await application.save();
 
-    const reviewedApplication = await Application.findById(application._id)
+    const reviewedApplication = await Application.findOne({ _id: application._id, franchise: req.franchiseId })
       .populate('beneficiary', 'name phone area')
       .populate('scheme', 'name code distributionTimeline applicationSettings')
       .populate('project', 'name code')
@@ -472,7 +477,7 @@ const approveApplication = async (req, res) => {
   try {
     const { approvedAmount, comments } = req.body;
 
-    const application = await Application.findById(req.params.id);
+    const application = await Application.findOne({ _id: req.params.id, franchise: req.franchiseId });
     if (!application) {
       return res.status(404).json({ message: 'Application not found' });
     }
@@ -490,6 +495,12 @@ const approveApplication = async (req, res) => {
     }
 
     // Validate approved amount
+    if (!approvedAmount || approvedAmount <= 0) {
+      return res.status(400).json({ 
+        message: 'Approved amount must be greater than zero' 
+      });
+    }
+
     if (approvedAmount > application.requestedAmount) {
       return res.status(400).json({ 
         message: 'Approved amount cannot exceed requested amount' 
@@ -507,7 +518,7 @@ const approveApplication = async (req, res) => {
     await updateDistributionTimelineOnApproval(application, approvedAmount);
 
     // Set renewal expiry if scheme supports renewals
-    const scheme = await Scheme.findById(application.scheme);
+    const scheme = await Scheme.findOne({ _id: application.scheme, franchise: req.franchiseId });
     if (scheme?.renewalSettings?.isRenewable) {
       const approvedDate = application.approvedAt;
       const expiryDate = new Date(approvedDate);
@@ -525,7 +536,108 @@ const approveApplication = async (req, res) => {
 
     await application.save();
 
-    const approvedApplication = await Application.findById(application._id)
+    // Create payment records from distribution timeline
+    try {
+      const Payment = require('../models/Payment');
+
+      if (application.distributionTimeline && application.distributionTimeline.length > 0) {
+        console.log('💰 Creating payments from distribution timeline:', application.distributionTimeline.length, 'phases');
+
+        for (let i = 0; i < application.distributionTimeline.length; i++) {
+          const timeline = application.distributionTimeline[i];
+          const paymentCount = await Payment.countDocuments();
+          const year = new Date().getFullYear();
+          const paymentNumber = `PAY${year}${String(paymentCount + 1).padStart(6, '0')}`;
+
+          const payment = new Payment({
+            paymentNumber,
+            application: application._id,
+            beneficiary: application.beneficiary,
+            project: application.project,
+            scheme: application.scheme,
+            amount: timeline.amount,
+            type: 'installment',
+            method: 'bank_transfer',
+            status: 'pending',
+            installment: {
+              number: i + 1,
+              totalInstallments: application.distributionTimeline.length,
+              description: timeline.description || `Phase ${i + 1}`
+            },
+            timeline: {
+              expectedCompletionDate: timeline.expectedDate ? new Date(timeline.expectedDate) : new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+              approvedAt: new Date()
+            },
+            approvals: [{
+              level: 'finance',
+              approver: req.user.id,
+              status: 'approved',
+              approvedAt: new Date(),
+              comments: comments || 'Approved via direct approval'
+            }],
+            metadata: {
+              notes: `Direct approval. ${comments || ''}`.trim()
+            },
+            initiatedBy: req.user.id,
+            location: {
+              state: application.location?.state,
+              district: application.location?.district,
+              area: application.location?.area,
+              unit: application.location?.unit
+            }
+          });
+
+          await payment.save();
+          console.log(`✅ Payment ${i + 1}/${application.distributionTimeline.length} created: ${paymentNumber}`);
+        }
+      } else {
+        // No timeline — create single full payment
+        const paymentCount = await Payment.countDocuments();
+        const year = new Date().getFullYear();
+        const paymentNumber = `PAY${year}${String(paymentCount + 1).padStart(6, '0')}`;
+
+        const payment = new Payment({
+          paymentNumber,
+          application: application._id,
+          beneficiary: application.beneficiary,
+          project: application.project,
+          scheme: application.scheme,
+          amount: approvedAmount,
+          type: 'full_payment',
+          method: 'bank_transfer',
+          status: 'pending',
+          timeline: {
+            expectedCompletionDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+            approvedAt: new Date()
+          },
+          approvals: [{
+            level: 'finance',
+            approver: req.user.id,
+            status: 'approved',
+            approvedAt: new Date(),
+            comments: comments || 'Approved via direct approval'
+          }],
+          metadata: {
+            notes: `Direct approval. ${comments || ''}`.trim()
+          },
+          initiatedBy: req.user.id,
+          location: {
+            state: application.location?.state,
+            district: application.location?.district,
+            area: application.location?.area,
+            unit: application.location?.unit
+          }
+        });
+
+        await payment.save();
+        console.log('✅ Single payment created:', paymentNumber);
+      }
+    } catch (paymentError) {
+      console.error('❌ Error creating payment records:', paymentError);
+      // Don't fail the approval if payment creation fails
+    }
+
+    const approvedApplication = await Application.findOne({ _id: application._id, franchise: req.franchiseId })
       .populate('beneficiary', 'name phone')
       .populate('scheme', 'name code distributionTimeline applicationSettings')
       .populate('project', 'name code')
@@ -546,7 +658,7 @@ const approveApplication = async (req, res) => {
 // Delete application
 const deleteApplication = async (req, res) => {
   try {
-    const application = await Application.findById(req.params.id);
+    const application = await Application.findOne({ _id: req.params.id, franchise: req.franchiseId });
     if (!application) {
       return res.status(404).json({ message: 'Application not found' });
     }
@@ -564,12 +676,12 @@ const deleteApplication = async (req, res) => {
     }
 
     // Remove application from beneficiary's applications array
-    await Beneficiary.findByIdAndUpdate(
-      application.beneficiary,
+    await Beneficiary.findOneAndUpdate(
+      { _id: application.beneficiary, franchise: req.franchiseId },
       { $pull: { applications: application._id } }
     );
 
-    await Application.findByIdAndDelete(req.params.id);
+    await Application.findOneAndDelete({ _id: req.params.id, franchise: req.franchiseId });
     res.json({ message: 'Application deleted successfully' });
   } catch (error) {
     console.error('Error deleting application:', error);
@@ -586,81 +698,34 @@ const getUserRegionalFilter = (user) => {
   
   const filter = {};
   
-  // Super admin has access to all applications
-  if (user.role === 'super_admin') {
-    console.log(`🔍 super_admin - no restrictions`);
+  // Super admin and state admin have access to all applications
+  if (user.role === 'super_admin' || user.role === 'state_admin') {
+    console.log(`🔍 ${user.role} - no restrictions`);
     return filter; // No restrictions
   }
-
+  
   // Helper function to get ID from populated reference or direct ID
   const getId = (ref) => {
     if (!ref) return null;
     if (typeof ref === 'object' && ref._id) return ref._id.toString();
     return ref.toString();
   };
-
-  // State admin: filter by their assigned state
-  if (user.role === 'state_admin') {
-    const stateId = user.adminScope?.state ? getId(user.adminScope.state) : null;
-    const regions = (user.adminScope?.regions || []).map(r => getId(r));
-    if (stateId) {
-      filter.state = stateId;
-      console.log('🔍 State admin filter applied (from adminScope.state):', filter);
-    } else if (regions.length > 0) {
-      filter.state = { $in: regions };
-      console.log('🔍 State admin filter applied (from regions):', filter);
-    } else {
-      console.log('🔍 State admin has no state scope - restricting to no results');
-      filter._id = { $exists: false }; // no state assigned → deny access to all applications
-    }
-    return filter;
-  }
-
-  // Project coordinator: see applications for their assigned projects
-  // Also apply region-based scoping if available for extra security
-  if (user.role === 'project_coordinator') {
-    const projectIds = (user.adminScope?.projects || []).map(p => getId(p)).filter(Boolean);
-    if (projectIds.length > 0) {
-      filter.project = { $in: projectIds };
-      console.log('🔍 Project coordinator filter applied:', filter);
-    } else {
-      // No assigned projects - return no results (use impossible ID)
-      filter._id = new (require('mongoose').Types.ObjectId)();
-      filter._id = { $exists: false }; // Will match nothing
-      console.log('🔍 Project coordinator has no assigned projects - returning empty');
-    }
-    return filter;
-  }
-
-  // Scheme coordinator: see applications for their assigned schemes
-  // Also apply region-based scoping if available for extra security
-  if (user.role === 'scheme_coordinator') {
-    const schemeIds = (user.adminScope?.schemes || []).map(s => getId(s)).filter(Boolean);
-    if (schemeIds.length > 0) {
-      filter.scheme = { $in: schemeIds };
-      console.log('🔍 Scheme coordinator filter applied:', filter);
-    } else {
-      filter._id = { $exists: false }; // Will match nothing
-      console.log('🔍 Scheme coordinator has no assigned schemes - returning empty');
-    }
-    return filter;
-  }
-
+  
   // Check adminScope.regions array first (for backward compatibility)
   if (user.adminScope?.regions && user.adminScope.regions.length > 0) {
-    const regions = user.adminScope.regions.map(r => getId(r)).filter(Boolean);
+    const regions = user.adminScope.regions.map(r => getId(r));
     console.log('🔍 User has regions array:', regions);
-
+    
     if (user.role === 'district_admin') {
-      // District admin sees ALL applications within their district (all units/areas under it)
+      // District admin can see applications from their district
       filter.district = { $in: regions };
       console.log('🔍 District admin filter applied (from regions):', filter);
     } else if (user.role === 'area_admin') {
-      // Area admin sees ALL applications within their area (all units under it)
+      // Area admin can see applications from their area
       filter.area = { $in: regions };
       console.log('🔍 Area admin filter applied (from regions):', filter);
     } else if (user.role === 'unit_admin') {
-      // Unit admin sees only their unit's applications
+      // Unit admin can see applications from their unit
       filter.unit = { $in: regions };
       console.log('🔍 Unit admin filter applied (from regions):', filter);
     }
@@ -669,7 +734,7 @@ const getUserRegionalFilter = (user) => {
     const userUnitId = user.adminScope?.unit ? getId(user.adminScope.unit) : null;
     const userAreaId = user.adminScope?.area ? getId(user.adminScope.area) : null;
     const userDistrictId = user.adminScope?.district ? getId(user.adminScope.district) : null;
-
+    
     if (user.role === 'unit_admin' && userUnitId) {
       filter.unit = userUnitId;
       console.log('🔍 Unit admin filter applied (from direct unit):', filter);
@@ -677,52 +742,30 @@ const getUserRegionalFilter = (user) => {
       filter.area = userAreaId;
       console.log('🔍 Area admin filter applied (from direct area):', filter);
     } else if (user.role === 'district_admin' && userDistrictId) {
-      // District admin sees all applications in their district regardless of area/unit
       filter.district = userDistrictId;
       console.log('🔍 District admin filter applied (from direct district):', filter);
     } else {
-      // No scope defined - deny access to prevent data leakage
-      filter._id = { $exists: false };
-      console.log('🔍 No adminScope found for user - restricting access to prevent data leakage');
+      console.log('🔍 No adminScope found for user - no filter applied');
     }
   }
-
+  
   return filter;
 };
 
 const hasAccessToApplication = (user, application) => {
   // Super admin and state admin have access to everything
-  if (user.role === 'super_admin') {
-    console.log(`✅ super_admin - full access granted`);
+  if (user.role === 'super_admin' || user.role === 'state_admin') {
+    console.log(`✅ ${user.role} - full access granted`);
     return true;
   }
-
+  
   // Helper function to get ID from populated reference or direct ID
   const getId = (ref) => {
     if (!ref) return null;
     if (typeof ref === 'object' && ref._id) return ref._id.toString();
     return ref.toString();
   };
-
-  // State admin: check if application belongs to their assigned state
-  if (user.role === 'state_admin') {
-    const stateId = user.adminScope?.state ? getId(user.adminScope.state) : null;
-    const regions = (user.adminScope?.regions || []).map(r => r.toString());
-    const applicationStateId = getId(application.state);
-    if (stateId) {
-      const hasAccess = applicationStateId && stateId === applicationStateId;
-      console.log(`🔍 State admin check: ${hasAccess ? '✅' : '❌'} (user state: ${stateId}, app state: ${applicationStateId})`);
-      return hasAccess;
-    } else if (regions.length > 0) {
-      const hasAccess = applicationStateId && regions.includes(applicationStateId);
-      console.log(`🔍 State admin check (regions): ${hasAccess ? '✅' : '❌'}`);
-      return hasAccess;
-    }
-    // No state scope assigned - grant access (backward compatible)
-    console.log('✅ State admin has no state scope - full access granted');
-    return true;
-  }
-
+  
   console.log('🔍 hasAccessToApplication check:', {
     userRole: user.role,
     hasAdminScope: !!user.adminScope,
@@ -735,32 +778,6 @@ const hasAccessToApplication = (user, application) => {
     applicationUnit: getId(application.unit)
   });
   
-  // Project coordinator: check if application belongs to their assigned projects
-  if (user.role === 'project_coordinator') {
-    const projectIds = (user.adminScope?.projects || []).map(p => p.toString());
-    if (projectIds.length === 0) {
-      console.log('❌ Project coordinator has no assigned projects - access denied');
-      return false;
-    }
-    const appProjectId = getId(application.project);
-    const hasAccess = appProjectId && projectIds.includes(appProjectId);
-    console.log(`🔍 Project coordinator check: ${hasAccess ? '✅' : '❌'}`);
-    return hasAccess;
-  }
-
-  // Scheme coordinator: check if application belongs to their assigned schemes
-  if (user.role === 'scheme_coordinator') {
-    const schemeIds = (user.adminScope?.schemes || []).map(s => s.toString());
-    if (schemeIds.length === 0) {
-      console.log('❌ Scheme coordinator has no assigned schemes - access denied');
-      return false;
-    }
-    const appSchemeId = getId(application.scheme);
-    const hasAccess = appSchemeId && schemeIds.includes(appSchemeId);
-    console.log(`🔍 Scheme coordinator check: ${hasAccess ? '✅' : '❌'}`);
-    return hasAccess;
-  }
-
   // Handle both adminScope formats: regions array and direct district/area/unit
   if (user.adminScope) {
     // Format 1: Check adminScope.regions array
@@ -771,17 +788,14 @@ const hasAccessToApplication = (user, application) => {
       const applicationUnitId = getId(application.unit);
       
       if (user.role === 'district_admin') {
-        // District admin: access to any application whose district matches
         const hasAccess = applicationDistrictId && userRegions.includes(applicationDistrictId);
         console.log(`🔍 District admin check: ${hasAccess ? '✅' : '❌'} (user regions: [${userRegions.join(', ')}], app district: ${applicationDistrictId})`);
         return hasAccess;
       } else if (user.role === 'area_admin') {
-        // Area admin: access to any application whose area matches
         const hasAccess = applicationAreaId && userRegions.includes(applicationAreaId);
         console.log(`🔍 Area admin check: ${hasAccess ? '✅' : '❌'} (user regions: [${userRegions.join(', ')}], app area: ${applicationAreaId})`);
         return hasAccess;
       } else if (user.role === 'unit_admin') {
-        // Unit admin: access only to their unit's applications
         const hasAccess = applicationUnitId && userRegions.includes(applicationUnitId);
         console.log(`🔍 Unit admin check: ${hasAccess ? '✅' : '❌'} (user regions: [${userRegions.join(', ')}], app unit: ${applicationUnitId})`);
         return hasAccess;
@@ -828,40 +842,22 @@ const hasAccessToApplication = (user, application) => {
 
 const hasAccessToBeneficiary = (user, beneficiary) => {
   if (user.role === 'super_admin') return true;
-
-  const getId = (ref) => {
-    if (!ref) return null;
-    if (typeof ref === 'object' && ref._id) return ref._id.toString();
-    return ref.toString();
-  };
-
-  const regions = (user.adminScope?.regions || []).map(r => r.toString());
-
-  if (user.role === 'state_admin') {
-    const stateId = user.adminScope?.state ? getId(user.adminScope.state) : null;
-    if (stateId) return stateId === getId(beneficiary.state);
-    if (regions.length > 0) return regions.includes(getId(beneficiary.state));
-    return true; // No scope assigned - backward compatible
+  
+  // Check if user has access based on their adminScope.regions
+  if (user.adminScope?.regions && user.adminScope.regions.length > 0) {
+    const userRegions = user.adminScope.regions.map(r => r.toString());
+    
+    if (user.role === 'state_admin') {
+      return userRegions.includes(beneficiary.state?.toString());
+    } else if (user.role === 'district_admin') {
+      return userRegions.includes(beneficiary.district?.toString());
+    } else if (user.role === 'area_admin') {
+      return userRegions.includes(beneficiary.area?.toString());
+    } else if (user.role === 'unit_admin') {
+      return userRegions.includes(beneficiary.unit?.toString());
+    }
   }
-
-  if (user.role === 'district_admin') {
-    const districtId = user.adminScope?.district ? getId(user.adminScope.district) : null;
-    if (districtId) return districtId === getId(beneficiary.district);
-    return regions.includes(getId(beneficiary.district));
-  }
-
-  if (user.role === 'area_admin') {
-    const areaId = user.adminScope?.area ? getId(user.adminScope.area) : null;
-    if (areaId) return areaId === getId(beneficiary.area);
-    return regions.includes(getId(beneficiary.area));
-  }
-
-  if (user.role === 'unit_admin') {
-    const unitId = user.adminScope?.unit ? getId(user.adminScope.unit) : null;
-    if (unitId) return unitId === getId(beneficiary.unit);
-    return regions.includes(getId(beneficiary.unit));
-  }
-
+  
   return false;
 };
 
@@ -1104,7 +1100,7 @@ const updateDistributionTimelineOnApproval = async (application, approvedAmount)
     
     // Get the latest scheme configuration to ensure we use current timeline settings
     const Scheme = require('../models/Scheme');
-    const scheme = await Scheme.findById(application.scheme);
+    const scheme = await Scheme.findOne({ _id: application.scheme, franchise: application.franchise });
     
     if (scheme && scheme.distributionTimeline && scheme.distributionTimeline.length > 0) {
       // Regenerate timeline based on current scheme configuration
@@ -1280,7 +1276,7 @@ const getAvailableRevertRoles = async (req, res) => {
   try {
     const { id } = req.params;
 
-    const application = await Application.findById(id);
+    const application = await Application.findOne({ _id: id, franchise: req.franchiseId });
     if (!application) {
       return res.status(404).json({
         success: false,
@@ -1370,7 +1366,7 @@ const revertApplicationStage = async (req, res) => {
       });
     }
 
-    const application = await Application.findById(id);
+    const application = await Application.findOne({ _id: id, franchise: req.franchiseId });
     if (!application) {
       return res.status(404).json({
         success: false,
@@ -1507,7 +1503,7 @@ const updateApplicationStage = async (req, res) => {
     const { id, stageId } = req.params;
     const { status, notes } = req.body;
 
-    const application = await Application.findById(id);
+    const application = await Application.findOne({ _id: id, franchise: req.franchiseId });
     if (!application) {
       return res.status(404).json({
         success: false,
@@ -1650,7 +1646,7 @@ const addStageComment = async (req, res) => {
       'state_admin': null
     };
 
-    const application = await Application.findById(id);
+    const application = await Application.findOne({ _id: id, franchise: req.franchiseId });
     if (!application) {
       return res.status(404).json({
         success: false,
@@ -1735,7 +1731,7 @@ const uploadStageDocument = async (req, res) => {
   try {
     const { id, stageId, docIndex } = req.params;
 
-    const application = await Application.findById(id);
+    const application = await Application.findOne({ _id: id, franchise: req.franchiseId });
     if (!application) {
       return res.status(404).json({
         success: false,
@@ -1876,7 +1872,7 @@ const getRenewalHistory = async (req, res) => {
   try {
     const { id } = req.params;
 
-    const application = await Application.findById(id);
+    const application = await Application.findOne({ _id: id, franchise: req.franchiseId });
     if (!application) {
       return res.status(404).json({ success: false, message: 'Application not found' });
     }
@@ -1891,7 +1887,7 @@ const getRenewalHistory = async (req, res) => {
       // Walk up the chain to find the original
       let current = application;
       while (current.isRenewal && current.parentApplication) {
-        current = await Application.findById(current.parentApplication);
+        current = await Application.findOne({ _id: current.parentApplication, franchise: application.franchise });
         if (!current) break;
         rootApplicationId = current._id;
       }
@@ -1934,17 +1930,113 @@ const getRenewalHistory = async (req, res) => {
   }
 };
 
-// Recalculate eligibility score for an existing application
+// Modify an already approved application (amount, timeline, comments)
+const modifyApprovedApplication = async (req, res) => {
+  try {
+    const { approvedAmount, comments, reason, distributionTimeline } = req.body;
+
+    if (!reason || !reason.trim()) {
+      return res.status(400).json({
+        success: false,
+        message: 'Modification reason is required'
+      });
+    }
+
+    const application = await Application.findOne({ _id: req.params.id, franchise: req.franchiseId });
+    if (!application) {
+      return res.status(404).json({ success: false, message: 'Application not found' });
+    }
+
+    // Check if user has access
+    if (!hasAccessToApplication(req.user, application)) {
+      return res.status(403).json({ success: false, message: 'Access denied' });
+    }
+
+    // Only approved applications can be modified
+    if (application.status !== 'approved') {
+      return res.status(400).json({
+        success: false,
+        message: `Only approved applications can be modified. Current status: ${application.status}`
+      });
+    }
+
+    // Validate approved amount
+    if (approvedAmount !== undefined) {
+      if (!approvedAmount || approvedAmount <= 0) {
+        return res.status(400).json({
+          success: false,
+          message: 'Approved amount must be greater than zero'
+        });
+      }
+      if (approvedAmount > application.requestedAmount) {
+        return res.status(400).json({
+          success: false,
+          message: 'Approved amount cannot exceed requested amount'
+        });
+      }
+    }
+
+    // Build modification history entry
+    const modificationEntry = {
+      modifiedBy: req.user.id,
+      modifiedAt: new Date(),
+      reason: reason.trim(),
+      previousAmount: application.approvedAmount,
+      newAmount: approvedAmount !== undefined ? approvedAmount : application.approvedAmount,
+      previousComments: application.approvalComments || ''
+    };
+
+    // Initialize modificationHistory array if not exists
+    if (!application.modificationHistory) {
+      application.modificationHistory = [];
+    }
+    application.modificationHistory.push(modificationEntry);
+
+    // Update fields
+    if (approvedAmount !== undefined) {
+      application.approvedAmount = approvedAmount;
+    }
+    if (comments !== undefined) {
+      application.approvalComments = comments;
+    }
+    application.lastModifiedBy = req.user.id;
+    application.lastModifiedAt = new Date();
+    application.updatedBy = req.user.id;
+
+    // Update distribution timeline if provided
+    if (distributionTimeline && Array.isArray(distributionTimeline)) {
+      application.distributionTimeline = distributionTimeline;
+    }
+
+    // Recalculate distribution timeline amounts based on new approved amount
+    const finalAmount = approvedAmount !== undefined ? approvedAmount : application.approvedAmount;
+    await updateDistributionTimelineOnApproval(application, finalAmount);
+
+    await application.save();
+
+    const updatedApplication = await Application.findOne({ _id: application._id, franchise: req.franchiseId })
+      .populate('beneficiary', 'name phone')
+      .populate('scheme', 'name code distributionTimeline applicationSettings')
+      .populate('project', 'name code')
+      .populate('approvedBy', 'name')
+      .populate('lastModifiedBy', 'name');
+
+    res.json({
+      success: true,
+      message: 'Approved application modified successfully',
+      data: updatedApplication
+    });
+  } catch (error) {
+    console.error('Error modifying approved application:', error);
+    res.status(500).json({ success: false, message: error.message || 'Server error' });
+  }
+};
+
 const recalculateScore = async (req, res) => {
   try {
     const application = await Application.findById(req.params.id);
     if (!application) {
       return res.status(404).json({ success: false, message: 'Application not found' });
-    }
-
-    // Authorization: verify requesting user has access to this specific application
-    if (!hasAccessToApplication(req.user, application)) {
-      return res.status(403).json({ success: false, message: 'Forbidden' });
     }
 
     if (!application.formData) {
@@ -1953,25 +2045,22 @@ const recalculateScore = async (req, res) => {
 
     const formConfig = await FormConfiguration.findOne({
       scheme: application.scheme,
-      enabled: true
+      enabled: true,
+      'scoringConfig.enabled': true
     });
 
     if (!formConfig) {
-      return res.status(404).json({ success: false, message: 'No active form configuration found for this scheme' });
+      return res.status(400).json({ success: false, message: 'No scoring configuration found for this scheme' });
     }
 
     const scoreResult = calculateApplicationScore(application.formData, formConfig);
     application.eligibilityScore = scoreResult;
     await application.save();
 
-    res.json({
-      success: true,
-      message: 'Score recalculated successfully',
-      data: { eligibilityScore: scoreResult }
-    });
+    res.json({ success: true, message: 'Eligibility score recalculated', data: { eligibilityScore: scoreResult } });
   } catch (error) {
     console.error('Error recalculating score:', error);
-    res.status(500).json({ success: false, message: 'Server error' });
+    res.status(500).json({ success: false, message: error.message || 'Server error' });
   }
 };
 
@@ -1982,6 +2071,7 @@ module.exports = {
   updateApplication,
   reviewApplication,
   approveApplication,
+  modifyApprovedApplication,
   deleteApplication,
   getApplicationStagesFromScheme,
   generateDistributionTimeline,

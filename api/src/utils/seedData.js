@@ -1,5 +1,9 @@
 const { User, Location, Project, Scheme, Beneficiary, Application, Interview } = require('../models');
 const bcrypt = require('bcryptjs');
+const orgConfig = require('../config/orgConfig');
+
+// Derive email domain from org config (e.g., 'baithuzzakath.org' from 'https://baithuzzakath.org')
+const emailDomain = orgConfig.email.split('@')[1] || 'example.org';
 
 /**
  * Seed initial data for development and testing
@@ -141,7 +145,7 @@ class SeedData {
       // Create State Admin
       const stateAdmin = new User({
         name: 'State Administrator',
-        email: 'admin@baithuzzakath.org',
+        email: `admin@${emailDomain}`,
         phone: '9876543210',
         password: 'Admin@123',
         role: 'state_admin',
@@ -167,7 +171,7 @@ class SeedData {
       // Create District Admin
       const districtAdmin = new User({
         name: 'District Administrator TVM',
-        email: 'district.tvm@baithuzzakath.org',
+        email: `district.tvm@${emailDomain}`,
         phone: '9876543211',
         password: 'Admin@123',
         role: 'district_admin',
@@ -194,7 +198,7 @@ class SeedData {
       // Create Area Admin
       const areaAdmin = new User({
         name: 'Area Administrator TVM City',
-        email: 'area.tvmcity@baithuzzakath.org',
+        email: `area.tvmcity@${emailDomain}`,
         phone: '9876543212',
         password: 'Admin@123',
         role: 'area_admin',
@@ -221,7 +225,7 @@ class SeedData {
       // Create Unit Admin
       const unitAdmin = new User({
         name: 'Unit Administrator Pettah',
-        email: 'unit.pettah@baithuzzakath.org',
+        email: `unit.pettah@${emailDomain}`,
         phone: '9876543213',
         password: 'Admin@123',
         role: 'unit_admin',
@@ -270,10 +274,10 @@ class SeedData {
 
       console.log('✅ User data seeded successfully');
       console.log('📋 Default login credentials:');
-      console.log('   State Admin: admin@baithuzzakath.org / Admin@123');
-      console.log('   District Admin: district.tvm@baithuzzakath.org / Admin@123');
-      console.log('   Area Admin: area.tvmcity@baithuzzakath.org / Admin@123');
-      console.log('   Unit Admin: unit.pettah@baithuzzakath.org / Admin@123');
+      console.log(`   State Admin: admin@${emailDomain} / Admin@123`);
+      console.log(`   District Admin: district.tvm@${emailDomain} / Admin@123`);
+      console.log(`   Area Admin: area.tvmcity@${emailDomain} / Admin@123`);
+      console.log(`   Unit Admin: unit.pettah@${emailDomain} / Admin@123`);
       console.log('   Beneficiary: beneficiary@example.com / User@123');
     } catch (error) {
       console.error('❌ Error seeding users:', error);
@@ -296,8 +300,8 @@ class SeedData {
       }
 
       // Get required data
-      const stateAdmin = await User.findOne({ email: 'admin@baithuzzakath.org' });
-      const districtAdmin = await User.findOne({ email: 'district.tvm@baithuzzakath.org' });
+      const stateAdmin = await User.findOne({ email: `admin@${emailDomain}` });
+      const districtAdmin = await User.findOne({ email: `district.tvm@${emailDomain}` });
       const kerala = await Location.findOne({ name: 'Kerala', type: 'state' });
       const tvm = await Location.findOne({ name: 'Thiruvananthapuram', type: 'district' });
 
@@ -611,7 +615,7 @@ class SeedData {
       }
 
       // Get required data
-      const stateAdmin = await User.findOne({ email: 'admin@baithuzzakath.org' });
+      const stateAdmin = await User.findOne({ email: `admin@${emailDomain}` });
       const educationProject = await Project.findOne({ code: 'KESP-2025' });
       const healthcareProject = await Project.findOne({ code: 'HAI-2025' });
       const housingProject = await Project.findOne({ code: 'TVM-HOUSE-2025' });
@@ -915,7 +919,7 @@ class SeedData {
       const pettahUnit = await Location.findOne({ name: 'Pettah Unit', type: 'unit' });
       const kollam = await Location.findOne({ name: 'Kollam', type: 'district' });
       const ernakulam = await Location.findOne({ name: 'Ernakulam', type: 'district' });
-      const stateAdmin = await User.findOne({ email: 'admin@baithuzzakath.org' });
+      const stateAdmin = await User.findOne({ email: `admin@${emailDomain}` });
 
       if (!kerala || !tvm || !tvmCity || !pettahUnit || !stateAdmin) {
         throw new Error('Required locations or admin user not found. Please seed locations and users first.');
@@ -1155,8 +1159,8 @@ class SeedData {
       const beneficiaries = await Beneficiary.find().limit(5);
       const schemes = await Scheme.find();
       const projects = await Project.find();
-      const stateAdmin = await User.findOne({ email: 'admin@baithuzzakath.org' });
-      const districtAdmin = await User.findOne({ email: 'district.tvm@baithuzzakath.org' });
+      const stateAdmin = await User.findOne({ email: `admin@${emailDomain}` });
+      const districtAdmin = await User.findOne({ email: `district.tvm@${emailDomain}` });
 
       if (beneficiaries.length === 0 || schemes.length === 0 || projects.length === 0) {
         throw new Error('Required data not found. Please seed beneficiaries, schemes, and projects first.');
@@ -1321,8 +1325,8 @@ class SeedData {
         return;
       }
 
-      const stateAdmin = await User.findOne({ email: 'admin@baithuzzakath.org' });
-      const districtAdmin = await User.findOne({ email: 'district.tvm@baithuzzakath.org' });
+      const stateAdmin = await User.findOne({ email: `admin@${emailDomain}` });
+      const districtAdmin = await User.findOne({ email: `district.tvm@${emailDomain}` });
 
       // Create interviews for some applications
       const interviews = [];

@@ -1,4 +1,5 @@
 const mongoose = require('mongoose');
+const franchisePlugin = require('../utils/franchisePlugin');
 
 const partnerSchema = new mongoose.Schema({
   name: {
@@ -40,6 +41,7 @@ const partnerSchema = new mongoose.Schema({
 });
 
 // Indexes
+partnerSchema.plugin(franchisePlugin);
 partnerSchema.index({ status: 1, order: 1 });
 
 module.exports = mongoose.model('Partner', partnerSchema);

@@ -149,7 +149,7 @@ export default function Applications() {
   const [showViewModal, setShowViewModal] = useState(false);
   const [showShortlistModal, setShowShortlistModal] = useState(false);
   const [showReportsModal, setShowReportsModal] = useState(false);
-  const [modalMode, setModalMode] = useState<"view" | "approve" | "reject">("view");
+  const [modalMode, setModalMode] = useState<"view" | "approve" | "reject" | "modify">("view");
   const [activeTab, setActiveTab] = useState("all");
   const [loading, setLoading] = useState(true);
   const [pagination, setPagination] = useState({
@@ -185,14 +185,8 @@ export default function Applications() {
   // Only area_admin, state_admin, and super_admin can review/approve applications
   const canReviewApplications = user && ['super_admin', 'state_admin', 'area_admin'].includes(user.role);
 
-  // Only area_admin, state_admin, and super_admin can fully edit applications
-  const canEditApplications = user && ['super_admin', 'state_admin', 'area_admin'].includes(user.role);
-
-  // All admin roles can view and update stages (but not full edit/approve)
-  const canUpdateStages = user && ['super_admin', 'state_admin', 'district_admin', 'area_admin', 'unit_admin', 'project_coordinator', 'scheme_coordinator'].includes(user.role);
-
-  // Check if user has admin permissions (can see applications listing)
-  const hasAdminAccess = user && ['super_admin', 'state_admin', 'district_admin', 'area_admin', 'unit_admin', 'project_coordinator', 'scheme_coordinator'].includes(user.role);
+  // Check if user has admin permissions
+  const hasAdminAccess = user && ['super_admin', 'state_admin', 'district_admin', 'area_admin', 'unit_admin'].includes(user.role);
 
   // Define functions using useCallback
   const loadApplications = useCallback(async () => {
@@ -333,16 +327,16 @@ export default function Applications() {
 
 
 
-  const handleViewApplication = (app: Application, mode: "view" | "approve" | "reject" = "view") => {
+  const handleViewApplication = (app: Application, mode: "view" | "approve" | "reject" | "modify" = "view") => {
     setSelectedApp(app);
     setModalMode(mode);
     setShowViewModal(true);
   };
 
-  const handleApprove = async (id: string, remarks: string) => {
+  const handleApprove = async (id: string, remarks: string, _distributionTimeline?: any[], _forwardToCommittee?: boolean, _interviewReport?: string, _isRecurring?: boolean, _recurringConfig?: any, approvedAmountFromModal?: number) => {
     try {
       const response = await applications.approve(id, { 
-        approvedAmount: selectedApp?.requestedAmount,
+        approvedAmount: approvedAmountFromModal || selectedApp?.requestedAmount,
         comments: remarks 
       });
       
@@ -364,6 +358,32 @@ export default function Applications() {
       toast({
         title: "Error",
         description: "Failed to approve application",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleModifyApproved = async (id: string, data: { approvedAmount?: number; comments?: string; reason: string; distributionTimeline?: any[] }) => {
+    try {
+      const response = await applications.modifyApproved(id, data);
+      if (response.success) {
+        await loadApplications();
+        toast({
+          title: "Application Modified",
+          description: "Approved application has been modified successfully.",
+        });
+      } else {
+        toast({
+          title: "Error",
+          description: response.message || "Failed to modify application",
+          variant: "destructive",
+        });
+      }
+    } catch (error: any) {
+      console.error('Error modifying approved application:', error);
+      toast({
+        title: "Error",
+        description: error.message || "Failed to modify approved application",
         variant: "destructive",
       });
     }
@@ -414,7 +434,7 @@ export default function Applications() {
 
   // Function to get the appropriate action button based on application status and scheme requirements
   const getActionButton = (app: Application) => {
-    // Only senior admins (area_admin, state_admin, super_admin) can approve/reject
+    // Unit Admin and District Admin can only view - no action buttons
     if (!canReviewApplications) {
       return null;
     }
@@ -481,6 +501,16 @@ export default function Applications() {
         );
       
       case 'approved':
+        // Show modify button for super_admin and state_admin
+        if (user?.role === 'super_admin' || user?.role === 'state_admin') {
+          return (
+            <Button variant="outline" size="sm" onClick={() => handleViewApplication(app, "modify")} className="flex-1">
+              <FileText className="mr-2 h-4 w-4" />
+              Modify
+            </Button>
+          );
+        }
+        return null;
       case 'rejected':
       case 'completed':
       case 'disbursed':
@@ -593,7 +623,7 @@ export default function Applications() {
         mode={modalMode}
         onApprove={handleApprove}
         onReject={handleReject}
-        canApprove={!!canReviewApplications}
+        onModifyApproved={handleModifyApproved}
       />
       <div className="flex items-center justify-between">
         <div>

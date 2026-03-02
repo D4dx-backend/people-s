@@ -1,10 +1,10 @@
 const mongoose = require('mongoose');
+const franchisePlugin = require('../utils/franchisePlugin');
 
 const reportSchema = new mongoose.Schema({
   // Report Details
   reportNumber: {
-    type: String,
-    unique: true
+    type: String
   },
   
   // Application Reference
@@ -319,5 +319,9 @@ reportSchema.statics.getFollowUpReports = function() {
     .populate('createdBy', 'name')
     .sort({ followUpDate: 1 });
 };
+
+// Franchise multi-tenancy — compound unique per franchise
+reportSchema.plugin(franchisePlugin);
+reportSchema.index({ reportNumber: 1, franchise: 1 }, { unique: true });
 
 module.exports = mongoose.model('Report', reportSchema);

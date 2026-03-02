@@ -14,7 +14,9 @@ class ActivityLogService {
     details = {},
     req = null,
     status = 'success',
-    severity = 'low'
+    severity = 'low',
+    /** Explicit franchise override. If omitted, auto-extracted from req.franchiseId */
+    franchise = undefined
   }) {
     try {
       const logData = {
@@ -33,6 +35,9 @@ class ActivityLogService {
       if (req) {
         logData.ipAddress = this.getClientIP(req);
         logData.userAgent = req.get('User-Agent') || '';
+
+        // Auto-inject franchise from request context (multi-tenant)
+        logData.franchise = franchise !== undefined ? franchise : (req.franchiseId || null);
         
         // Get geographic location from IP
         const geo = geoip.lookup(logData.ipAddress);
@@ -55,6 +60,7 @@ class ActivityLogService {
         // Default values when no request object
         logData.ipAddress = '127.0.0.1';
         logData.userAgent = 'System';
+        logData.franchise = franchise || null;
       }
 
       const log = await ActivityLog.logActivity(logData);
@@ -144,6 +150,10 @@ class ActivityLogService {
 
       if (filters.ipAddress) {
         query.ipAddress = filters.ipAddress;
+      }
+
+      if (filters.franchise) {
+        query.franchise = filters.franchise;
       }
 
       if (filters.search) {

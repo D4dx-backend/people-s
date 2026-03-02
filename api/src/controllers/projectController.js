@@ -36,42 +36,19 @@ class ProjectController {
         ];
       }
 
-      // Apply role-based access control
+      // Apply regional access control
       if (req.user.role !== 'super_admin' && req.user.role !== 'state_admin') {
-        if (req.user.role === 'project_coordinator') {
-          // Project coordinators only see their assigned projects
-          const assignedProjects = req.user.adminScope?.projects || [];
-          if (assignedProjects.length > 0) {
-            filter._id = { $in: assignedProjects };
-          } else {
-            filter._id = { $in: [] }; // No assigned projects
-          }
-        } else if (req.user.role === 'scheme_coordinator') {
-          // Scheme coordinators see projects that contain their assigned schemes
-          const assignedSchemes = req.user.adminScope?.schemes || [];
-          if (assignedSchemes.length > 0) {
-            const Scheme = require('../models').Scheme;
-            const schemes = await Scheme.find({ _id: { $in: assignedSchemes } }).select('project');
-            const projectIds = [...new Set(schemes.map(s => s.project).filter(Boolean))];
-            if (projectIds.length > 0) {
-              filter._id = { $in: projectIds };
-            } else {
-              filter._id = { $in: [] };
-            }
-          } else {
-            filter._id = { $in: [] };
-          }
-        } else {
-          // Regional admins see projects in their regions
-          const userRegions = req.user.adminScope?.regions || [];
-          if (userRegions.length > 0) {
-            filter.targetRegions = { $in: userRegions };
-          }
+        const userRegions = req.user.adminScope?.regions || [];
+        if (userRegions.length > 0) {
+          filter.targetRegions = { $in: userRegions };
         }
       }
 
       const skip = (page - 1) * limit;
 
+      // Multi-tenant: restrict to current franchise
+      if (req.franchiseId) filter.franchise = req.franchiseId;
+      
       const projects = await Project.find(filter)
         .populate('coordinator', 'name email phone role')
         .populate('targetRegions', 'name type code')
@@ -105,7 +82,7 @@ class ProjectController {
     try {
       const { id } = req.params;
 
-      const project = await Project.findById(id)
+      const project = await Project.findOne({ _id: id, franchise: req.franchiseId })
         .populate('coordinator', 'name email phone role profile')
         .populate('targetRegions', 'name type code parent')
         .populate('team.user', 'name email phone role')
@@ -136,7 +113,8 @@ class ProjectController {
     try {
       const projectData = {
         ...req.body,
-        createdBy: req.user._id
+        createdBy: req.user._id,
+        franchise: req.franchiseId || null  // Multi-tenant
       };
 
       // Validate coordinator exists
@@ -211,7 +189,7 @@ class ProjectController {
       const project = new Project(projectData);
       await project.save();
 
-      const populatedProject = await Project.findById(project._id)
+      const populatedProject = await Project.findOne({ _id: project._id, franchise: req.franchiseId })
         .populate('coordinator', 'name email phone role')
         .populate('targetRegions', 'name type code')
         .populate('createdBy', 'name email');
@@ -245,7 +223,7 @@ class ProjectController {
         updatedBy: req.user._id
       };
 
-      const project = await Project.findById(id);
+      const project = await Project.findOne({ _id: id, franchise: req.franchiseId });
       if (!project) {
         return ResponseHelper.error(res, 'Project not found', 404);
       }
@@ -274,7 +252,7 @@ class ProjectController {
       Object.assign(project, updateData);
       await project.save();
 
-      const populatedProject = await Project.findById(project._id)
+      const populatedProject = await Project.findOne({ _id: project._id, franchise: req.franchiseId })
         .populate('coordinator', 'name email phone role')
         .populate('targetRegions', 'name type code')
         .populate('createdBy', 'name email')
@@ -305,7 +283,7 @@ class ProjectController {
     try {
       const { id } = req.params;
 
-      const project = await Project.findById(id);
+      const project = await Project.findOne({ _id: id, franchise: req.franchiseId });
       if (!project) {
         return ResponseHelper.error(res, 'Project not found', 404);
       }
@@ -318,7 +296,7 @@ class ProjectController {
       // Check if project can be deleted (no active applications, etc.)
       // This would need to be implemented based on business rules
 
-      await Project.findByIdAndDelete(id);
+      await Project.findOneAndDelete({ _id: id, franchise: req.franchiseId });
 
       return ResponseHelper.success(res, null, 'Project deleted successfully');
     } catch (error) {
@@ -336,29 +314,9 @@ class ProjectController {
       // Build filter based on user access
       const filter = {};
       if (req.user.role !== 'super_admin' && req.user.role !== 'state_admin') {
-        if (req.user.role === 'project_coordinator') {
-          const assignedProjects = req.user.adminScope?.projects || [];
-          if (assignedProjects.length > 0) {
-            filter._id = { $in: assignedProjects };
-          } else {
-            filter._id = { $in: [] };
-          }
-        } else if (req.user.role === 'scheme_coordinator') {
-          // Scheme coordinators see projects that contain their assigned schemes
-          const assignedSchemes = req.user.adminScope?.schemes || [];
-          if (assignedSchemes.length > 0) {
-            const Scheme = require('../models').Scheme;
-            const schemes = await Scheme.find({ _id: { $in: assignedSchemes } }).select('project');
-            const projectIds = [...new Set(schemes.map(s => s.project).filter(Boolean))];
-            filter._id = projectIds.length > 0 ? { $in: projectIds } : { $in: [] };
-          } else {
-            filter._id = { $in: [] };
-          }
-        } else {
-          const userRegions = req.user.adminScope?.regions || [];
-          if (userRegions.length > 0) {
-            filter.targetRegions = { $in: userRegions };
-          }
+        const userRegions = req.user.adminScope?.regions || [];
+        if (userRegions.length > 0) {
+          filter.targetRegions = { $in: userRegions };
         }
       }
 
@@ -432,7 +390,7 @@ class ProjectController {
       const { id } = req.params;
       const { milestones, percentage } = req.body;
 
-      const project = await Project.findById(id);
+      const project = await Project.findOne({ _id: id, franchise: req.franchiseId });
       if (!project) {
         return ResponseHelper.error(res, 'Project not found', 404);
       }
@@ -469,7 +427,7 @@ class ProjectController {
       const { id } = req.params;
       const { stage, status, description, remarks, attachments } = req.body;
 
-      const project = await Project.findById(id);
+      const project = await Project.findOne({ _id: id, franchise: req.franchiseId });
       if (!project) {
         return ResponseHelper.error(res, 'Project not found', 404);
       }
@@ -501,7 +459,7 @@ class ProjectController {
       project.updatedBy = req.user._id;
       await project.save();
 
-      const populatedProject = await Project.findById(project._id)
+      const populatedProject = await Project.findOne({ _id: project._id, franchise: req.franchiseId })
         .populate('statusUpdates.updatedBy', 'name email role')
         .populate('coordinator', 'name email phone role')
         .populate('targetRegions', 'name type code');
@@ -522,7 +480,7 @@ class ProjectController {
       const { id, updateId } = req.params;
       const { stage, status, description, remarks, attachments, isVisible } = req.body;
 
-      const project = await Project.findById(id);
+      const project = await Project.findOne({ _id: id, franchise: req.franchiseId });
       if (!project) {
         return ResponseHelper.error(res, 'Project not found', 404);
       }
@@ -561,7 +519,7 @@ class ProjectController {
 
       await project.save();
 
-      const populatedProject = await Project.findById(project._id)
+      const populatedProject = await Project.findOne({ _id: project._id, franchise: req.franchiseId })
         .populate('statusUpdates.updatedBy', 'name email role')
         .populate('coordinator', 'name email phone role')
         .populate('targetRegions', 'name type code');
@@ -581,7 +539,7 @@ class ProjectController {
     try {
       const { id, updateId } = req.params;
 
-      const project = await Project.findById(id);
+      const project = await Project.findOne({ _id: id, franchise: req.franchiseId });
       if (!project) {
         return ResponseHelper.error(res, 'Project not found', 404);
       }
@@ -628,7 +586,7 @@ class ProjectController {
     try {
       const { id } = req.params;
 
-      const project = await Project.findById(id);
+      const project = await Project.findOne({ _id: id, franchise: req.franchiseId });
       if (!project) {
         return ResponseHelper.error(res, 'Project not found', 404);
       }
@@ -677,7 +635,7 @@ class ProjectController {
       const { id } = req.params;
       const { stages, enablePublicTracking, notificationSettings } = req.body;
 
-      const project = await Project.findById(id);
+      const project = await Project.findOne({ _id: id, franchise: req.franchiseId });
       if (!project) {
         return ResponseHelper.error(res, 'Project not found', 404);
       }

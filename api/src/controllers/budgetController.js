@@ -558,11 +558,13 @@ class BudgetController {
       const dateFilter = BudgetController.buildDateFilter(period);
       
       // Get project budget data with active projects only
+      const franchiseMatch = req.franchiseId ? { franchise: req.franchiseId } : {};
       const projectStats = await Project.aggregate([
         {
           $match: { 
             status: { $ne: 'cancelled' },
-            ...dateFilter
+            ...dateFilter,
+            ...franchiseMatch
           }
         },
         {
@@ -581,7 +583,8 @@ class BudgetController {
         {
           $match: { 
             status: { $ne: 'cancelled' },
-            ...dateFilter
+            ...dateFilter,
+            ...franchiseMatch
           }
         },
         {
@@ -603,7 +606,8 @@ class BudgetController {
             $match: { 
               status: 'completed',
               type: { $in: ['full_payment', 'installment'] },
-              ...paymentDateFilter
+              ...paymentDateFilter,
+              ...franchiseMatch
             }
           },
           {
@@ -618,7 +622,8 @@ class BudgetController {
           {
             $match: { 
               status: 'completed',
-              ...paymentDateFilter
+              ...paymentDateFilter,
+              ...franchiseMatch
             }
           },
           {
@@ -635,7 +640,8 @@ class BudgetController {
       const approvedApplicationsStats = await Application.aggregate([
         {
           $match: { 
-            status: { $in: ['approved', 'disbursed', 'completed'] }
+            status: { $in: ['approved', 'disbursed', 'completed'] },
+            ...franchiseMatch
           }
         },
         {
@@ -652,7 +658,8 @@ class BudgetController {
         Payment.aggregate([
           {
             $match: { 
-              status: { $in: ['pending', 'approved', 'processing'] }
+              status: { $in: ['pending', 'approved', 'processing'] },
+              ...franchiseMatch
             }
           },
           {
@@ -666,7 +673,8 @@ class BudgetController {
         RecurringPayment.aggregate([
           {
             $match: { 
-              status: { $in: ['scheduled', 'due', 'overdue', 'processing'] }
+              status: { $in: ['scheduled', 'due', 'overdue', 'processing'] },
+              ...franchiseMatch
             }
           },
           {
@@ -733,13 +741,15 @@ class BudgetController {
     try {
       const { period } = req.query;
       const dateFilter = BudgetController.buildDateFilter(period);
+      const franchiseMatch = req.franchiseId ? { franchise: req.franchiseId } : {};
       
       // Get projects with real financial data
       const projects = await Project.aggregate([
         {
           $match: { 
             status: { $ne: 'cancelled' },
-            ...dateFilter
+            ...dateFilter,
+            ...franchiseMatch
           }
         },
         {
@@ -879,13 +889,15 @@ class BudgetController {
     try {
       const { period } = req.query;
       const dateFilter = BudgetController.buildDateFilter(period);
+      const franchiseMatch = req.franchiseId ? { franchise: req.franchiseId } : {};
       
       // Get schemes with real financial data
       const schemes = await Scheme.aggregate([
         {
           $match: { 
             status: { $ne: 'cancelled' },
-            ...dateFilter
+            ...dateFilter,
+            ...franchiseMatch
           }
         },
         {
@@ -1050,6 +1062,7 @@ class BudgetController {
       if (type) filter.type = type;
       if (project) filter.project = project;
       if (scheme) filter.scheme = scheme;
+      if (req.franchiseId) filter.franchise = req.franchiseId;  // Multi-tenant
       
       // Add period filter
       const paymentDateFilter = BudgetController.buildPaymentDateFilter(period);
@@ -1135,11 +1148,13 @@ class BudgetController {
       const endDate = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0);
 
       // Get monthly payment data
+      const franchiseMatch = req.franchiseId ? { franchise: req.franchiseId } : {};
       const monthlyPayments = await Payment.aggregate([
         {
           $match: {
             'timeline.completedAt': { $gte: startDate, $lte: endDate },
-            status: 'completed'
+            status: 'completed',
+            ...franchiseMatch
           }
         },
         {
@@ -1164,7 +1179,8 @@ class BudgetController {
         {
           $match: {
             approvedAt: { $gte: startDate, $lte: endDate },
-            status: { $in: ['approved', 'disbursed', 'completed'] }
+            status: { $in: ['approved', 'disbursed', 'completed'] },
+            ...franchiseMatch
           }
         },
         {

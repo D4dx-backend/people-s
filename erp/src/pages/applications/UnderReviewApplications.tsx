@@ -132,9 +132,9 @@ export default function UnderReviewApplications() {
     setShowDetailModal(true);
   };
 
-  const handleApprove = async (id: string, remarks: string) => {
+  const handleApprove = async (id: string, remarks: string, _distributionTimeline?: any[], _forwardToCommittee?: boolean, _interviewReport?: string, _isRecurring?: boolean, _recurringConfig?: any, approvedAmountFromModal?: number) => {
     try {
-      const response = await applications.approve(id, { approvedAmount: selectedApp?.requestedAmount, comments: remarks });
+      const response = await applications.approve(id, { approvedAmount: approvedAmountFromModal || selectedApp?.requestedAmount, comments: remarks });
       if (response.success) {
         await loadApplications();
         toast({ title: "Application Approved", description: `Application ${id} has been approved successfully.` });

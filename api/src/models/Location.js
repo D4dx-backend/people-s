@@ -1,5 +1,9 @@
 const mongoose = require('mongoose');
 
+// GLOBAL MODEL — shared across ALL franchises.
+// DO NOT add franchise plugin here. Districts, areas, and units are
+// geographical facts that all NGO franchises share in common.
+
 const locationSchema = new mongoose.Schema({
   name: {
     type: String,
@@ -77,7 +81,7 @@ const locationSchema = new mongoose.Schema({
 
 // Indexes
 locationSchema.index({ type: 1, parent: 1 });
-locationSchema.index({ code: 1 });
+// code: unique index defined on field (unique: true)
 locationSchema.index({ name: 1 });
 locationSchema.index({ coordinates: '2dsphere' });
 locationSchema.index({ isActive: 1 });

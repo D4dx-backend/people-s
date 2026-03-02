@@ -601,6 +601,16 @@ export const ApplicationDetailModal: React.FC<ApplicationDetailModalProps> = ({
       });
       return;
     }
+
+    // Validate approved amount > 0
+    if (!forwardToCommittee && (!approvedAmount || approvedAmount <= 0)) {
+      toast({ 
+        title: "Validation Error", 
+        description: "Approved amount must be greater than zero. Zero amount ആയി approve ചെയ്യാൻ കഴിയില്ല.", 
+        variant: "destructive" 
+      });
+      return;
+    }
     
     setProcessingAction(true);
     try {
@@ -640,7 +650,7 @@ export const ApplicationDetailModal: React.FC<ApplicationDetailModalProps> = ({
       } else {
         // For pending/under_review without interview requirement, use direct approval API
         response = await applicationsApi.approve(application._id, {
-          approvedAmount: application.requestedAmount,
+          approvedAmount: approvedAmount,
           comments: remarks,
           distributionTimeline: timelineData
         });
@@ -1101,12 +1111,18 @@ export const ApplicationDetailModal: React.FC<ApplicationDetailModalProps> = ({
                             placeholder="Enter approved amount"
                             value={approvedAmount}
                             onChange={(e) => setApprovedAmount(Number(e.target.value))}
-                            className="pl-10"
+                            className={`pl-10 ${!approvedAmount || approvedAmount <= 0 ? 'border-destructive' : ''}`}
                             min={0}
                             max={application?.requestedAmount}
                             disabled={forwardToCommittee}
                           />
                         </div>
+                        {!forwardToCommittee && (!approvedAmount || approvedAmount <= 0) && (
+                          <p className="text-xs text-destructive font-medium flex items-center gap-1">
+                            <AlertCircle className="h-3 w-3" />
+                            Approved amount zero ആണ്, approve ചെയ്യാൻ കഴിയില്ല. Amount zero-യേക്കാൾ കൂടുതൽ ആയിരിക്കണം.
+                          </p>
+                        )}
                         <p className="text-xs text-muted-foreground">
                           {forwardToCommittee 
                             ? "Approved amount will be determined by committee" 
@@ -1384,28 +1400,6 @@ export const ApplicationDetailModal: React.FC<ApplicationDetailModalProps> = ({
                       <label className="text-sm font-medium text-muted-foreground">Submitted Date</label>
                       <p className="text-sm">{new Date(application.createdAt).toLocaleDateString()}</p>
                     </div>
-                  </div>
-                </CardContent>
-              </Card>
-
-              {/* Beneficiary Profile Information */}
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <User className="h-5 w-5" />
-                    Beneficiary Profile
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                      <label className="text-sm font-medium text-muted-foreground">Name</label>
-                      <p className="text-sm font-medium">{application.beneficiary?.name || 'N/A'}</p>
-                    </div>
-                    <div>
-                      <label className="text-sm font-medium text-muted-foreground">Phone</label>
-                      <p className="text-sm">{application.beneficiary?.phone || 'N/A'}</p>
-                    </div>
                     {application.beneficiary?.profile?.gender && (
                       <div>
                         <label className="text-sm font-medium text-muted-foreground">Gender</label>
@@ -1424,24 +1418,6 @@ export const ApplicationDetailModal: React.FC<ApplicationDetailModalProps> = ({
                           <div className="md:col-span-2">
                             <label className="text-sm font-medium text-muted-foreground">Address</label>
                             <p className="text-sm">{application.beneficiary.profile.address.street}</p>
-                          </div>
-                        )}
-                        {application.beneficiary.profile.address.area && (
-                          <div>
-                            <label className="text-sm font-medium text-muted-foreground">Area</label>
-                            <p className="text-sm">{application.beneficiary.profile.address.area}</p>
-                          </div>
-                        )}
-                        {application.beneficiary.profile.address.district && (
-                          <div>
-                            <label className="text-sm font-medium text-muted-foreground">District</label>
-                            <p className="text-sm">{application.beneficiary.profile.address.district}</p>
-                          </div>
-                        )}
-                        {application.beneficiary.profile.address.state && (
-                          <div>
-                            <label className="text-sm font-medium text-muted-foreground">State</label>
-                            <p className="text-sm">{application.beneficiary.profile.address.state}</p>
                           </div>
                         )}
                         {application.beneficiary.profile.address.pincode && (
@@ -1494,56 +1470,82 @@ export const ApplicationDetailModal: React.FC<ApplicationDetailModalProps> = ({
                     Financial Details
                   </CardTitle>
                 </CardHeader>
-                <CardContent>
+                <CardContent className="space-y-4">
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <div>
+                    <div className="p-3 rounded-lg bg-muted/50">
                       <label className="text-sm font-medium text-muted-foreground">Requested Amount</label>
-                      <p className="text-lg font-semibold">₹{application.requestedAmount?.toLocaleString() || '0'}</p>
+                      <p className="text-lg font-semibold">₹{application.requestedAmount?.toLocaleString('en-IN') || '0'}</p>
                     </div>
-                    {application.approvedAmount && (
-                      <div>
-                        <label className="text-sm font-medium text-muted-foreground">Approved Amount</label>
-                        <p className="text-lg font-semibold text-green-600">₹{application.approvedAmount.toLocaleString()}</p>
-                      </div>
-                    )}
-                    {application.disbursedAmount && (
-                      <div>
-                        <label className="text-sm font-medium text-muted-foreground">Disbursed Amount</label>
-                        <p className="text-lg font-semibold text-blue-600">₹{application.disbursedAmount.toLocaleString()}</p>
-                      </div>
-                    )}
-                  </div>
-                </CardContent>
-              </Card>
-
-              {/* Current Stage */}
-              {(application.currentStage || application.status) && (
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
-                      <FileText className="h-5 w-5" />
-                      Current Stage
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="bg-blue-50 border border-blue-200 rounded-md p-3">
-                      <p className="text-sm font-medium text-blue-900">
-                        {application.currentStage || 
-                         (application.status === 'pending' ? 'Pending Review' :
-                          application.status === 'under_review' ? 'Under Review' :
-                          application.status === 'approved' ? 'Approved' :
-                          application.status === 'rejected' ? 'Rejected' :
-                          application.status === 'field_verification' ? 'Field Verification' :
-                          application.status === 'interview_scheduled' ? 'Interview Scheduled' :
-                          application.status === 'pending_committee_approval' ? 'Pending Committee Approval' :
-                          application.status === 'committee_approved' ? 'Committee Approved' :
-                          application.status === 'completed' ? 'Completed' :
-                          application.status?.replace(/_/g, ' ').replace(/\b\w/g, (l: string) => l.toUpperCase()))}
+                    <div className="p-3 rounded-lg bg-green-50 border border-green-100">
+                      <label className="text-sm font-medium text-muted-foreground">Approved Amount</label>
+                      <p className={`text-lg font-semibold ${application.approvedAmount > 0 ? 'text-green-600' : 'text-muted-foreground'}`}>
+                        ₹{(application.approvedAmount ?? 0).toLocaleString('en-IN')}
                       </p>
                     </div>
-                  </CardContent>
-                </Card>
-              )}
+                    {application.disbursedAmount != null ? (
+                      <div className="p-3 rounded-lg bg-blue-50 border border-blue-100">
+                        <label className="text-sm font-medium text-muted-foreground">Disbursed Amount</label>
+                        <p className="text-lg font-semibold text-blue-600">₹{application.disbursedAmount.toLocaleString('en-IN')}</p>
+                      </div>
+                    ) : (application.currentStage || application.status) ? (
+                      <div className="p-3 rounded-lg bg-blue-50 border border-blue-100">
+                        <label className="text-sm font-medium text-muted-foreground">Current Stage</label>
+                        <p className="text-sm font-semibold text-blue-900 mt-1">
+                          {application.currentStage || 
+                           (application.status === 'pending' ? 'Pending Review' :
+                            application.status === 'under_review' ? 'Under Review' :
+                            application.status === 'approved' ? 'Approved' :
+                            application.status === 'rejected' ? 'Rejected' :
+                            application.status === 'field_verification' ? 'Field Verification' :
+                            application.status === 'interview_scheduled' ? 'Interview Scheduled' :
+                            application.status === 'pending_committee_approval' ? 'Pending Committee Approval' :
+                            application.status === 'committee_approved' ? 'Committee Approved' :
+                            application.status === 'completed' ? 'Completed' :
+                            application.status?.replace(/_/g, ' ').replace(/\b\w/g, (l: string) => l.toUpperCase()))}
+                        </p>
+                      </div>
+                    ) : null}
+                  </div>
+
+                  {/* Distribution Timeline Breakdown in Financial Details */}
+                  {application.distributionTimeline && application.distributionTimeline.length > 0 && (
+                    <div className="border-t pt-3 mt-2">
+                      <label className="text-sm font-medium text-muted-foreground mb-2 block">Distribution Breakdown</label>
+                      <div className="space-y-2">
+                        {application.distributionTimeline.map((timeline: any, index: number) => {
+                          const amount = (application.approvedAmount > 0 && timeline.percentage > 0)
+                            ? Math.round(application.approvedAmount * timeline.percentage / 100)
+                            : (timeline.amount > 0 && application.approvedAmount !== 0)
+                              ? timeline.amount
+                              : 0;
+                          return (
+                            <div key={index} className="flex items-center justify-between py-1.5 px-3 rounded bg-muted/30">
+                              <div className="flex items-center gap-2">
+                                <span className="text-xs font-medium text-muted-foreground w-5">{index + 1}.</span>
+                                <span className="text-sm">{timeline.description || `Phase ${index + 1}`}</span>
+                              </div>
+                              <div className="flex items-center gap-3">
+                                <span className="text-sm font-semibold text-green-600">₹{amount.toLocaleString('en-IN')}</span>
+                                <Badge variant="outline" className="text-xs">{timeline.percentage}%</Badge>
+                              </div>
+                            </div>
+                          );
+                        })}
+                        <div className="flex items-center justify-between py-1.5 px-3 rounded bg-primary/5 border border-primary/10 font-semibold">
+                          <span className="text-sm">Total</span>
+                          <span className="text-sm text-primary">
+                            ₹{application.distributionTimeline.reduce((sum: number, t: any) => {
+                              const amt = (application.approvedAmount > 0 && t.percentage > 0) ? Math.round(application.approvedAmount * t.percentage / 100) : ((t.amount > 0 && application.approvedAmount !== 0) ? t.amount : 0);
+                              return sum + amt;
+                            }, 0).toLocaleString('en-IN')}
+                            {' '}({application.distributionTimeline.reduce((sum: number, t: any) => sum + (t.percentage || 0), 0)}%)
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
 
               {/* Payment Records */}
               {payments && payments.length > 0 && (
@@ -1941,37 +1943,6 @@ export const ApplicationDetailModal: React.FC<ApplicationDetailModalProps> = ({
                 </Card>
               )}
 
-              {/* Distribution Timeline */}
-              {application.distributionTimeline && application.distributionTimeline.length > 0 && (
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
-                      <Calendar className="h-5 w-5" />
-                      Distribution Timeline
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="space-y-3">
-                      {application.distributionTimeline.map((timeline: any, index: number) => (
-                        <div key={index} className="border-l-2 border-primary pl-4 pb-3">
-                          <div className="flex items-center justify-between mb-1">
-                            <p className="font-medium text-sm">{timeline.description}</p>
-                            <Badge variant="outline">{timeline.percentage}%</Badge>
-                          </div>
-                          <div className="text-xs text-muted-foreground space-y-1">
-                            <p>Days from approval: {timeline.daysFromApproval}</p>
-                            {timeline.requiresVerification && (
-                              <p className="text-orange-600">⚠️ Requires verification</p>
-                            )}
-                            {timeline.notes && <p className="italic">{timeline.notes}</p>}
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </CardContent>
-                </Card>
-              )}
-
               {/* Documents */}
               {application.documents && application.documents.length > 0 && (
                 <Card>
@@ -2290,6 +2261,7 @@ export const ApplicationDetailModal: React.FC<ApplicationDetailModalProps> = ({
               disabled={
                 processingAction || 
                 !remarks.trim() || 
+                (showAction === "approve" && !forwardToCommittee && (!approvedAmount || approvedAmount <= 0)) ||
                 (showAction === "approve" && !forwardToCommittee && 
                   distributionTimeline.reduce((sum, phase) => sum + (phase.percentage || 0), 0) !== 100)
               }

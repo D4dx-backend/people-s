@@ -22,7 +22,9 @@ import { useRBAC } from "@/hooks/useRBAC";
 import { useNavigate } from "react-router-dom";
 import { toast } from "@/hooks/use-toast";
 import { api } from "@/lib/api";
-import logo from "@/assets/logo.png";
+import { useConfig } from "@/contexts/ConfigContext";
+import { useOrgLogoUrl } from "@/hooks/useOrgLogoUrl";
+import defaultLogo from "@/assets/logo.png";
 
 interface HeaderProps {
   onMenuClick?: () => void;
@@ -149,6 +151,8 @@ export function Header({ onMenuClick }: HeaderProps) {
   const { user, logout } = useAuth();
   const { hasPermission } = useRBAC();
   const navigate = useNavigate();
+  const { org } = useConfig();
+  const orgLogoUrl = useOrgLogoUrl();
   const [lastLogin, setLastLogin] = useState<string | null>(null);
   const [lastLoginDevice, setLastLoginDevice] = useState<string | null>(null);
 
@@ -223,10 +227,10 @@ export function Header({ onMenuClick }: HeaderProps) {
             </Button>
           )}
           <div className="flex items-center gap-3">
-            <img src={logo} alt="People's Foundation ERP" className="h-10 w-10 rounded-2xl shadow-sm" />
+            <img src={orgLogoUrl} alt={org.erpTitle} className="h-10 w-10 rounded-2xl shadow-sm" onError={(e) => { (e.target as HTMLImageElement).src = defaultLogo; }} />
             <div className="hidden md:block">
-              <h1 className="text-lg font-bold text-foreground">People's Foundation ERP</h1>
-              <p className="text-xs text-muted-foreground">ERP Solution for NGOs</p>
+              <h1 className="text-lg font-bold text-foreground">{org.erpTitle}</h1>
+              <p className="text-xs text-muted-foreground">{org.erpSubtitle}</p>
             </div>
           </div>
         </div>

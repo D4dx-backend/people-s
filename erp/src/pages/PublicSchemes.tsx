@@ -6,7 +6,9 @@ import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { EmptyState } from "@/components/ui/empty-state";
 import { ArrowRight, Calendar, IndianRupee, Users, Loader2, AlertCircle, LogIn } from "lucide-react";
-import logo from "@/assets/logo.png";
+import { useConfig } from "@/contexts/ConfigContext";
+import { useOrgLogoUrl } from "@/hooks/useOrgLogoUrl";
+import defaultLogo from "@/assets/logo.png";
 import { beneficiaryApi } from "@/services/beneficiaryApi";
 
 interface Scheme {
@@ -30,6 +32,8 @@ interface Scheme {
 
 export default function PublicSchemes() {
   const navigate = useNavigate();
+  const { org } = useConfig();
+  const orgLogoUrl = useOrgLogoUrl();
   const [schemes, setSchemes] = useState<Scheme[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -85,10 +89,10 @@ export default function PublicSchemes() {
       <header className="border-b bg-card sticky top-0 z-50">
         <div className="container mx-auto px-4 py-4 flex justify-between items-center">
           <div className="flex items-center gap-3">
-            <img src={logo} alt="Logo" className="h-12 w-12 rounded-full" />
+            <img src={orgLogoUrl} alt={org.erpTitle} className="h-12 w-12 rounded-full" onError={(e) => { (e.target as HTMLImageElement).src = defaultLogo; }} />
             <div>
-              <h1 className="text-lg font-bold">People's Foundation ERP</h1>
-              <p className="text-xs text-muted-foreground">Empowering Communities</p>
+              <h1 className="text-lg font-bold">{org.erpTitle}</h1>
+              <p className="text-xs text-muted-foreground">{org.tagline}</p>
             </div>
           </div>
           <div className="flex gap-2">
@@ -194,7 +198,7 @@ export default function PublicSchemes() {
       {/* Footer */}
       <footer className="bg-card border-t py-8 mt-12">
         <div className="container mx-auto px-4 text-center text-muted-foreground">
-          <p>&copy; 2025 People's Foundation ERP. All rights reserved.</p>
+          <p>{org.copyrightText}</p>
         </div>
       </footer>
     </div>

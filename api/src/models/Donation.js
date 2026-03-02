@@ -1,4 +1,6 @@
 const mongoose = require('mongoose');
+const Counter = require('./Counter');
+const franchisePlugin = require('../utils/franchisePlugin');
 
 const donationSchema = new mongoose.Schema({
   // Basic Information
@@ -25,11 +27,18 @@ const donationSchema = new mongoose.Schema({
     default: null
   },
   
+  // Idempotency key to prevent duplicate submissions
+  idempotencyKey: {
+    type: String,
+    sparse: true
+  },
+
   // Donation Details
   amount: {
     type: Number,
     required: [true, 'Donation amount is required'],
-    min: [0, 'Donation amount cannot be negative']
+    min: [1, 'Donation amount must be at least 1'],
+    max: [100000000, 'Donation amount exceeds maximum limit']
   },
   currency: {
     type: String,
@@ -362,7 +371,7 @@ const donationSchema = new mongoose.Schema({
 });
 
 // Indexes
-donationSchema.index({ donationNumber: 1 });
+// donationNumber: unique index defined on field (unique: true)
 donationSchema.index({ donor: 1 });
 donationSchema.index({ project: 1, scheme: 1 });
 donationSchema.index({ status: 1 });
@@ -391,23 +400,19 @@ donationSchema.virtual('netAmount').get(function() {
   return this.amount - (this.tax.taxDeducted || 0);
 });
 
-// Pre-save middleware to generate donation number
+// Pre-save middleware to generate donation number (atomic via Counter model)
 donationSchema.pre('save', async function(next) {
   if (this.isNew && !this.donationNumber) {
     try {
       const year = new Date().getFullYear();
       const month = String(new Date().getMonth() + 1).padStart(2, '0');
       
-      // Count donations for current month
-      const count = await this.constructor.countDocuments({
-        createdAt: {
-          $gte: new Date(year, new Date().getMonth(), 1),
-          $lt: new Date(year, new Date().getMonth() + 1, 1)
-        }
-      });
+      // Atomic counter-based sequence generation (no race conditions)
+      const counterKey = `donation_${year}_${month}`;
+      const seq = await Counter.getNextSequence(counterKey);
       
       // Format: DON_YYYY_MM_SEQUENCE
-      const sequence = String(count + 1).padStart(5, '0');
+      const sequence = String(seq).padStart(5, '0');
       this.donationNumber = `DON_${year}_${month}_${sequence}`;
       
       next();
@@ -554,5 +559,10 @@ donationSchema.statics.getStats = function(filters = {}) {
     }
   ]);
 };
+
+// Franchise multi-tenancy — compound unique: numbers are franchise-scoped
+donationSchema.plugin(franchisePlugin);
+donationSchema.index({ donationNumber: 1, franchise: 1 }, { unique: true });
+donationSchema.index({ idempotencyKey: 1, franchise: 1 }, { unique: true, sparse: true });
 
 module.exports = mongoose.model('Donation', donationSchema);

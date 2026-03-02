@@ -40,6 +40,7 @@ class DonorFollowUpController {
       // Search by donor name
       if (search) {
         const donors = await Donor.find({
+          ...(req.franchiseId ? { franchise: req.franchiseId } : {}),
           $or: [
             { name: { $regex: search, $options: 'i' } },
             { phone: { $regex: search, $options: 'i' } },
@@ -48,6 +49,9 @@ class DonorFollowUpController {
         }).select('_id');
         filter.donor = { $in: donors.map(d => d._id) };
       }
+
+      // Franchise scope
+      if (req.franchiseId) filter.franchise = req.franchiseId;
 
       const pageNum = parseInt(page);
       const limitNum = parseInt(limit);
@@ -250,7 +254,7 @@ class DonorFollowUpController {
         return ResponseHelper.error(res, 'Invalid follow-up ID', 400);
       }
 
-      const followUp = await DonorFollowUp.findById(id)
+      const followUp = await DonorFollowUp.findOne({ _id: id, franchise: req.franchiseId })
         .populate('donor', 'name email phone type category address donationStats communicationPreferences engagementScore followUpStatus')
         .populate('donation', 'amount method donationNumber status timeline')
         .populate('assignedTo', 'name email phone')
@@ -287,7 +291,7 @@ class DonorFollowUpController {
         return ResponseHelper.error(res, 'Invalid donor ID', 400);
       }
 
-      const donorDoc = await Donor.findById(donor);
+      const donorDoc = await Donor.findOne({ _id: donor, franchise: req.franchiseId });
       if (!donorDoc) {
         return ResponseHelper.error(res, 'Donor not found', 404);
       }
@@ -304,13 +308,14 @@ class DonorFollowUpController {
         assignedTo: assignedTo || null,
         assignedAt: assignedTo ? new Date() : null,
         assignedBy: assignedTo ? req.user._id : null,
-        createdBy: req.user._id
+        createdBy: req.user._id,
+        franchise: req.franchiseId || null  // Multi-tenant
       });
 
       await followUp.save();
 
       // Update donor status
-      await Donor.findByIdAndUpdate(donor, {
+      await Donor.findOneAndUpdate({ _id: donor, franchise: req.franchiseId }, {
         followUpStatus: 'active',
         nextExpectedDonation: new Date(nextDueDate)
       });
@@ -343,8 +348,8 @@ class DonorFollowUpController {
       delete updateData.createdAt;
       delete updateData.reminders; // Don't allow manual reminder history edits
 
-      const followUp = await DonorFollowUp.findByIdAndUpdate(
-        id,
+      const followUp = await DonorFollowUp.findOneAndUpdate(
+        { _id: id, franchise: req.franchiseId },
         updateData,
         { new: true, runValidators: true }
       )
@@ -378,8 +383,8 @@ class DonorFollowUpController {
         return ResponseHelper.error(res, 'Valid assignedTo user ID is required', 400);
       }
 
-      const followUp = await DonorFollowUp.findByIdAndUpdate(
-        id,
+      const followUp = await DonorFollowUp.findOneAndUpdate(
+        { _id: id, franchise: req.franchiseId },
         {
           assignedTo,
           assignedAt: new Date(),
@@ -415,7 +420,7 @@ class DonorFollowUpController {
         return ResponseHelper.error(res, 'Invalid follow-up ID', 400);
       }
 
-      const followUp = await DonorFollowUp.findById(id);
+      const followUp = await DonorFollowUp.findOne({ _id: id, franchise: req.franchiseId });
       if (!followUp) {
         return ResponseHelper.error(res, 'Follow-up not found', 404);
       }
@@ -442,7 +447,7 @@ class DonorFollowUpController {
       });
 
       if (!nextActiveFollowUp) {
-        await Donor.findByIdAndUpdate(followUp.donor, {
+        await Donor.findOneAndUpdate({ _id: followUp.donor, franchise: req.franchiseId }, {
           followUpStatus: 'no_followup',
           nextExpectedDonation: null
         });
@@ -472,7 +477,7 @@ class DonorFollowUpController {
         return ResponseHelper.error(res, 'Invalid follow-up ID', 400);
       }
 
-      const followUp = await DonorFollowUp.findById(id);
+      const followUp = await DonorFollowUp.findOne({ _id: id, franchise: req.franchiseId });
       if (!followUp) {
         return ResponseHelper.error(res, 'Follow-up not found', 404);
       }
@@ -498,7 +503,7 @@ class DonorFollowUpController {
       });
 
       if (!otherActive) {
-        await Donor.findByIdAndUpdate(followUp.donor, {
+        await Donor.findOneAndUpdate({ _id: followUp.donor, franchise: req.franchiseId }, {
           followUpStatus: 'no_followup',
           nextExpectedDonation: null
         });
@@ -527,8 +532,8 @@ class DonorFollowUpController {
         return ResponseHelper.error(res, 'Note text is required', 400);
       }
 
-      const followUp = await DonorFollowUp.findByIdAndUpdate(
-        id,
+      const followUp = await DonorFollowUp.findOneAndUpdate(
+        { _id: id, franchise: req.franchiseId },
         {
           $push: {
             staffNotes: {
@@ -567,7 +572,7 @@ class DonorFollowUpController {
         return ResponseHelper.error(res, 'Invalid follow-up ID', 400);
       }
 
-      const followUp = await DonorFollowUp.findById(id).populate('donor', 'name phone email');
+      const followUp = await DonorFollowUp.findOne({ _id: id, franchise: req.franchiseId }).populate('donor', 'name phone email');
       if (!followUp) {
         return ResponseHelper.error(res, 'Follow-up not found', 404);
       }
@@ -598,7 +603,7 @@ class DonorFollowUpController {
         return ResponseHelper.error(res, 'Invalid donor ID', 400);
       }
 
-      const donor = await Donor.findById(id);
+      const donor = await Donor.findOne({ _id: id, franchise: req.franchiseId });
       if (!donor) {
         return ResponseHelper.error(res, 'Donor not found', 404);
       }

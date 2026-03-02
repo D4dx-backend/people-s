@@ -1,5 +1,6 @@
 const express = require('express');
 const router = express.Router();
+const mongoose = require('mongoose');
 const Payment = require('../models/Payment');
 const RecurringPayment = require('../models/RecurringPayment');
 const { authenticate, authorize } = require('../middleware/auth');
@@ -8,38 +9,11 @@ const pdfReceiptController = require('../controllers/pdfReceiptController');
 const { createExportHandler } = require('../middleware/exportHandler');
 const exportConfigs = require('../config/exportConfigs');
 
+// Utility to escape user input before using in RegExp (prevents ReDoS)
+const escapeRegex = (str) => str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
 // Apply authentication to all routes
 router.use(authenticate);
-
-// Add a test route without RBAC for debugging
-router.get('/test', async (req, res) => {
-  try {
-    console.log('🧪 Test payment route accessed by user:', req.user?._id);
-    
-    const Payment = require('../models/Payment');
-    const count = await Payment.countDocuments();
-    
-    res.json({
-      success: true,
-      message: 'Test route working',
-      user: req.user ? {
-        id: req.user._id,
-        name: req.user.name,
-        role: req.user.role
-      } : null,
-      paymentCount: count,
-      timestamp: new Date().toISOString()
-    });
-  } catch (error) {
-    console.error('❌ Test route error:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Test route failed',
-      error: error.message,
-      timestamp: new Date().toISOString()
-    });
-  }
-});
 
 // Export payments as CSV or JSON
 router.get('/export',
@@ -91,7 +65,6 @@ router.get('/',
   RBACMiddleware.hasPermission('finances.read.regional'),
   async (req, res) => {
     try {
-      console.log('🔍 Payment route accessed by user:', req.user?._id, 'with permission:', req.checkedPermission);
       const { 
         page = 1, 
         limit = 10, 
@@ -112,8 +85,8 @@ router.get('/',
       if (status) matchStage.status = status;
       if (type) matchStage.type = type;
       if (method) matchStage.method = method;
-      if (project) matchStage.project = new require('mongoose').Types.ObjectId(project);
-      if (scheme) matchStage.scheme = new require('mongoose').Types.ObjectId(scheme);
+      if (project) matchStage.project = new mongoose.Types.ObjectId(project);
+      if (scheme) matchStage.scheme = new mongoose.Types.ObjectId(scheme);
 
       pipeline.push({ $match: matchStage });
 
@@ -175,7 +148,7 @@ router.get('/',
         const searchMatch = {};
         
         if (search) {
-          const searchRegex = new RegExp(search, 'i');
+          const searchRegex = new RegExp(escapeRegex(search), 'i');
           searchMatch.$or = [
             { paymentNumber: searchRegex },
             { 'beneficiary.name': searchRegex },
@@ -211,7 +184,6 @@ router.get('/',
 
       // Execute aggregation without pagination (we'll paginate after merging with recurring payments)
       const payments = await Payment.aggregate(pipeline);
-      console.log(`📊 Found ${payments.length} regular payments`);
 
       // Also fetch recurring payments with similar filters
       const recurringPipeline = [];
@@ -236,10 +208,9 @@ router.get('/',
         recurringMatchStage.status = { $nin: ['cancelled', 'skipped'] };
       }
       
-      if (project) recurringMatchStage.project = new require('mongoose').Types.ObjectId(project);
-      if (scheme) recurringMatchStage.scheme = new require('mongoose').Types.ObjectId(scheme);
+      if (project) recurringMatchStage.project = new mongoose.Types.ObjectId(project);
+      if (scheme) recurringMatchStage.scheme = new mongoose.Types.ObjectId(scheme);
 
-      console.log('🔍 Recurring payment match stage:', JSON.stringify(recurringMatchStage));
       recurringPipeline.push({ $match: recurringMatchStage });
 
       // Lookup stages for recurring payments
@@ -291,7 +262,7 @@ router.get('/',
         const searchMatch = {};
         
         if (search) {
-          const searchRegex = new RegExp(search, 'i');
+          const searchRegex = new RegExp(escapeRegex(search), 'i');
           searchMatch.$or = [
             { 'beneficiary.name': searchRegex },
             { 'application.applicationNumber': searchRegex },
@@ -308,7 +279,6 @@ router.get('/',
 
       // Execute recurring payments query
       const recurringPayments = await RecurringPayment.aggregate(recurringPipeline);
-      console.log(`🔄 Found ${recurringPayments.length} recurring payments`);
 
       // Transform regular payments
       const transformedPayments = payments.map(payment => ({
@@ -419,14 +389,10 @@ router.get('/',
           return dateB - dateA;
         });
 
-      console.log(`✅ Merged total: ${allPayments.length} payments (${transformedPayments.length} regular + ${transformedRecurringPayments.length} recurring)`);
-
       // Apply pagination to merged results
       const totalMerged = allPayments.length;
       const skip = (parseInt(page) - 1) * parseInt(limit);
       const paginatedPayments = allPayments.slice(skip, skip + parseInt(limit));
-
-      console.log(`📄 Returning page ${page}: ${paginatedPayments.length} payments`);
 
       res.json({
         success: true,
@@ -574,15 +540,31 @@ router.get('/:id',
 router.patch('/:id/process', 
   RBACMiddleware.hasPermission('finances.update.regional'),
   async (req, res) => {
+    const session = await mongoose.startSession();
+    session.startTransaction();
+    
     try {
       const { transactionId, utrNumber, notes } = req.body;
       
-      const payment = await Payment.findById(req.params.id).populate('application');
+      const payment = await Payment.findById(req.params.id).populate('application').session(session);
       
       if (!payment) {
+        await session.abortTransaction();
+        session.endSession();
         return res.status(404).json({
           success: false,
           message: 'Payment not found',
+          timestamp: new Date().toISOString()
+        });
+      }
+
+      // Validate status transition — only pending/approved/processing can be processed
+      if (!['pending', 'approved', 'processing'].includes(payment.status)) {
+        await session.abortTransaction();
+        session.endSession();
+        return res.status(400).json({
+          success: false,
+          message: `Cannot process payment with status "${payment.status}". Only pending, approved, or processing payments can be completed.`,
           timestamp: new Date().toISOString()
         });
       }
@@ -608,7 +590,7 @@ router.patch('/:id/process',
         payment.processingNotes = notes;
       }
 
-      await payment.save();
+      await payment.save({ session });
 
       // Check if this is the first installment payment
       const isFirstInstallment = payment.installment && payment.installment.number === 1;
@@ -619,7 +601,8 @@ router.patch('/:id/process',
         const application = await Application.findById(payment.application._id || payment.application)
           .populate('beneficiary')
           .populate('scheme')
-          .populate('project');
+          .populate('project')
+          .session(session);
         
         if (application) {
           // Create Beneficiary record when first installment is paid
@@ -630,7 +613,7 @@ router.patch('/:id/process',
             let beneficiary = await Beneficiary.findOne({
               phone: application.beneficiary.phone,
               status: { $in: ['active', 'verified'] }
-            });
+            }).session(session);
 
             if (!beneficiary) {
               // Create new beneficiary record from applicant data
@@ -649,14 +632,12 @@ router.patch('/:id/process',
                 createdBy: req.user._id
               });
               
-              await beneficiary.save();
-              console.log(`✅ Created beneficiary record for ${application.beneficiary.name} after first payment`);
+              await beneficiary.save({ session });
             } else {
               // Add application to existing beneficiary if not already added
               if (!beneficiary.applications.includes(application._id)) {
                 beneficiary.applications.push(application._id);
-                await beneficiary.save();
-                console.log(`✅ Added application to existing beneficiary ${application.beneficiary.name}`);
+                await beneficiary.save({ session });
               }
             }
           }
@@ -679,11 +660,14 @@ router.patch('/:id/process',
                 : 'Application marked as completed after payment'
             });
             
-            await application.save();
-            console.log(`✅ Application ${application.applicationNumber} marked as completed after payment`);
+            await application.save({ session });
           }
         }
       }
+
+      // All operations succeeded — commit the transaction
+      await session.commitTransaction();
+      session.endSession();
 
       res.json({
         success: true,
@@ -693,6 +677,8 @@ router.patch('/:id/process',
       });
 
     } catch (error) {
+      await session.abortTransaction();
+      session.endSession();
       console.error('Error processing payment:', error);
       res.status(500).json({
         success: false,
@@ -937,7 +923,7 @@ router.put('/:id',
       const { amount, dueDate, method, phase, percentage, status, paymentDate, chequeNumber } = req.body;
       
       // Validate MongoDB ObjectId format
-      if (!req.params.id || !require('mongoose').Types.ObjectId.isValid(req.params.id)) {
+      if (!req.params.id || !mongoose.Types.ObjectId.isValid(req.params.id)) {
         return res.status(400).json({
           success: false,
           message: 'Invalid payment ID format',
@@ -961,8 +947,6 @@ router.put('/:id',
           isRecurringPayment = true;
           // For recurring payments, redirect to recurring payment update route
           // or handle it here if the data structure is compatible
-          console.log(`🔄 Found recurring payment: ${req.params.id}`);
-          
           // Update recurring payment fields
           if (amount !== undefined && amount > 0) recurringPayment.amount = amount;
           if (dueDate !== undefined) {
@@ -1017,8 +1001,6 @@ router.put('/:id',
           
           try {
             await recurringPayment.save();
-            console.log(`✅ Recurring payment ${req.params.id} updated successfully`);
-            
             const updatedRecurringPayment = await RecurringPayment.findById(recurringPayment._id)
               .populate('application', 'applicationNumber')
               .populate('beneficiary', 'name phone')
@@ -1134,13 +1116,11 @@ router.put('/:id',
               });
               
               await beneficiary.save();
-              console.log(`✅ Created beneficiary record for ${application.beneficiary.name} after first payment`);
             } else {
               // Add application to existing beneficiary if not already added
               if (!beneficiary.applications.includes(application._id)) {
                 beneficiary.applications.push(application._id);
                 await beneficiary.save();
-                console.log(`✅ Added application to existing beneficiary ${application.beneficiary.name}`);
               }
             }
           }
@@ -1164,7 +1144,6 @@ router.put('/:id',
             });
             
             await application.save();
-            console.log(`✅ Application ${application.applicationNumber} marked as completed after payment`);
           }
         }
       }

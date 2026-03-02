@@ -1,4 +1,5 @@
 const axios = require('axios');
+const orgConfig = require('../config/orgConfig');
 
 /**
  * DXing WhatsApp OTP Service
@@ -125,14 +126,14 @@ class WhatsAppOTPService {
 
     const action = purposeText[purpose] || 'authenticate on';
     
-    return `🔐 *People's Foundation ERP*\n\n` +
+    return `🔐 *${orgConfig.erpTitle}*\n\n` +
            `Dear ${name},\n\n` +
-           `Your OTP to ${action} People's Foundation ERP is:\n\n` +
+           `Your OTP to ${action} ${orgConfig.erpTitle} is:\n\n` +
            `*${otp}*\n\n` +
            `⏰ Valid for 10 minutes\n` +
            `🔒 Do not share with anyone\n\n` +
            `If you didn't request this, please ignore this message.\n\n` +
-           `- Team People's Foundation ERP`;
+           `- Team ${orgConfig.erpTitle}`;
   }
 
   /**

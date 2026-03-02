@@ -1,4 +1,5 @@
 const mongoose = require('mongoose');
+const franchisePlugin = require('../utils/franchisePlugin');
 
 const loginLogSchema = new mongoose.Schema({
   // User who attempted login
@@ -124,8 +125,8 @@ const loginLogSchema = new mongoose.Schema({
   // Timestamp
   timestamp: {
     type: Date,
-    default: Date.now,
-    index: true
+    default: Date.now
+    // index handled by TTL index below
   }
 }, {
   timestamps: true,
@@ -194,5 +195,7 @@ loginLogSchema.statics.getLoginStats = async function(filters = {}) {
 
   return await this.aggregate(pipeline);
 };
+
+loginLogSchema.plugin(franchisePlugin);
 
 module.exports = mongoose.model('LoginLog', loginLogSchema);

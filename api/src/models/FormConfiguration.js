@@ -1,4 +1,5 @@
 const mongoose = require('mongoose');
+const franchisePlugin = require('../utils/franchisePlugin');
 
 const fieldSchema = new mongoose.Schema({
   id: {
@@ -297,7 +298,9 @@ const formConfigurationSchema = new mongoose.Schema({
 });
 
 // Indexes
-formConfigurationSchema.index({ scheme: 1, isRenewalForm: 1 }, { unique: true });
+// Franchise multi-tenancy
+formConfigurationSchema.plugin(franchisePlugin);
+formConfigurationSchema.index({ scheme: 1, isRenewalForm: 1, franchise: 1 }, { unique: true });
 formConfigurationSchema.index({ enabled: 1 });
 formConfigurationSchema.index({ isPublished: 1 });
 formConfigurationSchema.index({ createdBy: 1 });

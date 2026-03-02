@@ -7,7 +7,9 @@ import { Input } from "@/components/ui/input";
 import { ArrowLeft, Search, FileText, Calendar, IndianRupee, Users, Clock, Loader2, CheckCircle, AlertCircle } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { beneficiaryApi } from "@/services/beneficiaryApi";
-import logo from "@/assets/logo.png";
+import { useConfig } from "@/contexts/ConfigContext";
+import { useOrgLogoUrl } from "@/hooks/useOrgLogoUrl";
+import defaultLogo from "@/assets/logo.png";
 
 interface Scheme {
   _id: string;
@@ -42,6 +44,7 @@ interface Scheme {
 
 export default function BeneficiarySchemes() {
   const navigate = useNavigate();
+  const orgLogoUrl = useOrgLogoUrl();
   const [schemes, setSchemes] = useState<Scheme[]>([]);
   const [filteredSchemes, setFilteredSchemes] = useState<Scheme[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
@@ -167,7 +170,7 @@ export default function BeneficiarySchemes() {
               <ArrowLeft className="h-4 w-4 mr-1" />
               Back
             </Button>
-            <img src={logo} alt="Logo" className="h-8 w-8 rounded-full" />
+            <img src={orgLogoUrl} alt="Logo" className="h-8 w-8 rounded-full" onError={(e) => { (e.target as HTMLImageElement).src = defaultLogo; }} />
             <div>
               <h1 className="text-lg font-bold">Available Schemes</h1>
               <p className="text-xs text-muted-foreground hidden sm:block">+91 {phoneNumber}</p>

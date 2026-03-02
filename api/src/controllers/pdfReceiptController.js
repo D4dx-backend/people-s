@@ -16,7 +16,7 @@ class PDFReceiptController {
       const paymentId = req.params.id;
 
       // Fetch payment with all populated references
-      const payment = await Payment.findById(paymentId)
+      const payment = await Payment.findOne({ _id: paymentId, franchise: req.franchiseId })
         .populate('application', 'applicationNumber')
         .populate('beneficiary', 'name phone personalInfo financial')
         .populate('project', 'name code')
@@ -52,10 +52,16 @@ class PDFReceiptController {
       const fileStream = fs.createReadStream(pdfPath);
       fileStream.pipe(res);
 
-      // Clean up file after sending (optional)
+      // Clean up file after sending
       fileStream.on('end', () => {
-        // Optionally delete the file after sending
-        // fs.unlinkSync(pdfPath);
+        // Delete the generated PDF after streaming to prevent disk space accumulation
+        try {
+          if (fs.existsSync(pdfPath)) {
+            fs.unlinkSync(pdfPath);
+          }
+        } catch (cleanupErr) {
+          console.error('Warning: Failed to clean up receipt file:', cleanupErr.message);
+        }
       });
 
     } catch (error) {
@@ -76,7 +82,7 @@ class PDFReceiptController {
     try {
       const paymentId = req.params.id;
 
-      const payment = await Payment.findById(paymentId)
+      const payment = await Payment.findOne({ _id: paymentId, franchise: req.franchiseId })
         .populate('application', 'applicationNumber')
         .populate('beneficiary', 'name phone personalInfo financial')
         .populate('project', 'name code')
@@ -146,7 +152,7 @@ class PDFReceiptController {
 
       for (const paymentId of paymentIds) {
         try {
-          const payment = await Payment.findById(paymentId)
+          const payment = await Payment.findOne({ _id: paymentId, franchise: req.franchiseId })
             .populate('application', 'applicationNumber')
             .populate('beneficiary', 'name phone personalInfo financial')
             .populate('project', 'name code')
@@ -210,7 +216,7 @@ class PDFReceiptController {
     try {
       const { paymentId } = req.params;
 
-      const payment = await Payment.findById(paymentId).select('paymentNumber status timeline');
+      const payment = await Payment.findOne({ _id: paymentId, franchise: req.franchiseId }).select('paymentNumber status timeline');
 
       if (!payment) {
         return res.status(404).json({
@@ -257,7 +263,8 @@ class PDFReceiptController {
 
       // Build query for completed payments
       const query = { status: 'completed' };
-      
+      if (req.franchiseId) query.franchise = req.franchiseId;
+
       if (search) {
         const searchRegex = new RegExp(search, 'i');
         query.$or = [

@@ -4,7 +4,8 @@ const { uploadToSpaces, deleteFromSpaces } = require('../utils/s3Upload');
 // Get all banners (admin)
 exports.getAllBanners = async (req, res) => {
   try {
-    const banners = await Banner.find()
+    const bannerFilter = req.franchiseId ? { franchise: req.franchiseId } : {};
+    const banners = await Banner.find(bannerFilter)
       .sort({ order: 1, createdAt: -1 })
       .populate('createdBy updatedBy', 'name email');
     
@@ -25,7 +26,8 @@ exports.getAllBanners = async (req, res) => {
 // Get active banners (public)
 exports.getPublicBanners = async (req, res) => {
   try {
-    const banners = await Banner.find({ status: 'active' })
+    const bannerFilter = { status: 'active', ...(req.franchiseId && { franchise: req.franchiseId }) };
+    const banners = await Banner.find(bannerFilter)
       .sort({ order: 1, createdAt: -1 })
       .select('-createdBy -updatedBy');
     
@@ -46,7 +48,7 @@ exports.getPublicBanners = async (req, res) => {
 // Get banner by ID
 exports.getBannerById = async (req, res) => {
   try {
-    const banner = await Banner.findById(req.params.id)
+    const banner = await Banner.findOne({ _id: req.params.id, franchise: req.franchiseId })
       .populate('createdBy updatedBy', 'name email');
     
     if (!banner) {
@@ -110,7 +112,8 @@ exports.createBanner = async (req, res) => {
       link,
       order: order || 0,
       status: status || 'active',
-      createdBy: req.user.id
+      createdBy: req.user.id,
+      franchise: req.franchiseId || null  // Multi-tenant
     });
 
     await banner.save();
@@ -134,7 +137,7 @@ exports.createBanner = async (req, res) => {
 exports.updateBanner = async (req, res) => {
   try {
     const { title, description, link, order, status } = req.body;
-    const banner = await Banner.findById(req.params.id);
+    const banner = await Banner.findOne({ _id: req.params.id, franchise: req.franchiseId });
 
     if (!banner) {
       return res.status(404).json({
@@ -201,7 +204,7 @@ exports.updateBanner = async (req, res) => {
 // Delete banner
 exports.deleteBanner = async (req, res) => {
   try {
-    const banner = await Banner.findById(req.params.id);
+    const banner = await Banner.findOne({ _id: req.params.id, franchise: req.franchiseId });
 
     if (!banner) {
       return res.status(404).json({

@@ -8,6 +8,7 @@ import { AuthGuard } from "./components/AuthGuard";
 import { AuthProvider } from "./hooks/useAuth";
 import { RBACProvider } from "./hooks/useRBAC";
 import { ConfigProvider } from "./contexts/ConfigContext";
+import { FranchiseProvider } from "./contexts/FranchiseContext";
 import CommandPalette from "./components/CommandPalette";
 import Index from "./pages/Index";
 import Dashboard from "./pages/Dashboard";
@@ -81,6 +82,7 @@ import Partners from "./pages/Partners";
 import Banners from "./pages/Banners";
 import FormBuilder from "./pages/FormBuilder";
 import Profile from "./pages/Profile";
+import GlobalAdmin from "./pages/GlobalAdmin";
 
 const queryClient = new QueryClient();
 
@@ -90,6 +92,7 @@ const App = () => (
       <Toaster />
       <Sonner />
       <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
+        <FranchiseProvider>
         <AuthProvider>
           <RBACProvider>
             <ConfigProvider>
@@ -181,12 +184,16 @@ const App = () => (
             <Route path="/brochures" element={<AuthGuard><Layout><Brochures /></Layout></AuthGuard>} />
             <Route path="/partners" element={<AuthGuard><Layout><Partners /></Layout></AuthGuard>} />
             
+            {/* Global Super Admin — standalone, no Layout */}
+            <Route path="/global-admin" element={<AuthGuard><GlobalAdmin /></AuthGuard>} />
+
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
             </Routes>
             </ConfigProvider>
           </RBACProvider>
         </AuthProvider>
+        </FranchiseProvider>
       </BrowserRouter>
     </TooltipProvider>
   </QueryClientProvider>

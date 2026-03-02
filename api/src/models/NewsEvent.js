@@ -1,4 +1,5 @@
 const mongoose = require('mongoose');
+const franchisePlugin = require('../utils/franchisePlugin');
 
 const newsEventSchema = new mongoose.Schema({
   title: {
@@ -66,6 +67,7 @@ const newsEventSchema = new mongoose.Schema({
 });
 
 newsEventSchema.index({ status: 1, publishDate: -1 });
+newsEventSchema.plugin(franchisePlugin);
 newsEventSchema.index({ category: 1 });
 
 module.exports = mongoose.model('NewsEvent', newsEventSchema);

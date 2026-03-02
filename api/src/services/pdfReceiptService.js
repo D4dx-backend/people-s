@@ -1,11 +1,22 @@
 const PDFDocument = require('pdfkit');
 const fs = require('fs');
 const path = require('path');
+const orgConfig = require('../config/orgConfig');
 
 class PDFReceiptService {
   constructor() {
-    this.logoPath = path.join(__dirname, '../assets/logo.png');
+    this.logoPath = orgConfig.logoPath;
     this.outputDir = path.join(__dirname, '../../receipts');
+    
+    // Organization details — driven by ORG_NAME env var via orgConfig
+    this.org = {
+      name: orgConfig.displayName.toUpperCase(),
+      regNumber: orgConfig.regNumber,
+      address: orgConfig.address,
+      phone: orgConfig.phone,
+      email: orgConfig.email,
+      website: orgConfig.website
+    };
     
     // Ensure output directory exists
     if (!fs.existsSync(this.outputDir)) {
@@ -29,9 +40,9 @@ class PDFReceiptService {
         margin: 50,
         info: {
           Title: `Payment Receipt - ${paymentData.paymentNumber}`,
-          Author: "People's Foundation ERP",
+          Author: orgConfig.erpTitle,
           Subject: 'Payment Receipt',
-          Creator: "People's Foundation ERP System"
+          Creator: `${orgConfig.erpTitle} System`
         }
       });
 
@@ -76,17 +87,17 @@ class PDFReceiptService {
       console.log('Logo not found, continuing without logo');
     }
 
-    // Organization details
+    // Organization details (configurable)
     doc.fontSize(20)
        .font('Helvetica-Bold')
-       .text("PEOPLE'S FOUNDATION ERP", 150, 60);
+       .text(this.org.name, 150, 60);
     
     doc.fontSize(12)
        .font('Helvetica')
-       .text('Registered NGO | Reg. No: KL/TC/123/2020', 150, 85)
-       .text('Address: Baithuzzakath Bhavan, Kozhikode, Kerala - 673001', 150, 100)
-       .text('Phone: +91-495-2345678 | Email: info@baithuzzakath.org', 150, 115)
-       .text('Website: www.baithuzzakath.org', 150, 130);
+       .text(`Registered NGO | Reg. No: ${this.org.regNumber}`, 150, 85)
+       .text(`Address: ${this.org.address}`, 150, 100)
+       .text(`Phone: ${this.org.phone} | Email: ${this.org.email}`, 150, 115)
+       .text(this.org.website, 150, 130);
 
     // Add horizontal line
     doc.moveTo(50, 160)
@@ -364,7 +375,7 @@ class PDFReceiptService {
     // Footer
     doc.fontSize(8)
        .font('Helvetica')
-       .text(`Generated on: ${this.formatDate(new Date())} | System: People's Foundation ERP`, 50, 750, {
+       .text(`Generated on: ${this.formatDate(new Date())} | System: ${orgConfig.erpTitle}`, 50, 750, {
          align: 'center'
        });
   }
