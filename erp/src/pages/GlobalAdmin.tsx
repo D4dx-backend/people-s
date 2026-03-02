@@ -16,14 +16,27 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { AlertDialog, AlertDialogContent, AlertDialogHeader, AlertDialogTitle, AlertDialogDescription, AlertDialogFooter, AlertDialogCancel, AlertDialogAction } from '@/components/ui/alert-dialog';
 import { Separator } from '@/components/ui/separator';
 import { toast } from 'sonner';
-import { globalAdmin } from '@/lib/api';
+import { globalAdmin, locations as locationsApi, projects as projectsApi } from '@/lib/api';
 import { useAuth } from '@/hooks/useAuth';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
+
+const ADMIN_ROLES = [
+  { value: 'super_admin',         label: 'Super Admin' },
+  { value: 'state_admin',         label: 'State Admin' },
+  { value: 'district_admin',      label: 'District Admin' },
+  { value: 'area_admin',          label: 'Area Admin' },
+  { value: 'unit_admin',          label: 'Unit Admin' },
+  { value: 'project_coordinator', label: 'Project Coordinator' },
+  { value: 'scheme_coordinator',  label: 'Scheme Coordinator' },
+] as const;
+
+type AdminRole = typeof ADMIN_ROLES[number]['value'];
 
 interface Franchise {
   id: string;
@@ -40,6 +53,7 @@ interface FranchiseAdmin {
   membershipId: string;
   isActive: boolean;
   joinedAt: string;
+  role: AdminRole;
   user: { _id: string; id: string; name: string; phone: string; email?: string; isActive: boolean };
 }
 
@@ -73,8 +87,17 @@ export default function GlobalAdmin() {
 
   // Create admin dialog
   const [createAdminOpen, setCreateAdminOpen] = useState(false);
-  const [newAdmin, setNewAdmin] = useState({ name: '', phone: '', email: '' });
+  const [newAdmin, setNewAdmin] = useState<{ name: string; phone: string; email: string; role: AdminRole }>({ name: '', phone: '', email: '', role: 'super_admin' });
   const [creatingAdmin, setCreatingAdmin] = useState(false);
+
+  // Scope selection state (district / area / unit / project) for scoped roles
+  type ScopeOption = { id: string; name: string };
+  const [scopeState, setScopeState] = useState({ districtId: '', areaId: '', unitId: '', projectId: '' });
+  const [scopeDistricts, setScopeDistricts] = useState<ScopeOption[]>([]);
+  const [scopeAreas, setScopeAreas]         = useState<ScopeOption[]>([]);
+  const [scopeUnits, setScopeUnits]         = useState<ScopeOption[]>([]);
+  const [scopeProjects, setScopeProjects]   = useState<ScopeOption[]>([]);
+  const [scopeLoading, setScopeLoading]     = useState({ districts: false, areas: false, units: false, projects: false });
 
   // Domain management
   const [domainsDialogFranchise, setDomainsDialogFranchise] = useState<Franchise | null>(null);
@@ -111,6 +134,59 @@ export default function GlobalAdmin() {
   }, []);
 
   useEffect(() => { loadData(); }, [loadData]);
+
+  // ── Scope: load districts when form opens for location-scoped roles ─────────
+  const LOCATION_SCOPED_ROLES: AdminRole[] = ['district_admin', 'area_admin', 'unit_admin'];
+  const needsLocation = LOCATION_SCOPED_ROLES.includes(newAdmin.role);
+
+  useEffect(() => {
+    if (!createAdminOpen || !needsLocation) return;
+    if (scopeDistricts.length > 0) return; // already loaded
+    setScopeLoading(l => ({ ...l, districts: true }));
+    locationsApi.getByType('district', { limit: 200 })
+      .then((res: any) => {
+        const list: any[] = res.data?.locations || [];
+        setScopeDistricts(list.map(loc => ({ id: loc._id, name: loc.name })));
+      })
+      .catch(() => toast.error('Failed to load districts'))
+      .finally(() => setScopeLoading(l => ({ ...l, districts: false })));
+  }, [createAdminOpen, newAdmin.role]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
+    if (!scopeState.districtId) { setScopeAreas([]); return; }
+    setScopeLoading(l => ({ ...l, areas: true }));
+    locationsApi.getByType('area', { parent: scopeState.districtId, limit: 200 })
+      .then((res: any) => {
+        const list: any[] = res.data?.locations || [];
+        setScopeAreas(list.map(loc => ({ id: loc._id, name: loc.name })));
+      })
+      .catch(() => toast.error('Failed to load areas'))
+      .finally(() => setScopeLoading(l => ({ ...l, areas: false })));
+  }, [scopeState.districtId]);
+
+  useEffect(() => {
+    if (!scopeState.areaId) { setScopeUnits([]); return; }
+    setScopeLoading(l => ({ ...l, units: true }));
+    locationsApi.getByType('unit', { parent: scopeState.areaId, limit: 200 })
+      .then((res: any) => {
+        const list: any[] = res.data?.locations || [];
+        setScopeUnits(list.map(loc => ({ id: loc._id, name: loc.name })));
+      })
+      .catch(() => toast.error('Failed to load units'))
+      .finally(() => setScopeLoading(l => ({ ...l, units: false })));
+  }, [scopeState.areaId]);
+
+  useEffect(() => {
+    if (!createAdminOpen || newAdmin.role !== 'project_coordinator') return;
+    setScopeLoading(l => ({ ...l, projects: true }));
+    projectsApi.getAll({ limit: 200 })
+      .then((res: any) => {
+        const list: any[] = res.data?.projects || [];
+        setScopeProjects(list.map(p => ({ id: p._id, name: p.name || p.title })));
+      })
+      .catch(() => toast.error('Failed to load projects'))
+      .finally(() => setScopeLoading(l => ({ ...l, projects: false })));
+  }, [createAdminOpen, newAdmin.role]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Franchise creation ──────────────────────────────────────────────────────
   const handleCreateFranchise = async () => {
@@ -233,11 +309,18 @@ export default function GlobalAdmin() {
         name: newAdmin.name.trim(),
         phone: newAdmin.phone.trim(),
         email: newAdmin.email.trim() || undefined,
+        role: newAdmin.role,
+        districtId: scopeState.districtId || undefined,
+        areaId: scopeState.areaId || undefined,
+        unitId: scopeState.unitId || undefined,
+        projectId: scopeState.projectId || undefined,
       });
       if (res.success) {
         toast.success(res.message || 'Admin assigned successfully');
         setCreateAdminOpen(false);
-        setNewAdmin({ name: '', phone: '', email: '' });
+        setNewAdmin({ name: '', phone: '', email: '', role: 'super_admin' });
+        setScopeState({ districtId: '', areaId: '', unitId: '', projectId: '' });
+        setScopeAreas([]); setScopeUnits([]);
         openAdminsDialog(adminsDialogFranchise);
       } else {
         toast.error(res.message || 'Failed to assign admin');
@@ -545,7 +628,7 @@ export default function GlobalAdmin() {
             </DialogTitle>
           </DialogHeader>
 
-          <div className="space-y-3 py-2">
+          <div className="space-y-3 py-2 overflow-y-auto max-h-[65vh] pr-1">
             {adminsLoading ? (
               <div className="py-8 text-center text-muted-foreground text-sm">Loading admins…</div>
             ) : admins.length === 0 ? (
@@ -568,6 +651,9 @@ export default function GlobalAdmin() {
                       </div>
                     </div>
                     <div className="flex items-center gap-2 shrink-0 ml-2">
+                      <Badge variant="secondary" className="text-xs capitalize">
+                        {ADMIN_ROLES.find(r => r.value === a.role)?.label ?? a.role}
+                      </Badge>
                       {a.isActive
                         ? <Badge variant="outline" className="text-xs text-green-600 border-green-300">Active</Badge>
                         : <Badge variant="secondary" className="text-xs">Inactive</Badge>}
@@ -629,6 +715,104 @@ export default function GlobalAdmin() {
                     onChange={e => setNewAdmin(a => ({ ...a, email: e.target.value }))}
                   />
                 </div>
+                <div className="space-y-1">
+                  <Label className="text-xs">Role *</Label>
+                  <Select value={newAdmin.role} onValueChange={v => {
+                    setNewAdmin(a => ({ ...a, role: v as AdminRole }));
+                    setScopeState({ districtId: '', areaId: '', unitId: '', projectId: '' });
+                    setScopeAreas([]); setScopeUnits([]);
+                  }}>
+                    <SelectTrigger className="h-9">
+                      <SelectValue placeholder="Select role" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {ADMIN_ROLES.map(r => (
+                        <SelectItem key={r.value} value={r.value}>{r.label}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {/* ── Scope selects: shown only for scoped roles ── */}
+                {(newAdmin.role === 'district_admin' || newAdmin.role === 'area_admin' || newAdmin.role === 'unit_admin') && (
+                  <div className="space-y-1">
+                    <Label className="text-xs">District *</Label>
+                    <Select
+                      value={scopeState.districtId}
+                      onValueChange={v => setScopeState(s => ({ ...s, districtId: v, areaId: '', unitId: '' }))}
+                      disabled={scopeLoading.districts}
+                    >
+                      <SelectTrigger className="h-9">
+                        <SelectValue placeholder={scopeLoading.districts ? 'Loading…' : 'Select district'} />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {scopeDistricts.map(d => (
+                          <SelectItem key={d.id} value={d.id}>{d.name}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
+
+                {(newAdmin.role === 'area_admin' || newAdmin.role === 'unit_admin') && scopeState.districtId && (
+                  <div className="space-y-1">
+                    <Label className="text-xs">Area *</Label>
+                    <Select
+                      value={scopeState.areaId}
+                      onValueChange={v => setScopeState(s => ({ ...s, areaId: v, unitId: '' }))}
+                      disabled={scopeLoading.areas}
+                    >
+                      <SelectTrigger className="h-9">
+                        <SelectValue placeholder={scopeLoading.areas ? 'Loading…' : 'Select area'} />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {scopeAreas.map(a => (
+                          <SelectItem key={a.id} value={a.id}>{a.name}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
+
+                {newAdmin.role === 'unit_admin' && scopeState.areaId && (
+                  <div className="space-y-1">
+                    <Label className="text-xs">Unit *</Label>
+                    <Select
+                      value={scopeState.unitId}
+                      onValueChange={v => setScopeState(s => ({ ...s, unitId: v }))}
+                      disabled={scopeLoading.units}
+                    >
+                      <SelectTrigger className="h-9">
+                        <SelectValue placeholder={scopeLoading.units ? 'Loading…' : 'Select unit'} />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {scopeUnits.map(u => (
+                          <SelectItem key={u.id} value={u.id}>{u.name}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
+
+                {newAdmin.role === 'project_coordinator' && (
+                  <div className="space-y-1">
+                    <Label className="text-xs">Project *</Label>
+                    <Select
+                      value={scopeState.projectId}
+                      onValueChange={v => setScopeState(s => ({ ...s, projectId: v }))}
+                      disabled={scopeLoading.projects}
+                    >
+                      <SelectTrigger className="h-9">
+                        <SelectValue placeholder={scopeLoading.projects ? 'Loading…' : 'Select project'} />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {scopeProjects.map(p => (
+                          <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
                 <p className="text-xs text-muted-foreground">
                   The admin will log in using OTP to their phone number. No password needed.
                 </p>
@@ -636,7 +820,12 @@ export default function GlobalAdmin() {
                   <Button size="sm" onClick={handleCreateAdmin} disabled={creatingAdmin}>
                     {creatingAdmin ? 'Assigning…' : 'Assign Admin'}
                   </Button>
-                  <Button size="sm" variant="outline" onClick={() => { setCreateAdminOpen(false); setNewAdmin({ name: '', phone: '', email: '' }); }}>
+                  <Button size="sm" variant="outline" onClick={() => {
+                    setCreateAdminOpen(false);
+                    setNewAdmin({ name: '', phone: '', email: '', role: 'super_admin' });
+                    setScopeState({ districtId: '', areaId: '', unitId: '', projectId: '' });
+                    setScopeAreas([]); setScopeUnits([]);
+                  }}>
                     Cancel
                   </Button>
                 </div>

@@ -55,7 +55,7 @@ function buildFranchiseDoc(seed) {
     name: preset.displayName,
     displayName: preset.displayName,
     tagline: preset.tagline,
-    logoUrl: `/uploads/logos/${preset.logoFilename}`,
+    logoUrl: `/api/assets/${preset.logoFilename}`,
     defaultTheme: preset.defaultTheme || 'blue',
     customTheme: null,
     erpTitle: preset.erpTitle,
@@ -178,7 +178,7 @@ async function seedFranchises() {
       franchise.tagline      = franchise.tagline      || franchiseDoc.tagline;
       franchise.erpTitle     = franchise.erpTitle     || franchiseDoc.erpTitle;
       franchise.erpSubtitle  = franchise.erpSubtitle  || franchiseDoc.erpSubtitle;
-      franchise.logoUrl      = franchise.logoUrl      || franchiseDoc.logoUrl;
+      franchise.logoUrl      = franchiseDoc.logoUrl; // always sync from seed so path stays correct
       if (!franchise.settings) franchise.settings = franchiseDoc.settings;
       await franchise.save();
     } else {

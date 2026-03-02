@@ -2032,6 +2032,38 @@ const modifyApprovedApplication = async (req, res) => {
   }
 };
 
+const recalculateScore = async (req, res) => {
+  try {
+    const application = await Application.findById(req.params.id);
+    if (!application) {
+      return res.status(404).json({ success: false, message: 'Application not found' });
+    }
+
+    if (!application.formData) {
+      return res.status(400).json({ success: false, message: 'Application has no form data to score' });
+    }
+
+    const formConfig = await FormConfiguration.findOne({
+      scheme: application.scheme,
+      enabled: true,
+      'scoringConfig.enabled': true
+    });
+
+    if (!formConfig) {
+      return res.status(400).json({ success: false, message: 'No scoring configuration found for this scheme' });
+    }
+
+    const scoreResult = calculateApplicationScore(application.formData, formConfig);
+    application.eligibilityScore = scoreResult;
+    await application.save();
+
+    res.json({ success: true, message: 'Eligibility score recalculated', data: { eligibilityScore: scoreResult } });
+  } catch (error) {
+    console.error('Error recalculating score:', error);
+    res.status(500).json({ success: false, message: error.message || 'Server error' });
+  }
+};
+
 module.exports = {
   getApplications,
   getApplication,
@@ -2051,5 +2083,6 @@ module.exports = {
   addStageComment,
   uploadStageDocument,
   getRenewalDueApplications,
-  getRenewalHistory
+  getRenewalHistory,
+  recalculateScore
 };

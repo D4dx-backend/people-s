@@ -1973,7 +1973,7 @@ export const globalAdmin = {
   // Franchise admin management
   listFranchiseAdmins: (franchiseId: string) =>
     apiClient.request(`/global/franchises/${franchiseId}/admins`),
-  createFranchiseAdmin: (franchiseId: string, data: { name: string; phone: string; email?: string }) =>
+  createFranchiseAdmin: (franchiseId: string, data: { name: string; phone: string; email?: string; role?: string; districtId?: string; areaId?: string; unitId?: string; projectId?: string }) =>
     apiClient.request(`/global/franchises/${franchiseId}/admins`, { method: 'POST', body: JSON.stringify(data) }),
   deactivateFranchiseAdmin: (franchiseId: string, userId: string) =>
     apiClient.request(`/global/franchises/${franchiseId}/admins/${userId}`, { method: 'DELETE' }),
