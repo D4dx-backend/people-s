@@ -174,12 +174,24 @@ async function seedFranchises() {
 
     if (franchise) {
       console.log(`  ℹ️  Franchise "${seed.slug}" already exists (${franchise._id}) — updating non-critical fields`);
-      // Only update safe fields; don't stomp over production changes
-      franchise.tagline      = franchise.tagline      || franchiseDoc.tagline;
-      franchise.erpTitle     = franchise.erpTitle     || franchiseDoc.erpTitle;
-      franchise.erpSubtitle  = franchise.erpSubtitle  || franchiseDoc.erpSubtitle;
-      franchise.logoUrl      = franchiseDoc.logoUrl; // always sync from seed so path stays correct
-      if (!franchise.settings) franchise.settings = franchiseDoc.settings;
+      // Keep critical branding fields in sync while preserving custom domains/settings.
+      franchise.name         = franchiseDoc.name;
+      franchise.displayName  = franchiseDoc.displayName;
+      franchise.tagline      = franchiseDoc.tagline;
+      franchise.logoUrl      = franchiseDoc.logoUrl;
+      franchise.logoFilename = ORG_PRESETS[seed.orgKey]?.logoFilename || franchise.logoFilename;
+      franchise.defaultTheme = franchiseDoc.defaultTheme;
+      franchise.erpTitle     = franchiseDoc.erpTitle;
+      franchise.erpSubtitle  = franchiseDoc.erpSubtitle;
+
+      if (!franchise.settings) {
+        franchise.settings = franchiseDoc.settings;
+      } else {
+        franchise.settings = {
+          ...franchiseDoc.settings,
+          ...franchise.settings,
+        };
+      }
       await franchise.save();
     } else {
       franchise = await Franchise.create(franchiseDoc);
