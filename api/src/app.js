@@ -73,8 +73,13 @@ app.use(express.urlencoded({ extended: true }));
 app.use(compression());
 
 // Serve org logo and other static assets from src/assets
-app.use('/assets', express.static(path.join(__dirname, 'assets')));
-app.use('/api/assets', express.static(path.join(__dirname, 'assets')));
+// Override CORP header so cross-origin pages (e.g. Netlify) can load images
+const assetsCrossOrigin = (req, res, next) => {
+  res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
+  next();
+};
+app.use('/assets', assetsCrossOrigin, express.static(path.join(__dirname, 'assets')));
+app.use('/api/assets', assetsCrossOrigin, express.static(path.join(__dirname, 'assets')));
 
 // Logging
 if (config.NODE_ENV === 'development') {
