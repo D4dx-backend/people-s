@@ -10,6 +10,7 @@ const recurringPaymentService = require('../services/recurringPaymentService');
 const { calculateApplicationScore } = require('../utils/scoringEngine');
 const { validationResult } = require('express-validator');
 const RBACMiddleware = require('../middleware/rbacMiddleware');
+const { buildFranchiseReadFilter, buildFranchiseMatchStage, getWriteFranchiseId } = require('../utils/franchiseFilterHelper');
 
 // Get all applications with pagination and search
 const getApplications = async (req, res) => {
@@ -82,7 +83,7 @@ const getApplications = async (req, res) => {
     Object.assign(filter, userRegionalFilter);
 
     // Multi-tenant: restrict results to the current franchise
-    if (req.franchiseId) filter.franchise = req.franchiseId;
+    Object.assign(filter, buildFranchiseReadFilter(req));
     
     console.log('🔍 Final filter:', filter);
 
@@ -135,7 +136,7 @@ const getApplications = async (req, res) => {
 // Get single application
 const getApplication = async (req, res) => {
   try {
-    const application = await Application.findOne({ _id: req.params.id, franchise: req.franchiseId })
+    const application = await Application.findOne({ _id: req.params.id, ...buildFranchiseReadFilter(req) })
       .populate('beneficiary')
       .populate('scheme', 'name code maxAmount distributionTimeline applicationSettings')
       .populate('project')
@@ -1276,7 +1277,7 @@ const getAvailableRevertRoles = async (req, res) => {
   try {
     const { id } = req.params;
 
-    const application = await Application.findOne({ _id: id, franchise: req.franchiseId });
+    const application = await Application.findOne({ _id: id, ...buildFranchiseReadFilter(req) });
     if (!application) {
       return res.status(404).json({
         success: false,
@@ -1872,7 +1873,7 @@ const getRenewalHistory = async (req, res) => {
   try {
     const { id } = req.params;
 
-    const application = await Application.findOne({ _id: id, franchise: req.franchiseId });
+    const application = await Application.findOne({ _id: id, ...buildFranchiseReadFilter(req) });
     if (!application) {
       return res.status(404).json({ success: false, message: 'Application not found' });
     }

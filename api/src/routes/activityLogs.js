@@ -1,10 +1,11 @@
 const express = require('express');
 const router = express.Router();
 const ActivityLogController = require('../controllers/activityLogController');
-const { authenticate, hasPermission } = require('../middleware/auth');
+const { authenticate, crossFranchiseResolver, hasPermission } = require('../middleware/auth');
 
 // All routes require authentication
 router.use(authenticate);
+router.use(crossFranchiseResolver);
 
 /**
  * @route   GET /api/activity-logs

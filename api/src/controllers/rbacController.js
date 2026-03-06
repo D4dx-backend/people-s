@@ -1,6 +1,7 @@
 const rbacService = require('../services/rbacService');
 const { Role, Permission, UserRole } = require('../models');
 const ResponseHelper = require('../utils/responseHelper');
+const { buildFranchiseReadFilter, buildFranchiseMatchStage, getWriteFranchiseId } = require('../utils/franchiseFilterHelper');
 
 class RBACController {
   /**
@@ -12,7 +13,7 @@ class RBACController {
       const { category, type, isActive = true } = req.query;
       
       const filter = { isActive };
-      if (req.franchiseId) filter.franchise = req.franchiseId;
+      Object.assign(filter, buildFranchiseReadFilter(req));
       if (category) filter.category = category;
       if (type) filter.type = type;
 
@@ -27,14 +28,14 @@ class RBACController {
         // Count total users with this role
         const totalUsers = await UserRole.countDocuments({ 
           role: role._id,
-          ...(req.franchiseId && { franchise: req.franchiseId })
+          ...buildFranchiseReadFilter(req)
         });
         
         // Count active users with this role
         const activeUsers = await UserRole.countDocuments({ 
           role: role._id,
           isActive: true,
-          ...(req.franchiseId && { franchise: req.franchiseId }),
+          ...buildFranchiseReadFilter(req),
           $or: [
             { validUntil: { $exists: false } },
             { validUntil: null },
@@ -68,7 +69,7 @@ class RBACController {
       const { id } = req.params;
       
       const roleQuery = { _id: id };
-      if (req.franchiseId) roleQuery.franchise = req.franchiseId;
+      Object.assign(roleQuery, buildFranchiseReadFilter(req));
       const role = await Role.findOne(roleQuery)
         .populate('permissions')
         .populate('inheritsFrom', 'name displayName')
@@ -166,7 +167,7 @@ class RBACController {
       const { module, category, scope, securityLevel } = req.query;
       
       const filter = { isActive: true };
-      if (req.franchiseId) filter.franchise = req.franchiseId;
+      Object.assign(filter, buildFranchiseReadFilter(req));
       if (module) filter.module = module;
       if (category) filter.category = category;
       if (scope) filter.scope = scope;
@@ -203,7 +204,7 @@ class RBACController {
       const { id } = req.params;
       
       const permQuery = { _id: id };
-      if (req.franchiseId) permQuery.franchise = req.franchiseId;
+      Object.assign(permQuery, buildFranchiseReadFilter(req));
       const permission = await Permission.findOne(permQuery)
         .populate('dependencies.requires', 'name displayName')
         .populate('dependencies.conflicts', 'name displayName')
@@ -292,7 +293,7 @@ class RBACController {
       const permissionIds = await rbacService.getUserPermissions(userId);
       const permissions = await Permission.find({
         _id: { $in: permissionIds }
-      }).sort({ module: 1, category: 1 });
+      }).setOptions({ bypassFranchise: true }).sort({ module: 1, category: 1 });
 
       // Group by module
       const groupedPermissions = permissions.reduce((acc, permission) => {
@@ -429,7 +430,7 @@ class RBACController {
    */
   async getRBACStats(req, res) {
     try {
-      const franchiseFilter = req.franchiseId ? { franchise: req.franchiseId } : {};
+      const franchiseFilter = buildFranchiseReadFilter(req);
       const [
         totalRoles,
         activeRoles,

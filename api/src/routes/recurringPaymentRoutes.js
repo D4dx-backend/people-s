@@ -1,11 +1,12 @@
 const express = require('express');
 const router = express.Router();
 const recurringPaymentController = require('../controllers/recurringPaymentController');
-const { authenticate } = require('../middleware/auth');
+const { authenticate, crossFranchiseResolver } = require('../middleware/auth');
 const { body, param, query } = require('express-validator');
 
 // Apply authentication to all routes
 router.use(authenticate);
+router.use(crossFranchiseResolver);
 
 /**
  * @route   POST /api/recurring-payments/generate-schedule/:applicationId

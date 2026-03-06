@@ -1,7 +1,9 @@
 const authService = require('../services/authService');
 const { User } = require('../models');
+const UserFranchise = require('../models/UserFranchise');
 const ResponseHelper = require('../utils/responseHelper');
 const { logActivity } = require('../middleware/activityLogger');
+const { CROSS_FRANCHISE_ROLES } = require('../middleware/crossFranchiseResolver');
 const LoginLogService = require('../services/loginLogService');
 
 class AuthController {
@@ -448,6 +450,63 @@ class AuthController {
     } catch (error) {
       console.error('❌ Check Auth Status Error:', error);
       return ResponseHelper.error(res, 'Failed to check authentication status', 500);
+    }
+  }
+
+  /**
+   * Get franchises the current user has access to.
+   * GET /api/auth/my-franchises
+   *
+   * For cross-franchise eligible roles (district_admin, area_admin, unit_admin)
+   * this returns all active franchises the user is a member of.
+   * For other roles it returns only the current franchise (if any).
+   */
+  async getMyFranchises(req, res) {
+    try {
+      const effectiveRole = req.userRole || req.user.role;
+
+      if (CROSS_FRANCHISE_ROLES.includes(effectiveRole)) {
+        const memberships = await UserFranchise.find({
+          user: req.user._id,
+          isActive: true
+        }).populate('franchise', 'slug displayName logoUrl isActive');
+
+        const franchises = memberships
+          .filter(m => m.franchise && m.franchise.isActive)
+          .map(m => ({
+            id: m.franchise._id,
+            slug: m.franchise.slug,
+            displayName: m.franchise.displayName,
+            logoUrl: m.franchise.logoUrl,
+            role: m.role
+          }));
+
+        return ResponseHelper.success(res, {
+          franchises,
+          isCrossFranchise: franchises.length > 1,
+          currentFranchiseId: req.franchiseId
+        });
+      }
+
+      // Non-cross-franchise roles: return current franchise only
+      const franchises = req.franchise
+        ? [{
+            id: req.franchise._id,
+            slug: req.franchise.slug,
+            displayName: req.franchise.displayName,
+            logoUrl: req.franchise.logoUrl,
+            role: effectiveRole
+          }]
+        : [];
+
+      return ResponseHelper.success(res, {
+        franchises,
+        isCrossFranchise: false,
+        currentFranchiseId: req.franchiseId
+      });
+    } catch (error) {
+      console.error('❌ Get My Franchises Error:', error);
+      return ResponseHelper.error(res, 'Failed to fetch franchises', 500);
     }
   }
 

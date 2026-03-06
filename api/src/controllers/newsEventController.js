@@ -1,6 +1,7 @@
 const NewsEvent = require('../models/NewsEvent');
 const ResponseHelper = require('../utils/responseHelper');
 const { uploadToSpaces, deleteFromSpaces, extractKeyFromUrl } = require('../utils/s3Upload');
+const { buildFranchiseReadFilter, buildFranchiseMatchStage, getWriteFranchiseId } = require('../utils/franchiseFilterHelper');
 
 class NewsEventController {
   /**
@@ -17,8 +18,7 @@ class NewsEventController {
       if (category) query.category = category;
       if (featured !== undefined) query.featured = featured === 'true';
 
-      // Multi-tenant: restrict to current franchise
-      if (req.franchiseId) query.franchise = req.franchiseId;
+      Object.assign(query, buildFranchiseReadFilter(req));
 
       const newsEvents = await NewsEvent.find(query)
         .populate('createdBy', 'name')
@@ -87,7 +87,7 @@ class NewsEventController {
     try {
       const { id } = req.params;
       
-      const newsEvent = await NewsEvent.findOne({ _id: id, franchise: req.franchiseId })
+      const newsEvent = await NewsEvent.findOne({ _id: id, ...buildFranchiseReadFilter(req) })
         .populate('createdBy', 'name')
         .populate('updatedBy', 'name');
 

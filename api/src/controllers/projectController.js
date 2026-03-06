@@ -1,5 +1,6 @@
 const { Project, User, Location, MasterData } = require('../models');
 const ResponseHelper = require('../utils/responseHelper');
+const { buildFranchiseReadFilter, buildFranchiseMatchStage, getWriteFranchiseId } = require('../utils/franchiseFilterHelper');
 
 class ProjectController {
   /**
@@ -47,7 +48,7 @@ class ProjectController {
       const skip = (page - 1) * limit;
 
       // Multi-tenant: restrict to current franchise
-      if (req.franchiseId) filter.franchise = req.franchiseId;
+      Object.assign(filter, buildFranchiseReadFilter(req));
       
       const projects = await Project.find(filter)
         .populate('coordinator', 'name email phone role')
@@ -82,7 +83,7 @@ class ProjectController {
     try {
       const { id } = req.params;
 
-      const project = await Project.findOne({ _id: id, franchise: req.franchiseId })
+      const project = await Project.findOne({ _id: id, ...buildFranchiseReadFilter(req) })
         .populate('coordinator', 'name email phone role profile')
         .populate('targetRegions', 'name type code parent')
         .populate('team.user', 'name email phone role')
@@ -586,7 +587,7 @@ class ProjectController {
     try {
       const { id } = req.params;
 
-      const project = await Project.findOne({ _id: id, franchise: req.franchiseId });
+      const project = await Project.findOne({ _id: id, ...buildFranchiseReadFilter(req) });
       if (!project) {
         return ResponseHelper.error(res, 'Project not found', 404);
       }

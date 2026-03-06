@@ -4,7 +4,7 @@ const router = express.Router();
 const notificationService = require('../services/notificationService');
 const Application = require('../models/Application');
 const Interview = require('../models/Interview');
-const { authenticate } = require('../middleware/auth');
+const { authenticate, crossFranchiseResolver } = require('../middleware/auth');
 const RBACMiddleware = require('../middleware/rbacMiddleware');
 const { validate } = require('../middleware/validation');
 const Joi = require('joi');
@@ -77,7 +77,7 @@ const updateInterviewSchema = Joi.object({
  *         description: List of interviews retrieved successfully
  */
 router.get('/', 
-  authenticate,
+  authenticate, crossFranchiseResolver,
   RBACMiddleware.hasPermission('interviews.read'),
   async (req, res) => {
     try {
@@ -270,7 +270,7 @@ router.get('/',
  *         description: Interview scheduled successfully
  */
 router.post('/schedule/:applicationId',
-  authenticate,
+  authenticate, crossFranchiseResolver,
   // RBACMiddleware.hasPermission('interviews.schedule'), // Temporarily disabled for debugging
   validate(scheduleInterviewSchema),
   async (req, res) => {
@@ -432,7 +432,7 @@ router.post('/schedule/:applicationId',
  *         description: Interview updated successfully
  */
 router.put('/:applicationId',
-  authenticate,
+  authenticate, crossFranchiseResolver,
   RBACMiddleware.hasPermission('interviews.update'),
   validate(updateInterviewSchema),
   async (req, res) => {
@@ -582,7 +582,7 @@ router.put('/:applicationId',
  *         description: Interview completed successfully
  */
 router.patch('/:id/complete',
-  authenticate,
+  authenticate, crossFranchiseResolver,
   RBACMiddleware.hasPermission('interviews.update'),
   async (req, res) => {
     try {
@@ -998,7 +998,7 @@ router.patch('/:id/complete',
  *         description: Interview completed successfully
  */
 router.patch('/interview/:interviewId/complete',
-  authenticate,
+  authenticate, crossFranchiseResolver,
   RBACMiddleware.hasPermission('interviews.update'),
   async (req, res) => {
     try {
@@ -1317,7 +1317,7 @@ router.patch('/interview/:interviewId/complete',
  *         description: Interview cancelled successfully
  */
 router.patch('/:applicationId/cancel',
-  authenticate,
+  authenticate, crossFranchiseResolver,
   RBACMiddleware.hasPermission('interviews.cancel'),
   async (req, res) => {
     try {
@@ -1391,7 +1391,7 @@ router.patch('/:applicationId/cancel',
  *         description: Interview history retrieved successfully
  */
 router.get('/history/:applicationId',
-  authenticate,
+  authenticate, crossFranchiseResolver,
   RBACMiddleware.hasPermission('interviews.read'),
   async (req, res) => {
     try {

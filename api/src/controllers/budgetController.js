@@ -1,5 +1,6 @@
 const { Project, Scheme, Application, Payment, RecurringPayment } = require('../models');
 const ResponseHelper = require('../utils/responseHelper');
+const { buildFranchiseReadFilter, buildFranchiseMatchStage, getWriteFranchiseId } = require('../utils/franchiseFilterHelper');
 
 // =============================================
 // Standalone analytics helper functions
@@ -558,7 +559,7 @@ class BudgetController {
       const dateFilter = BudgetController.buildDateFilter(period);
       
       // Get project budget data with active projects only
-      const franchiseMatch = req.franchiseId ? { franchise: req.franchiseId } : {};
+      const franchiseMatch = buildFranchiseMatchStage(req);
       const projectStats = await Project.aggregate([
         {
           $match: { 
@@ -741,7 +742,7 @@ class BudgetController {
     try {
       const { period } = req.query;
       const dateFilter = BudgetController.buildDateFilter(period);
-      const franchiseMatch = req.franchiseId ? { franchise: req.franchiseId } : {};
+      const franchiseMatch = buildFranchiseMatchStage(req);
       
       // Get projects with real financial data
       const projects = await Project.aggregate([
@@ -889,7 +890,7 @@ class BudgetController {
     try {
       const { period } = req.query;
       const dateFilter = BudgetController.buildDateFilter(period);
-      const franchiseMatch = req.franchiseId ? { franchise: req.franchiseId } : {};
+      const franchiseMatch = buildFranchiseMatchStage(req);
       
       // Get schemes with real financial data
       const schemes = await Scheme.aggregate([
@@ -1062,7 +1063,7 @@ class BudgetController {
       if (type) filter.type = type;
       if (project) filter.project = project;
       if (scheme) filter.scheme = scheme;
-      if (req.franchiseId) filter.franchise = req.franchiseId;  // Multi-tenant
+      Object.assign(filter, buildFranchiseReadFilter(req));  // Multi-tenant
       
       // Add period filter
       const paymentDateFilter = BudgetController.buildPaymentDateFilter(period);
@@ -1148,7 +1149,7 @@ class BudgetController {
       const endDate = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0);
 
       // Get monthly payment data
-      const franchiseMatch = req.franchiseId ? { franchise: req.franchiseId } : {};
+      const franchiseMatch = buildFranchiseMatchStage(req);
       const monthlyPayments = await Payment.aggregate([
         {
           $match: {

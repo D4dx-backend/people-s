@@ -1,12 +1,13 @@
 const express = require('express');
 const dashboardController = require('../controllers/dashboardController');
-const { authenticate, hasPermission } = require('../middleware/auth');
+const { authenticate, crossFranchiseResolver, hasPermission } = require('../middleware/auth');
 const RBACMiddleware = require('../middleware/rbacMiddleware');
 
 const router = express.Router();
 
 // Apply authentication to all routes
 router.use(authenticate);
+router.use(crossFranchiseResolver);
 
 /**
  * @swagger

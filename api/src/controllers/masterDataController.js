@@ -1,5 +1,6 @@
 const MasterData = require('../models/MasterData');
 const { validationResult } = require('express-validator');
+const { buildFranchiseReadFilter, buildFranchiseMatchStage, getWriteFranchiseId } = require('../utils/franchiseFilterHelper');
 
 /**
  * Get all master data configurations with filtering
@@ -43,8 +44,7 @@ const getMasterData = async (req, res) => {
 
     const skip = (parseInt(page) - 1) * parseInt(limit);
 
-    // Multi-tenant: restrict to current franchise
-    if (req.franchiseId) filter.franchise = req.franchiseId;
+    Object.assign(filter, buildFranchiseReadFilter(req));
 
     const [masterDataList, total] = await Promise.all([
       MasterData.find(filter)
@@ -89,7 +89,7 @@ const getMasterData = async (req, res) => {
  */
 const getMasterDataById = async (req, res) => {
   try {
-    const masterData = await MasterData.findOne({ _id: req.params.id, franchise: req.franchiseId })
+    const masterData = await MasterData.findOne({ _id: req.params.id, ...buildFranchiseReadFilter(req) })
       .populate('targetRegions', 'name code type')
       .populate('targetProjects', 'name code')
       .populate('targetSchemes', 'name code')

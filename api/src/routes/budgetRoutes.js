@@ -1,11 +1,12 @@
 const express = require('express');
 const budgetController = require('../controllers/budgetController');
-const { authenticate, hasPermission } = require('../middleware/auth');
+const { authenticate, crossFranchiseResolver, hasPermission } = require('../middleware/auth');
 
 const router = express.Router();
 
 // Apply authentication to all routes
 router.use(authenticate);
+router.use(crossFranchiseResolver);
 
 /**
  * @swagger

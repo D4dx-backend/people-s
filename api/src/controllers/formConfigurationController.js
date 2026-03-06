@@ -1,5 +1,6 @@
 const { FormConfiguration, Scheme } = require('../models');
 const ResponseHelper = require('../utils/responseHelper');
+const { buildFranchiseReadFilter, buildFranchiseMatchStage, getWriteFranchiseId } = require('../utils/franchiseFilterHelper');
 
 class FormConfigurationController {
   /**
@@ -18,7 +19,7 @@ class FormConfigurationController {
       });
 
       // First, verify the scheme exists and user has access
-      const scheme = await Scheme.findOne({ _id: schemeId, franchise: req.franchiseId });
+      const scheme = await Scheme.findOne({ _id: schemeId, ...buildFranchiseReadFilter(req) });
       
       if (!scheme) {
         console.log('❌ Scheme not found:', schemeId);
@@ -310,7 +311,7 @@ class FormConfigurationController {
       const { schemeId } = req.params;
 
       // First, verify the scheme exists and user has access
-      const scheme = await Scheme.findOne({ _id: schemeId, franchise: req.franchiseId });
+      const scheme = await Scheme.findOne({ _id: schemeId, ...buildFranchiseReadFilter(req) });
       
       if (!scheme) {
         return ResponseHelper.error(res, 'Scheme not found', 404);
@@ -371,7 +372,7 @@ class FormConfigurationController {
       }
 
       // Franchise scope
-      if (req.franchiseId) filter.franchise = req.franchiseId;
+      Object.assign(filter, buildFranchiseReadFilter(req));
 
       const skip = (page - 1) * limit;
       
@@ -484,7 +485,7 @@ class FormConfigurationController {
     try {
       const { schemeId } = req.params;
 
-      const scheme = await Scheme.findOne({ _id: schemeId, franchise: req.franchiseId });
+      const scheme = await Scheme.findOne({ _id: schemeId, ...buildFranchiseReadFilter(req) });
       if (!scheme) {
         return ResponseHelper.error(res, 'Scheme not found', 404);
       }

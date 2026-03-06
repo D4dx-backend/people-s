@@ -341,7 +341,18 @@ class ApiClient {
     endpoint: string,
     options: RequestInit = {}
   ): Promise<ApiResponse<T>> {
-    const url = `${this.baseURL}${endpoint}`;
+    let url = `${this.baseURL}${endpoint}`;
+
+    // Cross-franchise: append franchiseFilter to GET requests when a filter is active
+    const method = (options.method || 'GET').toUpperCase();
+    if (method === 'GET') {
+      const crossFilter = localStorage.getItem('crossFranchiseFilter');
+      if (crossFilter && crossFilter !== 'all') {
+        const separator = url.includes('?') ? '&' : '?';
+        url = `${url}${separator}franchiseFilter=${encodeURIComponent(crossFilter)}`;
+      }
+    }
+
     const headers = new Headers(this.getHeaders());
     if (options.headers) {
       const optionHeaders = new Headers(options.headers as HeadersInit);
@@ -444,6 +455,14 @@ class ApiClient {
 
   async getProfile(): Promise<ApiResponse<{ user: User }>> {
     return this.request('/auth/me');
+  }
+
+  async getMyFranchises(): Promise<ApiResponse<{
+    franchises: Array<{ id: string; slug: string; displayName: string; logoUrl?: string; role: string }>;
+    isCrossFranchise: boolean;
+    currentFranchiseId: string | null;
+  }>> {
+    return this.request('/auth/my-franchises');
   }
 
   async updateProfile(data: any): Promise<ApiResponse<{ user: User }>> {
@@ -798,6 +817,7 @@ export const auth = {
   requestOTP: (phone: string, purpose?: string) => apiClient.requestOTP(phone, purpose),
   verifyOTP: (phone: string, otp: string, purpose?: string) => apiClient.verifyOTP(phone, otp, purpose),
   getProfile: () => apiClient.getProfile(),
+  getMyFranchises: () => apiClient.getMyFranchises(),
   updateProfile: (data: any) => apiClient.updateProfile(data),
   changePassword: (currentPassword: string | null, newPassword: string) => apiClient.changePassword(currentPassword, newPassword),
   logout: () => apiClient.logout(),

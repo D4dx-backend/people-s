@@ -2,6 +2,7 @@ const { Donation, Donor, Project, Scheme } = require('../models');
 const ResponseHelper = require('../utils/responseHelper');
 const donorReminderService = require('../services/donorReminderService');
 const mongoose = require('mongoose');
+const { buildFranchiseReadFilter, buildFranchiseMatchStage, getWriteFranchiseId } = require('../utils/franchiseFilterHelper');
 
 // Valid status transitions map — prevents invalid state changes
 const DONATION_STATUS_TRANSITIONS = {
@@ -28,7 +29,7 @@ class DonationController {
       }
 
       // Check if donor exists
-      const donor = await Donor.findOne({ _id: donorId, franchise: req.franchiseId });
+      const donor = await Donor.findOne({ _id: donorId, ...buildFranchiseReadFilter(req) });
       if (!donor) {
         return ResponseHelper.error(res, 'Donor not found', 404);
       }
@@ -128,7 +129,7 @@ class DonationController {
       const skip = (pageNum - 1) * limitNum;
 
       // Multi-tenant: restrict to current franchise
-      if (req.franchiseId) filter.franchise = req.franchiseId;
+      Object.assign(filter, buildFranchiseReadFilter(req));
 
       // Get donations with pagination
       const [donations, total] = await Promise.all([
@@ -211,7 +212,7 @@ class DonationController {
         return ResponseHelper.error(res, 'Invalid donation ID', 400);
       }
 
-      const donation = await Donation.findOne({ _id: id, franchise: req.franchiseId })
+      const donation = await Donation.findOne({ _id: id, ...buildFranchiseReadFilter(req) })
         .populate('donor', 'name email phone type category address')
         .populate('project', 'name code description')
         .populate('scheme', 'name code description')

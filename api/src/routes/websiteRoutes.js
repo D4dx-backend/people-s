@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const websiteController = require('../controllers/websiteController');
-const { authenticate } = require('../middleware/auth');
+const { authenticate, crossFranchiseResolver } = require('../middleware/auth');
 const { hasAnyPermission } = require('../middleware/rbacMiddleware');
 const { uploadSingleMemory } = require('../middleware/upload');
 
@@ -18,7 +18,7 @@ router.get('/public-settings', websiteController.getPublicSettings);
  * @access  Private (super_admin, state_admin, or website.read permission)
  */
 router.get('/settings',
-  authenticate,
+  authenticate, crossFranchiseResolver,
   hasAnyPermission(['website.read', 'settings.read']),
   websiteController.getSettings
 );
@@ -29,7 +29,7 @@ router.get('/settings',
  * @access  Private (super_admin, state_admin, or website.write permission)
  */
 router.put('/settings',
-  authenticate,
+  authenticate, crossFranchiseResolver,
   hasAnyPermission(['website.write', 'settings.write']),
   websiteController.updateSettings
 );
@@ -40,7 +40,7 @@ router.put('/settings',
  * @access  Private (super_admin, state_admin, or website.write permission)
  */
 router.post('/settings/counter',
-  authenticate,
+  authenticate, crossFranchiseResolver,
   hasAnyPermission(['website.write', 'settings.write']),
   websiteController.addCounter
 );
@@ -51,7 +51,7 @@ router.post('/settings/counter',
  * @access  Private (super_admin, state_admin, or website.write permission)
  */
 router.put('/settings/counter/:id',
-  authenticate,
+  authenticate, crossFranchiseResolver,
   hasAnyPermission(['website.write', 'settings.write']),
   websiteController.updateCounter
 );
@@ -62,7 +62,7 @@ router.put('/settings/counter/:id',
  * @access  Private (super_admin, state_admin, or website.write permission)
  */
 router.delete('/settings/counter/:id',
-  authenticate,
+  authenticate, crossFranchiseResolver,
   hasAnyPermission(['website.write', 'settings.write']),
   websiteController.deleteCounter
 );

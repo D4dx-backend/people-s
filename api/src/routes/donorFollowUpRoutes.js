@@ -1,12 +1,13 @@
 const express = require('express');
 const donorFollowUpController = require('../controllers/donorFollowUpController');
-const { authenticate } = require('../middleware/auth');
+const { authenticate, crossFranchiseResolver } = require('../middleware/auth');
 const RBACMiddleware = require('../middleware/rbacMiddleware');
 
 const router = express.Router();
 
 // Apply authentication to all routes
 router.use(authenticate);
+router.use(crossFranchiseResolver);
 
 // Dashboard & analytics (must come before :id routes)
 router.get('/dashboard',

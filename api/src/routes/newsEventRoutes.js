@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const newsEventController = require('../controllers/newsEventController');
-const { authenticate } = require('../middleware/auth');
+const { authenticate, crossFranchiseResolver } = require('../middleware/auth');
 const { hasAnyPermission } = require('../middleware/rbacMiddleware');
 const { uploadSingleMemory } = require('../middleware/upload');
 
@@ -18,7 +18,7 @@ router.get('/public', newsEventController.getPublic);
  * @access  Private (super_admin, state_admin, or website.read permission)
  */
 router.get('/',
-  authenticate,
+  authenticate, crossFranchiseResolver,
   hasAnyPermission(['website.read', 'news.read']),
   newsEventController.getAll
 );
@@ -36,7 +36,7 @@ router.get('/:id', newsEventController.getById);
  * @access  Private (super_admin, state_admin, or website.write permission)
  */
 router.post('/',
-  authenticate,
+  authenticate, crossFranchiseResolver,
   hasAnyPermission(['website.write', 'news.write']),
   uploadSingleMemory('image'),
   newsEventController.create
@@ -48,7 +48,7 @@ router.post('/',
  * @access  Private (super_admin, state_admin, or website.write permission)
  */
 router.put('/:id',
-  authenticate,
+  authenticate, crossFranchiseResolver,
   hasAnyPermission(['website.write', 'news.write']),
   uploadSingleMemory('image'),
   newsEventController.update
@@ -60,7 +60,7 @@ router.put('/:id',
  * @access  Private (super_admin, state_admin, or website.delete permission)
  */
 router.delete('/:id',
-  authenticate,
+  authenticate, crossFranchiseResolver,
   hasAnyPermission(['website.delete', 'news.delete']),
   newsEventController.delete
 );

@@ -1,5 +1,6 @@
 const Partner = require('../models/Partner');
 const { uploadToSpaces, deleteFromSpaces, extractKeyFromUrl } = require('../utils/s3Upload');
+const { buildFranchiseReadFilter, buildFranchiseMatchStage, getWriteFranchiseId } = require('../utils/franchiseFilterHelper');
 
 // Get all partners (authenticated)
 exports.getAllPartners = async (req, res) => {
@@ -9,8 +10,7 @@ exports.getAllPartners = async (req, res) => {
     
     if (status) query.status = status;
 
-    // Multi-tenant: restrict to current franchise
-    if (req.franchiseId) query.franchise = req.franchiseId;
+    Object.assign(query, buildFranchiseReadFilter(req));
     
     const partners = await Partner.find(query)
       .sort({ order: 1, createdAt: -1 })
@@ -34,7 +34,7 @@ exports.getAllPartners = async (req, res) => {
 // Get public partners (no auth required)
 exports.getPublicPartners = async (req, res) => {
   try {
-    const partners = await Partner.find({ status: 'active', ...(req.franchiseId && { franchise: req.franchiseId }) })
+    const partners = await Partner.find({ status: 'active', ...buildFranchiseReadFilter(req) })
       .sort({ order: 1, createdAt: -1 })
       .select('name logoUrl link order');
     
@@ -55,7 +55,7 @@ exports.getPublicPartners = async (req, res) => {
 // Get single partner
 exports.getPartnerById = async (req, res) => {
   try {
-    const partner = await Partner.findOne({ _id: req.params.id, franchise: req.franchiseId })
+    const partner = await Partner.findOne({ _id: req.params.id, ...buildFranchiseReadFilter(req) })
       .populate('createdBy', 'name')
       .populate('updatedBy', 'name');
     

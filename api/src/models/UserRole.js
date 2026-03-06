@@ -224,8 +224,15 @@ userRoleSchema.pre('save', async function(next) {
 
 // Method to get effective permissions
 userRoleSchema.methods.getEffectivePermissions = async function() {
-  await this.populate('role');
+  if (!this.populated('role')) {
+    await this.populate({ path: 'role', options: { bypassFranchise: true } });
+  }
   
+  if (!this.role) {
+    console.warn(`[UserRole] Role not found for UserRole ${this._id}. Returning empty permissions.`);
+    return [];
+  }
+
   // Get base role permissions
   const rolePermissions = await this.role.getAllPermissions();
   const effectivePermissions = new Set(rolePermissions);
@@ -343,7 +350,8 @@ userRoleSchema.statics.getUserActiveRoles = async function(userId) {
       { validUntil: null },
       { validUntil: { $gt: new Date() } }
     ]
-  }).populate('role');
+  }).setOptions({ bypassFranchise: true })
+    .populate({ path: 'role', options: { bypassFranchise: true } });
 };
 
 // Static method to get users with specific role

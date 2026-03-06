@@ -7,7 +7,7 @@ const Report = require('../models/Report');
 const Application = require('../models/Application');
 
 // Import middleware
-const { authenticate } = require('../middleware/auth');
+const { authenticate, crossFranchiseResolver } = require('../middleware/auth');
 const RBACMiddleware = require('../middleware/rbacMiddleware');
 
 /**
@@ -28,7 +28,7 @@ const RBACMiddleware = require('../middleware/rbacMiddleware');
  *         description: Reports retrieved successfully
  */
 router.get('/application/:applicationId',
-  authenticate,
+  authenticate, crossFranchiseResolver,
   RBACMiddleware.hasPermission('reports.read'),
   async (req, res) => {
     try {
@@ -144,7 +144,7 @@ router.get('/application/:applicationId',
  *         description: Report created successfully
  */
 router.post('/application/:applicationId',
-  authenticate,
+  authenticate, crossFranchiseResolver,
   async (req, res, next) => {
     try {
       // Custom middleware: Check permission OR application access
@@ -465,7 +465,7 @@ router.post('/application/:applicationId',
  *     tags: [Reports]
  */
 router.put('/:reportId',
-  authenticate,
+  authenticate, crossFranchiseResolver,
   async (req, res, next) => {
     try {
       // Custom middleware: Check permission OR application access
@@ -681,7 +681,7 @@ router.put('/:reportId',
  *     tags: [Reports]
  */
 router.delete('/:reportId',
-  authenticate,
+  authenticate, crossFranchiseResolver,
   async (req, res, next) => {
     try {
       // Custom middleware: Check permission OR application access

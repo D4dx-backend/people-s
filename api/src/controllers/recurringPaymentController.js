@@ -1,6 +1,7 @@
 const recurringPaymentService = require('../services/recurringPaymentService');
 const { Application, RecurringPayment } = require('../models');
 const { validationResult } = require('express-validator');
+const { buildFranchiseReadFilter, buildFranchiseMatchStage, getWriteFranchiseId } = require('../utils/franchiseFilterHelper');
 
 /**
  * Generate recurring payment schedule for an application
@@ -72,7 +73,7 @@ exports.getRecurringApplications = async (req, res) => {
     Object.keys(filters).forEach(key => filters[key] === undefined && delete filters[key]);
 
     // Multi-tenant: scope to franchise
-    if (req.franchiseId) filters.franchise = req.franchiseId;
+    Object.assign(filters, buildFranchiseReadFilter(req));
     
     const applications = await recurringPaymentService.getRecurringApplications(filters);
     
@@ -106,7 +107,7 @@ exports.getApplicationSchedule = async (req, res) => {
     }
     
     // Get application details
-    const application = await Application.findOne({ _id: applicationId, franchise: req.franchiseId })
+    const application = await Application.findOne({ _id: applicationId, ...buildFranchiseReadFilter(req) })
       .populate('beneficiary scheme project')
       .select('applicationNumber recurringConfig status');
     
@@ -147,7 +148,7 @@ exports.getUpcomingPayments = async (req, res) => {
     };
     
     Object.keys(filters).forEach(key => filters[key] === undefined && delete filters[key]);
-    if (req.franchiseId) filters.franchise = req.franchiseId;  // Multi-tenant
+    Object.assign(filters, buildFranchiseReadFilter(req));
     
     const payments = await recurringPaymentService.getUpcomingPayments(days, filters);
     
@@ -179,7 +180,7 @@ exports.getOverduePayments = async (req, res) => {
     };
     
     Object.keys(filters).forEach(key => filters[key] === undefined && delete filters[key]);
-    if (req.franchiseId) filters.franchise = req.franchiseId;  // Multi-tenant
+    Object.assign(filters, buildFranchiseReadFilter(req));
     
     const payments = await recurringPaymentService.getOverduePayments(filters);
     
@@ -364,7 +365,7 @@ exports.getRecurringPayment = async (req, res) => {
   try {
     const { paymentId } = req.params;
     
-    const payment = await RecurringPayment.findOne({ _id: paymentId, franchise: req.franchiseId })
+    const payment = await RecurringPayment.findOne({ _id: paymentId, ...buildFranchiseReadFilter(req) })
       .populate('application', 'applicationNumber status')
       .populate('beneficiary', 'name phone email applicationNumber')
       .populate('scheme', 'name')

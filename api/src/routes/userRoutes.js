@@ -1,6 +1,6 @@
 const express = require('express');
 const userController = require('../controllers/userController');
-const { authenticate, authorize, checkAdminHierarchy, hasPermission } = require('../middleware/auth');
+const { authenticate, crossFranchiseResolver, authorize, checkAdminHierarchy, hasPermission } = require('../middleware/auth');
 const { validate, userSchemas, commonSchemas } = require('../middleware/validation');
 const { createExportHandler } = require('../middleware/exportHandler');
 const exportConfigs = require('../config/exportConfigs');
@@ -65,13 +65,13 @@ const router = express.Router();
  */
 // Export users as CSV or JSON
 router.get('/export',
-  authenticate,
+  authenticate, crossFranchiseResolver,
   hasPermission('users.read.regional'),
   createExportHandler(User, exportConfigs.user)
 );
 
 router.get('/',
-  authenticate,
+  authenticate, crossFranchiseResolver,
   hasPermission('users.read.regional'),
   validate(userSchemas.query, 'query'),
   userController.getUsers
@@ -94,7 +94,7 @@ router.get('/',
  *         description: Insufficient permissions
  */
 router.get('/statistics',
-  authenticate,
+  authenticate, crossFranchiseResolver,
   hasPermission('users.read.regional'),
   userController.getUserStatistics
 );
@@ -123,7 +123,7 @@ router.get('/statistics',
  *         description: Insufficient permissions
  */
 router.get('/role/:role',
-  authenticate,
+  authenticate, crossFranchiseResolver,
   hasPermission('users.read.regional'),
   userController.getUsersByRole
 );
@@ -174,7 +174,7 @@ router.get('/role/:role',
  *         description: User not found
  */
 router.put('/:id/role',
-  authenticate,
+  authenticate, crossFranchiseResolver,
   hasPermission('roles.assign'),
   userController.assignRole
 );
@@ -247,7 +247,7 @@ router.put('/:id/role',
  *         description: Insufficient permissions
  */
 router.post('/',
-  authenticate,
+  authenticate, crossFranchiseResolver,
   hasPermission('users.create'),
   validate(userSchemas.create),
   userController.createUser
@@ -288,7 +288,7 @@ router.post('/',
  *         description: Insufficient permissions
  */
 router.patch('/bulk-update',
-  authenticate,
+  authenticate, crossFranchiseResolver,
   hasPermission('users.update.regional'),
   userController.bulkUpdateUsers
 );
@@ -318,7 +318,7 @@ router.patch('/bulk-update',
  *         description: User not found
  */
 router.get('/:id',
-  authenticate,
+  authenticate, crossFranchiseResolver,
   userController.getUserById
 );
 
@@ -367,7 +367,7 @@ router.get('/:id',
  *         description: User not found
  */
 router.put('/:id',
-  authenticate,
+  authenticate, crossFranchiseResolver,
   validate(userSchemas.update),
   userController.updateUser
 );
@@ -397,7 +397,7 @@ router.put('/:id',
  *         description: User not found
  */
 router.delete('/:id',
-  authenticate,
+  authenticate, crossFranchiseResolver,
   hasPermission('users.delete'),
   userController.deleteUser
 );
@@ -442,7 +442,7 @@ router.delete('/:id',
  *         description: User not found
  */
 router.patch('/:id/status',
-  authenticate,
+  authenticate, crossFranchiseResolver,
   hasPermission('users.update.regional'),
   userController.toggleUserStatus
 );
@@ -486,7 +486,7 @@ router.patch('/:id/status',
  *         description: User not found
  */
 router.post('/:id/reset-password',
-  authenticate,
+  authenticate, crossFranchiseResolver,
   hasPermission('users.update.regional'),
   userController.resetUserPassword
 );

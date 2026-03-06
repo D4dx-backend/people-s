@@ -3,6 +3,7 @@ const Location = require('../models/Location');
 const { User } = require('../models');
 const { validationResult } = require('express-validator');
 const ResponseHelper = require('../utils/responseHelper');
+const { buildFranchiseReadFilter, buildFranchiseMatchStage, getWriteFranchiseId } = require('../utils/franchiseFilterHelper');
 
 // Get all beneficiaries with pagination and search
 const getBeneficiaries = async (req, res) => {
@@ -44,7 +45,7 @@ const getBeneficiaries = async (req, res) => {
     Object.assign(filter, userRegionalFilter);
 
     // Multi-tenant: Beneficiaries are franchise-scoped
-    if (req.franchiseId) filter.franchise = req.franchiseId;
+    Object.assign(filter, buildFranchiseReadFilter(req));
 
     const skip = (parseInt(page) - 1) * parseInt(limit);
     
@@ -56,7 +57,7 @@ const getBeneficiaries = async (req, res) => {
       const applicationFilter = {};
       if (project) applicationFilter.project = project;
       if (scheme) applicationFilter.scheme = scheme;
-      if (req.franchiseId) applicationFilter.franchise = req.franchiseId;
+      Object.assign(applicationFilter, buildFranchiseReadFilter(req));
       
       const applications = await Application.find(applicationFilter).distinct('beneficiary');
       filter._id = { $in: applications };
@@ -152,8 +153,7 @@ const getBeneficiaries = async (req, res) => {
 // Get single beneficiary
 const getBeneficiary = async (req, res) => {
   try {
-    const beneficiaryQuery = { _id: req.params.id };
-    if (req.franchiseId) beneficiaryQuery.franchise = req.franchiseId;
+    const beneficiaryQuery = { _id: req.params.id, ...buildFranchiseReadFilter(req) };
     const beneficiary = await Beneficiary.findOne(beneficiaryQuery)
       .populate('state', 'name code')
       .populate('district', 'name code')
@@ -603,7 +603,7 @@ const exportBeneficiaries = async (req, res) => {
     // Apply user's regional access restrictions
     const userRegionalFilter = getUserRegionalFilter(req.user);
     Object.assign(filter, userRegionalFilter);
-    if (req.franchiseId) filter.franchise = req.franchiseId;
+    Object.assign(filter, buildFranchiseReadFilter(req));
 
     // If project or scheme filters are applied, we need to filter by applications
     if (project || scheme) {
@@ -611,7 +611,7 @@ const exportBeneficiaries = async (req, res) => {
       const applicationFilter = {};
       if (project) applicationFilter.project = project;
       if (scheme) applicationFilter.scheme = scheme;
-      if (req.franchiseId) applicationFilter.franchise = req.franchiseId;
+      Object.assign(applicationFilter, buildFranchiseReadFilter(req));
       
       const applications = await Application.find(applicationFilter).distinct('beneficiary');
       filter._id = { $in: applications };

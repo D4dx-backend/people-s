@@ -2,6 +2,7 @@ const { Scheme, Project, Location } = require('../models');
 const ResponseHelper = require('../utils/responseHelper');
 const formConfigurationController = require('./formConfigurationController');
 const { updateApplicationsDistributionTimeline } = require('./applicationController');
+const { buildFranchiseReadFilter, buildFranchiseMatchStage, getWriteFranchiseId } = require('../utils/franchiseFilterHelper');
 
 class SchemeController {
   /**
@@ -62,7 +63,7 @@ class SchemeController {
       const skip = (page - 1) * limit;
 
       // Multi-tenant: restrict to current franchise
-      if (req.franchiseId) filter.franchise = req.franchiseId;
+      Object.assign(filter, buildFranchiseReadFilter(req));
       
       const schemes = await Scheme.find(filter)
         .populate('project', 'name code description')
@@ -97,7 +98,7 @@ class SchemeController {
     try {
       const { id } = req.params;
 
-      const scheme = await Scheme.findOne({ _id: id, franchise: req.franchiseId })
+      const scheme = await Scheme.findOne({ _id: id, ...buildFranchiseReadFilter(req) })
         .populate('project', 'name code description coordinator')
         .populate('targetRegions', 'name type code parent')
         .populate('createdBy', 'name email profile')

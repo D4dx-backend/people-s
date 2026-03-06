@@ -1,5 +1,6 @@
 const { Project, Scheme, Application, Payment, User, Beneficiary, RecurringPayment } = require('../models');
 const ResponseHelper = require('../utils/responseHelper');
+const { buildFranchiseReadFilter, buildFranchiseMatchStage, getWriteFranchiseId } = require('../utils/franchiseFilterHelper');
 
 class DashboardController {
   /**
@@ -20,7 +21,7 @@ class DashboardController {
       // super_admin and state_admin can see all data (no filter)
 
       // Franchise scope
-      if (req.franchiseId) locationFilter.franchise = req.franchiseId;
+      Object.assign(locationFilter, buildFranchiseReadFilter(req));
       
       // Get counts for main entities with location filter
       const [
@@ -30,8 +31,8 @@ class DashboardController {
         totalBeneficiaries,
         totalUsers
       ] = await Promise.all([
-        Project.countDocuments(req.franchiseId ? { franchise: req.franchiseId } : {}),
-        Scheme.countDocuments(req.franchiseId ? { franchise: req.franchiseId } : {}),
+        Project.countDocuments(buildFranchiseReadFilter(req)),
+        Scheme.countDocuments(buildFranchiseReadFilter(req)),
         Application.countDocuments(locationFilter),
         Beneficiary.countDocuments(locationFilter),
         User.countDocuments()
@@ -95,7 +96,7 @@ class DashboardController {
 
       // Get total budget and spending
       const budgetStats = await Project.aggregate([
-        ...(req.franchiseId ? [{ $match: { franchise: req.franchiseId } }] : []),
+        { $match: buildFranchiseMatchStage(req) },
         {
           $group: {
             _id: null,
@@ -203,7 +204,7 @@ class DashboardController {
       }
 
       // Franchise scope
-      if (req.franchiseId) locationFilter.franchise = req.franchiseId;
+      Object.assign(locationFilter, buildFranchiseReadFilter(req));
 
       const applications = await Application.find(locationFilter)
         .populate('beneficiary', 'name phone')
@@ -238,7 +239,7 @@ class DashboardController {
       const { limit = 10 } = req.query;
 
       // Fetch both regular and recurring payments
-      const paymentFilter = req.franchiseId ? { franchise: req.franchiseId } : {};
+      const paymentFilter = buildFranchiseReadFilter(req);
       const [payments, recurringPayments] = await Promise.all([
         Payment.find(paymentFilter)
           .populate('beneficiary', 'name')
@@ -305,7 +306,7 @@ class DashboardController {
       // Get application trends
       const applicationTrends = await Application.aggregate([
         {
-          $match: { createdAt: { $gte: startDate }, ...(req.franchiseId ? { franchise: req.franchiseId } : {}) }
+          $match: { createdAt: { $gte: startDate }, ...buildFranchiseMatchStage(req) }
         },
         {
           $group: {
@@ -330,7 +331,7 @@ class DashboardController {
           $match: { 
             createdAt: { $gte: startDate },
             status: 'completed',
-            ...(req.franchiseId ? { franchise: req.franchiseId } : {})
+            ...buildFranchiseMatchStage(req)
           }
         },
         {
@@ -375,7 +376,7 @@ class DashboardController {
   async getProjectPerformance(req, res) {
     try {
       const projectFilter = { status: 'active' };
-      if (req.franchiseId) projectFilter.franchise = req.franchiseId;
+      Object.assign(projectFilter, buildFranchiseReadFilter(req));
       const projects = await Project.find(projectFilter)
         .select('name budget statistics')
         .sort({ 'budget.total': -1 })
