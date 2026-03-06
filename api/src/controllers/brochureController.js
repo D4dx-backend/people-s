@@ -1,6 +1,7 @@
 const Brochure = require('../models/Brochure');
 const ResponseHelper = require('../utils/responseHelper');
 const { uploadToSpaces, deleteFromSpaces } = require('../utils/s3Upload');
+const { buildFranchiseReadFilter, buildFranchiseMatchStage, getWriteFranchiseId } = require('../utils/franchiseFilterHelper');
 
 class BrochureController {
   /**
@@ -16,8 +17,7 @@ class BrochureController {
       if (status) query.status = status;
       if (category) query.category = category;
 
-      // Multi-tenant: restrict to current franchise
-      if (req.franchiseId) query.franchise = req.franchiseId;
+      Object.assign(query, buildFranchiseReadFilter(req));
 
       const brochures = await Brochure.find(query)
         .populate('createdBy', 'name')
@@ -86,7 +86,7 @@ class BrochureController {
     try {
       const { id } = req.params;
       
-      const brochure = await Brochure.findOne({ _id: id, franchise: req.franchiseId })
+      const brochure = await Brochure.findOne({ _id: id, ...buildFranchiseReadFilter(req) })
         .populate('createdBy', 'name')
         .populate('updatedBy', 'name');
 

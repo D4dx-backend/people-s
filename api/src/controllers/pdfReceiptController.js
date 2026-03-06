@@ -2,6 +2,7 @@ const PDFReceiptService = require('../services/pdfReceiptService');
 const Payment = require('../models/Payment');
 const path = require('path');
 const fs = require('fs');
+const { buildFranchiseReadFilter, buildFranchiseMatchStage, getWriteFranchiseId } = require('../utils/franchiseFilterHelper');
 
 class PDFReceiptController {
   constructor() {
@@ -16,7 +17,7 @@ class PDFReceiptController {
       const paymentId = req.params.id;
 
       // Fetch payment with all populated references
-      const payment = await Payment.findOne({ _id: paymentId, franchise: req.franchiseId })
+      const payment = await Payment.findOne({ _id: paymentId, ...buildFranchiseReadFilter(req) })
         .populate('application', 'applicationNumber')
         .populate('beneficiary', 'name phone personalInfo financial')
         .populate('project', 'name code')
@@ -82,7 +83,7 @@ class PDFReceiptController {
     try {
       const paymentId = req.params.id;
 
-      const payment = await Payment.findOne({ _id: paymentId, franchise: req.franchiseId })
+      const payment = await Payment.findOne({ _id: paymentId, ...buildFranchiseReadFilter(req) })
         .populate('application', 'applicationNumber')
         .populate('beneficiary', 'name phone personalInfo financial')
         .populate('project', 'name code')
@@ -152,7 +153,7 @@ class PDFReceiptController {
 
       for (const paymentId of paymentIds) {
         try {
-          const payment = await Payment.findOne({ _id: paymentId, franchise: req.franchiseId })
+          const payment = await Payment.findOne({ _id: paymentId, ...buildFranchiseReadFilter(req) })
             .populate('application', 'applicationNumber')
             .populate('beneficiary', 'name phone personalInfo financial')
             .populate('project', 'name code')
@@ -216,7 +217,7 @@ class PDFReceiptController {
     try {
       const { paymentId } = req.params;
 
-      const payment = await Payment.findOne({ _id: paymentId, franchise: req.franchiseId }).select('paymentNumber status timeline');
+      const payment = await Payment.findOne({ _id: paymentId, ...buildFranchiseReadFilter(req) }).select('paymentNumber status timeline');
 
       if (!payment) {
         return res.status(404).json({
@@ -263,7 +264,7 @@ class PDFReceiptController {
 
       // Build query for completed payments
       const query = { status: 'completed' };
-      if (req.franchiseId) query.franchise = req.franchiseId;
+      Object.assign(query, buildFranchiseReadFilter(req));
 
       if (search) {
         const searchRegex = new RegExp(search, 'i');

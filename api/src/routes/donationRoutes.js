@@ -1,6 +1,6 @@
 const express = require('express');
 const donationController = require('../controllers/donationController');
-const { authenticate } = require('../middleware/auth');
+const { authenticate, crossFranchiseResolver } = require('../middleware/auth');
 const RBACMiddleware = require('../middleware/rbacMiddleware');
 const { createExportHandler } = require('../middleware/exportHandler');
 const exportConfigs = require('../config/exportConfigs');
@@ -10,6 +10,7 @@ const router = express.Router();
 
 // Apply authentication to all routes
 router.use(authenticate);
+router.use(crossFranchiseResolver);
 
 /**
  * @swagger

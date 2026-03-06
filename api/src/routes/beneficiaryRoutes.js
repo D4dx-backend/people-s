@@ -3,7 +3,7 @@ const router = express.Router();
 const beneficiaryAuthController = require('../controllers/beneficiaryAuthController');
 const beneficiaryApplicationController = require('../controllers/beneficiaryApplicationController');
 const beneficiaryController = require('../controllers/beneficiaryController');
-const { authenticate, authorize } = require('../middleware/auth');
+const { authenticate, crossFranchiseResolver, authorize } = require('../middleware/auth');
 const { validateRequest } = require('../middleware/validation');
 const { body, param, query } = require('express-validator');
 const { createExportHandler } = require('../middleware/exportHandler');
@@ -57,12 +57,12 @@ router.get('/auth/locations', [
 
 // Protected beneficiary routes (require authentication and beneficiary role)
 router.get('/auth/profile', 
-  authenticate, 
+  authenticate, crossFranchiseResolver, 
   authorize('beneficiary'), 
   beneficiaryAuthController.getProfile
 );
 router.put('/auth/profile', 
-  authenticate, 
+  authenticate, crossFranchiseResolver, 
   authorize('beneficiary'),
   [
     body('name').optional().trim().isLength({ min: 2, max: 100 }),
@@ -75,7 +75,7 @@ router.put('/auth/profile',
 
 // Scheme routes
 router.get('/schemes', 
-  authenticate, 
+  authenticate, crossFranchiseResolver, 
   authorize('beneficiary'),
   [
     query('category').optional().trim(),
@@ -87,7 +87,7 @@ router.get('/schemes',
 );
 
 router.get('/schemes/:id', 
-  authenticate, 
+  authenticate, crossFranchiseResolver, 
   authorize('beneficiary'),
   [
     param('id').isMongoId().withMessage('Invalid scheme ID'),
@@ -98,13 +98,13 @@ router.get('/schemes/:id',
 
 // Renewal routes (must come before generic /applications/:id)
 router.get('/applications/renewal-due',
-  authenticate,
+  authenticate, crossFranchiseResolver,
   authorize('beneficiary'),
   beneficiaryApplicationController.getRenewalDueApplications
 );
 
 router.get('/applications/:id/renewal-form',
-  authenticate,
+  authenticate, crossFranchiseResolver,
   authorize('beneficiary'),
   [
     param('id').isMongoId().withMessage('Invalid application ID'),
@@ -114,7 +114,7 @@ router.get('/applications/:id/renewal-form',
 );
 
 router.post('/applications/:id/renew',
-  authenticate,
+  authenticate, crossFranchiseResolver,
   authorize('beneficiary'),
   [
     param('id').isMongoId().withMessage('Invalid application ID'),
@@ -131,7 +131,7 @@ router.post('/applications/:id/renew',
 
 // Draft routes (must come before POST /applications)
 router.post('/applications/draft',
-  authenticate,
+  authenticate, crossFranchiseResolver,
   authorize('beneficiary'),
   [
     body('schemeId')
@@ -147,7 +147,7 @@ router.post('/applications/draft',
 );
 
 router.put('/applications/draft/:id',
-  authenticate,
+  authenticate, crossFranchiseResolver,
   authorize('beneficiary'),
   [
     param('id').isMongoId().withMessage('Invalid draft ID'),
@@ -159,7 +159,7 @@ router.put('/applications/draft/:id',
 );
 
 router.get('/applications/draft/scheme/:schemeId',
-  authenticate,
+  authenticate, crossFranchiseResolver,
   authorize('beneficiary'),
   [
     param('schemeId').isMongoId().withMessage('Invalid scheme ID'),
@@ -169,7 +169,7 @@ router.get('/applications/draft/scheme/:schemeId',
 );
 
 router.delete('/applications/draft/:id',
-  authenticate,
+  authenticate, crossFranchiseResolver,
   authorize('beneficiary'),
   [
     param('id').isMongoId().withMessage('Invalid draft ID'),
@@ -180,7 +180,7 @@ router.delete('/applications/draft/:id',
 
 // Application routes
 router.post('/applications', 
-  authenticate, 
+  authenticate, crossFranchiseResolver, 
   authorize('beneficiary'),
   [
     body('schemeId')
@@ -200,7 +200,7 @@ router.post('/applications',
 );
 
 router.get('/applications', 
-  authenticate, 
+  authenticate, crossFranchiseResolver, 
   authorize('beneficiary'),
   [
     query('status').optional().trim(),
@@ -212,7 +212,7 @@ router.get('/applications',
 );
 
 router.get('/applications/:id', 
-  authenticate, 
+  authenticate, crossFranchiseResolver, 
   authorize('beneficiary'),
   [
     param('id').isMongoId().withMessage('Invalid application ID'),
@@ -222,7 +222,7 @@ router.get('/applications/:id',
 );
 
 router.put('/applications/:id/cancel', 
-  authenticate, 
+  authenticate, crossFranchiseResolver, 
   authorize('beneficiary'),
   [
     param('id').isMongoId().withMessage('Invalid application ID'),
@@ -234,7 +234,7 @@ router.put('/applications/:id/cancel',
 
 // Tracking routes
 router.get('/track/:applicationId', 
-  authenticate, 
+  authenticate, crossFranchiseResolver, 
   authorize('beneficiary'),
   [
     param('applicationId').notEmpty().withMessage('Application ID is required'),
@@ -245,7 +245,7 @@ router.get('/track/:applicationId',
 
 // Statistics
 router.get('/stats', 
-  authenticate, 
+  authenticate, crossFranchiseResolver, 
   authorize('beneficiary'),
   beneficiaryApplicationController.getApplicationStats
 );
@@ -257,7 +257,7 @@ router.get('/stats',
 
 // Create beneficiary (admin route)
 router.post('/', 
-  authenticate,
+  authenticate, crossFranchiseResolver,
   authorize('super_admin', 'state_admin', 'district_admin', 'area_admin', 'unit_admin'),
   [
     body('name')
@@ -299,14 +299,14 @@ router.post('/',
 
 // Export beneficiaries as CSV or JSON (admin route)
 router.get('/export',
-  authenticate,
+  authenticate, crossFranchiseResolver,
   authorize('super_admin', 'state_admin', 'district_admin', 'area_admin', 'unit_admin', 'project_coordinator', 'scheme_coordinator'),
   createExportHandler(Beneficiary, exportConfigs.beneficiary)
 );
 
 // Get all beneficiaries (admin route)
 router.get('/', 
-  authenticate,
+  authenticate, crossFranchiseResolver,
   [
     query('page').optional().isInt({ min: 1 }),
     query('limit').optional().isInt({ min: 1, max: 100 }),
@@ -320,7 +320,7 @@ router.get('/',
 
 // Get beneficiary by ID (admin route)
 router.get('/:id',
-  authenticate,
+  authenticate, crossFranchiseResolver,
   [
     param('id').isMongoId().withMessage('Invalid beneficiary ID'),
     validateRequest
@@ -330,7 +330,7 @@ router.get('/:id',
 
 // Update beneficiary (admin route)
 router.put('/:id',
-  authenticate,
+  authenticate, crossFranchiseResolver,
   [
     param('id').isMongoId().withMessage('Invalid beneficiary ID'),
     body('name').optional().trim().isLength({ min: 2, max: 100 }).withMessage('Name must be between 2 and 100 characters'),
@@ -347,7 +347,7 @@ router.put('/:id',
 
 // Verify beneficiary (admin route)
 router.patch('/:id/verify',
-  authenticate,
+  authenticate, crossFranchiseResolver,
   [
     param('id').isMongoId().withMessage('Invalid beneficiary ID'),
     validateRequest
@@ -357,7 +357,7 @@ router.patch('/:id/verify',
 
 // Delete beneficiary (admin route)
 router.delete('/:id',
-  authenticate,
+  authenticate, crossFranchiseResolver,
   authorize('super_admin', 'state_admin', 'district_admin', 'area_admin', 'unit_admin'),
   [
     param('id').isMongoId().withMessage('Invalid beneficiary ID'),

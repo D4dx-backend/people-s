@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const applicationConfigController = require('../controllers/applicationConfigController');
-const { authenticate, authorize } = require('../middleware/auth');
+const { authenticate, crossFranchiseResolver, authorize } = require('../middleware/auth');
 const { hasAnyPermission } = require('../middleware/rbacMiddleware');
 const { uploadSingle } = require('../middleware/upload');
 
@@ -25,7 +25,7 @@ router.get('/public', applicationConfigController.getPublicConfigs);
  */
 router.post(
   '/logo',
-  authenticate,
+  authenticate, crossFranchiseResolver,
   hasAnyPermission(['config.write', 'settings.write']),
   uploadSingle('logo'),
   applicationConfigController.uploadLogo
@@ -38,7 +38,7 @@ router.post(
 // Get all configurations (Admin only)
 router.get(
   '/',
-  authenticate,
+  authenticate, crossFranchiseResolver,
   hasAnyPermission(['config.read', 'settings.read']),
   applicationConfigController.getAllConfigs
 );
@@ -46,7 +46,7 @@ router.get(
 // Get single configuration by ID (Admin only)
 router.get(
   '/:id',
-  authenticate,
+  authenticate, crossFranchiseResolver,
   hasAnyPermission(['config.read', 'settings.read']),
   applicationConfigController.getConfigById
 );
@@ -54,7 +54,7 @@ router.get(
 // Create new configuration (Admin only)
 router.post(
   '/',
-  authenticate,
+  authenticate, crossFranchiseResolver,
   hasAnyPermission(['config.write', 'settings.write']),
   applicationConfigController.createConfig
 );
@@ -62,7 +62,7 @@ router.post(
 // Update single configuration (Admin only)
 router.put(
   '/:id',
-  authenticate,
+  authenticate, crossFranchiseResolver,
   hasAnyPermission(['config.write', 'settings.write']),
   applicationConfigController.updateConfig
 );
@@ -70,7 +70,7 @@ router.put(
 // Bulk update configurations (Admin only)
 router.put(
   '/bulk/update',
-  authenticate,
+  authenticate, crossFranchiseResolver,
   hasAnyPermission(['config.write', 'settings.write']),
   applicationConfigController.bulkUpdateConfigs
 );
@@ -78,7 +78,7 @@ router.put(
 // Delete configuration (Admin only)
 router.delete(
   '/:id',
-  authenticate,
+  authenticate, crossFranchiseResolver,
   hasAnyPermission(['config.write', 'settings.write']),
   applicationConfigController.deleteConfig
 );
@@ -88,14 +88,14 @@ router.delete(
 
 router.get(
   '/integrations',
-  authenticate,
+  authenticate, crossFranchiseResolver,
   authorize('super_admin'),
   applicationConfigController.getIntegrationsConfig
 );
 
 router.put(
   '/integrations',
-  authenticate,
+  authenticate, crossFranchiseResolver,
   authorize('super_admin'),
   applicationConfigController.updateIntegrationsConfig
 );

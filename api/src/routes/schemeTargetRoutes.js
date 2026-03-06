@@ -1,11 +1,12 @@
 const express = require('express');
 const schemeTargetController = require('../controllers/schemeTargetController');
-const { authenticate, authorize } = require('../middleware/auth');
+const { authenticate, crossFranchiseResolver, authorize } = require('../middleware/auth');
 
 const router = express.Router();
 
 // All routes require authentication
 router.use(authenticate);
+router.use(crossFranchiseResolver);
 
 /**
  * @swagger

@@ -1,10 +1,11 @@
 const Banner = require('../models/Banner');
 const { uploadToSpaces, deleteFromSpaces } = require('../utils/s3Upload');
+const { buildFranchiseReadFilter, buildFranchiseMatchStage, getWriteFranchiseId } = require('../utils/franchiseFilterHelper');
 
 // Get all banners (admin)
 exports.getAllBanners = async (req, res) => {
   try {
-    const bannerFilter = req.franchiseId ? { franchise: req.franchiseId } : {};
+    const bannerFilter = buildFranchiseReadFilter(req);
     const banners = await Banner.find(bannerFilter)
       .sort({ order: 1, createdAt: -1 })
       .populate('createdBy updatedBy', 'name email');
@@ -26,7 +27,7 @@ exports.getAllBanners = async (req, res) => {
 // Get active banners (public)
 exports.getPublicBanners = async (req, res) => {
   try {
-    const bannerFilter = { status: 'active', ...(req.franchiseId && { franchise: req.franchiseId }) };
+    const bannerFilter = { status: 'active', ...buildFranchiseReadFilter(req) };
     const banners = await Banner.find(bannerFilter)
       .sort({ order: 1, createdAt: -1 })
       .select('-createdBy -updatedBy');
@@ -48,7 +49,7 @@ exports.getPublicBanners = async (req, res) => {
 // Get banner by ID
 exports.getBannerById = async (req, res) => {
   try {
-    const banner = await Banner.findOne({ _id: req.params.id, franchise: req.franchiseId })
+    const banner = await Banner.findOne({ _id: req.params.id, ...buildFranchiseReadFilter(req) })
       .populate('createdBy updatedBy', 'name email');
     
     if (!banner) {

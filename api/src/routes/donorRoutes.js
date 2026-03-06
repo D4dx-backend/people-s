@@ -2,7 +2,7 @@ const express = require('express');
 const donorController = require('../controllers/donorController');
 const donationController = require('../controllers/donationController');
 const donorFollowUpController = require('../controllers/donorFollowUpController');
-const { authenticate, authorize } = require('../middleware/auth');
+const { authenticate, crossFranchiseResolver, authorize } = require('../middleware/auth');
 const RBACMiddleware = require('../middleware/rbacMiddleware');
 const { createExportHandler } = require('../middleware/exportHandler');
 const exportConfigs = require('../config/exportConfigs');
@@ -12,6 +12,7 @@ const router = express.Router();
 
 // Apply authentication to all routes
 router.use(authenticate);
+router.use(crossFranchiseResolver);
 
 // Specific routes (must come before parameterized routes)
 /**

@@ -5,6 +5,7 @@ const Franchise = require('../models/Franchise');
 const franchiseCache = require('../utils/franchiseCache');
 const path = require('path');
 const fs = require('fs');
+const { buildFranchiseReadFilter, buildFranchiseMatchStage, getWriteFranchiseId } = require('../utils/franchiseFilterHelper');
 
 class ApplicationConfigController {
   /**
@@ -45,7 +46,7 @@ class ApplicationConfigController {
   getPublicConfigs = async (req, res) => {
     try {
       // ── Franchise-aware config lookup ───────────────────────────────────
-      const franchiseFilter = req.franchiseId ? { franchise: req.franchiseId } : {};
+      const franchiseFilter = buildFranchiseReadFilter(req);
 
       const configs = await ApplicationConfig.find({
         scope: 'global',
@@ -154,7 +155,7 @@ class ApplicationConfigController {
    */
   getConfigById = async (req, res) => {
     try {
-      const config = await ApplicationConfig.findOne({ _id: req.params.id, franchise: req.franchiseId })
+      const config = await ApplicationConfig.findOne({ _id: req.params.id, ...buildFranchiseReadFilter(req) })
         .populate('updatedBy', 'name email');
       
       if (!config) {

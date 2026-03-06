@@ -1,6 +1,6 @@
 const express = require('express');
 const rbacController = require('../controllers/rbacController');
-const { authenticate, authorize, checkPermission } = require('../middleware/auth');
+const { authenticate, crossFranchiseResolver, authorize, checkPermission } = require('../middleware/auth');
 const { validate, validateRequest } = require('../middleware/validation');
 const { body, param, query } = require('express-validator');
 const { createExportHandler } = require('../middleware/exportHandler');
@@ -11,6 +11,7 @@ const router = express.Router();
 
 // Apply authentication to all RBAC routes
 router.use(authenticate);
+router.use(crossFranchiseResolver);
 
 // Export roles as CSV or JSON
 router.get('/roles/export',

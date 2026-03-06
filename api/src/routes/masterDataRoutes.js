@@ -1,12 +1,13 @@
 const express = require('express');
 const { body } = require('express-validator');
 const masterDataController = require('../controllers/masterDataController');
-const { authenticate, authorize } = require('../middleware/auth');
+const { authenticate, crossFranchiseResolver, authorize } = require('../middleware/auth');
 
 const router = express.Router();
 
 // Apply authentication to all routes
 router.use(authenticate);
+router.use(crossFranchiseResolver);
 
 // Validation rules
 const masterDataValidation = [

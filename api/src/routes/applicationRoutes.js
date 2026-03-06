@@ -18,7 +18,7 @@ const {
   getRenewalHistory,
   recalculateScore
 } = require('../controllers/applicationController');
-const { authenticate, authorize } = require('../middleware/auth');
+const { authenticate, crossFranchiseResolver, authorize } = require('../middleware/auth');
 const { syncApplicationStages } = require('../middleware/syncStages');
 const { uploadSingle } = require('../middleware/upload');
 const { createExportHandler } = require('../middleware/exportHandler');
@@ -92,45 +92,45 @@ const approveApplicationValidation = [
 
 // Export applications as CSV or JSON
 router.get('/export',
-  authenticate,
+  authenticate, crossFranchiseResolver,
   authorize('super_admin', 'state_admin', 'district_admin', 'area_admin', 'unit_admin', 'project_coordinator', 'scheme_coordinator'),
   createExportHandler(Application, exportConfigs.application)
 );
 
 // Renewal management routes (must come before /:id routes)
 router.get('/renewal-due',
-  authenticate,
+  authenticate, crossFranchiseResolver,
   authorize('super_admin', 'state_admin', 'district_admin', 'area_admin', 'unit_admin', 'project_coordinator', 'scheme_coordinator'),
   getRenewalDueApplications
 );
 
 router.get('/:id/renewal-history',
-  authenticate,
+  authenticate, crossFranchiseResolver,
   authorize('super_admin', 'state_admin', 'district_admin', 'area_admin', 'unit_admin', 'project_coordinator', 'scheme_coordinator'),
   getRenewalHistory
 );
 
 // Get available roles to revert application to (must be before /:id route)
 router.get('/:id/available-revert-roles',
-  authenticate,
+  authenticate, crossFranchiseResolver,
   authorize('super_admin', 'state_admin', 'district_admin', 'area_admin', 'unit_admin', 'project_coordinator', 'scheme_coordinator'),
   getAvailableRevertRoles
 );
 
 router.get('/',
-  authenticate,
+  authenticate, crossFranchiseResolver,
   authorize('super_admin', 'state_admin', 'district_admin', 'area_admin', 'unit_admin', 'project_coordinator', 'scheme_coordinator'),
   getApplications
 );
 
 router.get('/:id',
-  authenticate,
+  authenticate, crossFranchiseResolver,
   authorize('super_admin', 'state_admin', 'district_admin', 'area_admin', 'unit_admin', 'project_coordinator', 'scheme_coordinator'),
   getApplication
 );
 
 router.post('/', 
-  authenticate, 
+  authenticate, crossFranchiseResolver, 
   authorize('super_admin', 'state_admin', 'district_admin', 'area_admin', 'unit_admin'), 
   applicationValidation,
   syncApplicationStages, // Automatically sync stages from scheme
@@ -139,14 +139,14 @@ router.post('/',
 
 // Full application edit is restricted to senior admin roles only
 router.put('/:id', 
-  authenticate, 
+  authenticate, crossFranchiseResolver, 
   authorize('super_admin', 'state_admin', 'area_admin'), 
   updateApplicationValidation, 
   updateApplication
 );
 
 router.patch('/:id/review', 
-  authenticate, 
+  authenticate, crossFranchiseResolver, 
   authorize('super_admin', 'state_admin', 'area_admin'), 
   reviewApplicationValidation, 
   reviewApplication
@@ -154,7 +154,7 @@ router.patch('/:id/review',
 
 // Approve application - PATCH (keep for backward compatibility)
 router.patch('/:id/approve', 
-  authenticate, 
+  authenticate, crossFranchiseResolver, 
   authorize('super_admin', 'state_admin', 'area_admin'), 
   approveApplicationValidation, 
   approveApplication
@@ -162,7 +162,7 @@ router.patch('/:id/approve',
 
 // Approve application - PUT (preferred method)
 router.put('/:id/approve', 
-  authenticate, 
+  authenticate, crossFranchiseResolver, 
   authorize('super_admin', 'state_admin', 'area_admin'), 
   approveApplicationValidation, 
   approveApplication
@@ -170,7 +170,7 @@ router.put('/:id/approve',
 
 // Modify an already approved application (amount, timeline, comments)
 router.patch('/:id/modify-approved',
-  authenticate,
+  authenticate, crossFranchiseResolver,
   authorize('super_admin', 'state_admin'),
   [
     body('approvedAmount')
@@ -193,28 +193,28 @@ router.patch('/:id/modify-approved',
 );
 
 router.delete('/:id', 
-  authenticate, 
+  authenticate, crossFranchiseResolver, 
   authorize('super_admin', 'state_admin', 'area_admin'), 
   deleteApplication
 );
 
 // Update application stage status (all admin roles + coordinators can update stages)
 router.patch('/:id/stages/:stageId', 
-  authenticate, 
+  authenticate, crossFranchiseResolver, 
   authorize('super_admin', 'state_admin', 'district_admin', 'area_admin', 'unit_admin', 'project_coordinator', 'scheme_coordinator'), 
   updateApplicationStage
 );
 
 // Add comment to a stage
 router.patch('/:id/stages/:stageId/comment', 
-  authenticate, 
+  authenticate, crossFranchiseResolver, 
   authorize('super_admin', 'state_admin', 'district_admin', 'area_admin', 'unit_admin', 'project_coordinator', 'scheme_coordinator'), 
   addStageComment
 );
 
 // Upload document for a stage
 router.post('/:id/stages/:stageId/documents/:docIndex', 
-  authenticate, 
+  authenticate, crossFranchiseResolver, 
   authorize('super_admin', 'state_admin', 'district_admin', 'area_admin', 'unit_admin', 'project_coordinator', 'scheme_coordinator'), 
   uploadSingle('document'),
   uploadStageDocument
@@ -222,21 +222,21 @@ router.post('/:id/stages/:stageId/documents/:docIndex',
 
 // Recalculate eligibility score for an application
 router.post('/:id/recalculate-score',
-  authenticate,
+  authenticate, crossFranchiseResolver,
   authorize('super_admin', 'state_admin', 'district_admin', 'area_admin', 'unit_admin', 'project_coordinator', 'scheme_coordinator'),
   recalculateScore
 );
 
 // Revert application to a previous stage
 router.patch('/:id/revert',
-  authenticate, 
+  authenticate, crossFranchiseResolver, 
   authorize('super_admin', 'state_admin', 'district_admin', 'area_admin', 'unit_admin', 'project_coordinator', 'scheme_coordinator'), 
   revertApplicationStage
 );
 
 // Get applications pending committee approval
 router.get('/committee/pending', 
-  authenticate, 
+  authenticate, crossFranchiseResolver, 
   authorize('super_admin', 'state_admin', 'district_admin'), 
   async (req, res) => {
     try {
@@ -304,7 +304,7 @@ router.get('/committee/pending',
 
 // Committee decision on application
 router.patch('/:id/committee-decision', 
-  authenticate, 
+  authenticate, crossFranchiseResolver, 
   authorize('super_admin', 'state_admin', 'district_admin'), 
   async (req, res) => {
     try {

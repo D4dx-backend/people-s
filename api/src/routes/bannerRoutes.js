@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const bannerController = require('../controllers/bannerController');
-const { authenticate } = require('../middleware/auth');
+const { authenticate, crossFranchiseResolver } = require('../middleware/auth');
 const { hasAnyPermission } = require('../middleware/rbacMiddleware');
 const { uploadSingleMemory } = require('../middleware/upload');
 
@@ -10,6 +10,7 @@ router.get('/public', bannerController.getPublicBanners);
 
 // Protected routes
 router.use(authenticate);
+router.use(crossFranchiseResolver);
 
 router.get(
   '/',

@@ -1,6 +1,6 @@
 const express = require('express');
 const projectController = require('../controllers/projectController');
-const { authenticate, authorize } = require('../middleware/auth');
+const { authenticate, crossFranchiseResolver, authorize } = require('../middleware/auth');
 const { validate, projectSchemas } = require('../middleware/validation');
 const { createExportHandler } = require('../middleware/exportHandler');
 const exportConfigs = require('../config/exportConfigs');
@@ -10,6 +10,7 @@ const router = express.Router();
 
 // Apply authentication to all routes
 router.use(authenticate);
+router.use(crossFranchiseResolver);
 
 // Export projects as CSV or JSON
 router.get('/export', createExportHandler(Project, exportConfigs.project));

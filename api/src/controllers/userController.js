@@ -2,6 +2,7 @@ const { User, Location, Project, Scheme, Role, UserRole, UserFranchise } = requi
 const authService = require('../services/authService');
 const notificationService = require('../services/notificationService');
 const ResponseHelper = require('../utils/responseHelper');
+const { buildFranchiseReadFilter, buildFranchiseMatchStage, getWriteFranchiseId } = require('../utils/franchiseFilterHelper');
 
 class UserController {
   /**
@@ -98,9 +99,9 @@ class UserController {
       const skip = (page - 1) * limit;
       const sortOrder = order === 'desc' ? -1 : 1;
 
-      // Franchise scope - restrict to users in this franchise
-      if (req.franchiseId) {
-        const franchiseUserIds = await UserFranchise.find({ franchise: req.franchiseId, isActive: true }).distinct('user');
+      const franchiseReadFilter = buildFranchiseReadFilter(req);
+      if (Object.keys(franchiseReadFilter).length > 0) {
+        const franchiseUserIds = await UserFranchise.find({ ...franchiseReadFilter, isActive: true }).distinct('user');
         query._id = { $in: franchiseUserIds };
       }
 

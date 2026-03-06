@@ -1,6 +1,7 @@
 const { Donor, Donation, Payment, User, Project, Scheme } = require('../models');
 const ResponseHelper = require('../utils/responseHelper');
 const mongoose = require('mongoose');
+const { buildFranchiseReadFilter, buildFranchiseMatchStage, getWriteFranchiseId } = require('../utils/franchiseFilterHelper');
 
 class DonorController {
   /**
@@ -45,7 +46,7 @@ class DonorController {
       const skip = (pageNum - 1) * limitNum;
 
       // Multi-tenant: restrict to current franchise
-      if (req.franchiseId) filter.franchise = req.franchiseId;
+      Object.assign(filter, buildFranchiseReadFilter(req));
 
       // Get donors with pagination
       const [donors, total] = await Promise.all([
@@ -136,7 +137,7 @@ class DonorController {
         return ResponseHelper.error(res, 'Invalid donor ID', 400);
       }
 
-      const donor = await Donor.findOne({ _id: id, franchise: req.franchiseId })
+      const donor = await Donor.findOne({ _id: id, ...buildFranchiseReadFilter(req) })
         .populate('preferredPrograms', 'name code description')
         .populate('preferredSchemes', 'name code description')
         .populate('assignedTo', 'name email phone')

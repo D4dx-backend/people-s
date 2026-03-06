@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const brochureController = require('../controllers/brochureController');
-const { authenticate } = require('../middleware/auth');
+const { authenticate, crossFranchiseResolver } = require('../middleware/auth');
 const { hasAnyPermission } = require('../middleware/rbacMiddleware');
 const { uploadSingleMemory } = require('../middleware/upload');
 
@@ -18,7 +18,7 @@ router.get('/public', brochureController.getPublic);
  * @access  Private (super_admin, state_admin, or website.read permission)
  */
 router.get('/',
-  authenticate,
+  authenticate, crossFranchiseResolver,
   hasAnyPermission(['website.read', 'brochures.read']),
   brochureController.getAll
 );
@@ -36,7 +36,7 @@ router.get('/:id', brochureController.getById);
  * @access  Private (super_admin, state_admin, or website.write permission)
  */
 router.post('/',
-  authenticate,
+  authenticate, crossFranchiseResolver,
   hasAnyPermission(['website.write', 'brochures.write']),
   uploadSingleMemory('file'),
   brochureController.create
@@ -48,7 +48,7 @@ router.post('/',
  * @access  Private (super_admin, state_admin, or website.write permission)
  */
 router.put('/:id',
-  authenticate,
+  authenticate, crossFranchiseResolver,
   hasAnyPermission(['website.write', 'brochures.write']),
   uploadSingleMemory('file'),
   brochureController.update
@@ -60,7 +60,7 @@ router.put('/:id',
  * @access  Private (super_admin, state_admin, or website.delete permission)
  */
 router.delete('/:id',
-  authenticate,
+  authenticate, crossFranchiseResolver,
   hasAnyPermission(['website.delete', 'brochures.delete']),
   brochureController.delete
 );

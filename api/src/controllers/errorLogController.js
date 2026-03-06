@@ -1,5 +1,6 @@
 const ErrorLogService = require('../services/errorLogService');
 const ResponseHelper = require('../utils/responseHelper');
+const { buildFranchiseReadFilter, buildFranchiseMatchStage, getWriteFranchiseId } = require('../utils/franchiseFilterHelper');
 
 class ErrorLogController {
   /**
@@ -8,7 +9,7 @@ class ErrorLogController {
    */
   async getErrorLogs(req, res) {
     try {
-      const params = req.franchiseId ? { ...req.query, franchise: req.franchiseId } : req.query;
+      const params = { ...req.query, ...buildFranchiseReadFilter(req) };
       const result = await ErrorLogService.getErrorLogs(params);
       return ResponseHelper.success(res, result, 'Error logs retrieved successfully');
     } catch (error) {

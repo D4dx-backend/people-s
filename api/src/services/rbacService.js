@@ -1527,7 +1527,7 @@ class RBACService {
         throw new Error('User not found');
       }
 
-      const role = await Role.findById(roleId);
+      const role = await Role.findById(roleId).setOptions({ bypassFranchise: true });
       if (!role || !role.isActive) {
         throw new Error('Role not found or inactive');
       }
@@ -1552,7 +1552,7 @@ class RBACService {
         user: userId,
         role: roleId,
         isActive: true
-      });
+      }).setOptions({ bypassFranchise: true });
 
       if (existingAssignment) {
         throw new Error('User already has this role assigned');
@@ -1581,7 +1581,7 @@ class RBACService {
           'stats.activeUsers': 1
         },
         'stats.lastAssigned': new Date()
-      });
+      }).setOptions({ bypassFranchise: true });
 
       return userRole;
     } catch (error) {
@@ -1599,7 +1599,7 @@ class RBACService {
         user: userId,
         role: roleId,
         isActive: true
-      });
+      }).setOptions({ bypassFranchise: true });
 
       if (!userRole) {
         throw new Error('Role assignment not found');
@@ -1612,7 +1612,7 @@ class RBACService {
       // Update role statistics
       await Role.findByIdAndUpdate(roleId, {
         $inc: { 'stats.activeUsers': -1 }
-      });
+      }).setOptions({ bypassFranchise: true });
 
       return userRole;
     } catch (error) {
@@ -1634,16 +1634,17 @@ class RBACService {
       const allPermissions = new Set();
 
       if (userRoles && userRoles.length > 0) {
-        // User has UserRole entries - use advanced RBAC
         for (const userRole of userRoles) {
           const permissions = await userRole.getEffectivePermissions();
           permissions.forEach(permission => allPermissions.add(permission));
         }
-      } else {
-        // Fallback: User doesn't have UserRole entries, use direct role field
+      }
+
+      // Fallback: if no permissions resolved (no UserRole entries or all Role refs missing)
+      if (allPermissions.size === 0) {
         const user = await User.findById(userId);
         if (user && user.role) {
-          const role = await Role.findOne({ name: user.role }).populate('permissions');
+          const role = await Role.findOne({ name: user.role }).setOptions({ bypassFranchise: true }).populate('permissions');
           if (role && role.permissions) {
             role.permissions.forEach(permission => {
               allPermissions.add(permission._id.toString());
@@ -1671,7 +1672,7 @@ class RBACService {
         return true;
       }
 
-      const permission = await Permission.findOne({ name: permissionName, isActive: true });
+      const permission = await Permission.findOne({ name: permissionName, isActive: true }).setOptions({ bypassFranchise: true });
       if (!permission) {
         return false;
       }
@@ -1702,7 +1703,7 @@ class RBACService {
         const validPermissions = await Permission.find({
           _id: { $in: roleData.permissions },
           isActive: true
-        });
+        }).setOptions({ bypassFranchise: true });
 
         if (validPermissions.length !== roleData.permissions.length) {
           throw new Error('Some permissions are invalid or inactive');
@@ -1728,7 +1729,7 @@ class RBACService {
    */
   async updateCustomRole(roleId, updates, updatedBy) {
     try {
-      const role = await Role.findById(roleId);
+      const role = await Role.findById(roleId).setOptions({ bypassFranchise: true });
       if (!role) {
         throw new Error('Role not found');
       }
@@ -1742,7 +1743,7 @@ class RBACService {
         const validPermissions = await Permission.find({
           _id: { $in: updates.permissions },
           isActive: true
-        });
+        }).setOptions({ bypassFranchise: true });
 
         if (validPermissions.length !== updates.permissions.length) {
           throw new Error('Some permissions are invalid or inactive');
@@ -1765,7 +1766,7 @@ class RBACService {
    */
   async deleteCustomRole(roleId, deletedBy) {
     try {
-      const role = await Role.findById(roleId);
+      const role = await Role.findById(roleId).setOptions({ bypassFranchise: true });
       if (!role) {
         throw new Error('Role not found');
       }
@@ -1778,13 +1779,13 @@ class RBACService {
       const activeAssignments = await UserRole.countDocuments({
         role: roleId,
         isActive: true
-      });
+      }).setOptions({ bypassFranchise: true });
 
       if (activeAssignments > 0) {
         throw new Error('Cannot delete role that is assigned to users');
       }
 
-      await Role.findByIdAndDelete(roleId);
+      await Role.findByIdAndDelete(roleId).setOptions({ bypassFranchise: true });
       return true;
     } catch (error) {
       console.error('❌ Role deletion failed:', error);

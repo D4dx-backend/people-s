@@ -4,6 +4,7 @@ const authService = require('../services/authService');
 const staticOTPConfig = require('../config/staticOTP');
 const whatsappOTPService = require('../utils/whatsappOtpService');
 const notificationService = require('../services/notificationService');
+const { buildFranchiseReadFilter, buildFranchiseMatchStage, getWriteFranchiseId } = require('../utils/franchiseFilterHelper');
 
 class RegionalAdminController {
   /**
@@ -266,7 +267,7 @@ class RegionalAdminController {
       }
 
       // Franchise scope
-      if (req.franchiseId) filter.franchise = req.franchiseId;
+      Object.assign(filter, buildFranchiseReadFilter(req));
 
       // Pagination
       const skip = (parseInt(page) - 1) * parseInt(limit);
@@ -342,7 +343,7 @@ class RegionalAdminController {
       const { id } = req.params;
       const user = req.user;
 
-      const application = await Application.findOne({ _id: id, franchise: req.franchiseId })
+      const application = await Application.findOne({ _id: id, ...buildFranchiseReadFilter(req) })
         .populate('scheme', 'name category benefits eligibility applicationSettings')
         .populate('beneficiary')
         .populate('project', 'name')
@@ -520,7 +521,7 @@ class RegionalAdminController {
       }
 
       // Franchise scope
-      if (req.franchiseId) filter.franchise = req.franchiseId;
+      Object.assign(filter, buildFranchiseReadFilter(req));
 
       // Get application statistics
       const applicationStats = await Application.aggregate([

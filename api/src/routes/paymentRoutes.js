@@ -3,7 +3,7 @@ const router = express.Router();
 const mongoose = require('mongoose');
 const Payment = require('../models/Payment');
 const RecurringPayment = require('../models/RecurringPayment');
-const { authenticate, authorize } = require('../middleware/auth');
+const { authenticate, crossFranchiseResolver, authorize } = require('../middleware/auth');
 const RBACMiddleware = require('../middleware/rbacMiddleware');
 const pdfReceiptController = require('../controllers/pdfReceiptController');
 const { createExportHandler } = require('../middleware/exportHandler');
@@ -14,6 +14,7 @@ const escapeRegex = (str) => str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
 // Apply authentication to all routes
 router.use(authenticate);
+router.use(crossFranchiseResolver);
 
 // Export payments as CSV or JSON
 router.get('/export',

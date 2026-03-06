@@ -114,17 +114,13 @@ const authenticate = async (req, res, next) => {
   } catch (error) {
     console.error('❌ Authentication Error:', error);
     
-    if (error.name === 'JsonWebTokenError') {
+    if (error.name === 'JsonWebTokenError' ||
+        error.name === 'TokenExpiredError' ||
+        error.message?.includes('token') ||
+        error.message?.includes('Token')) {
       return res.status(401).json({
         success: false,
-        message: 'Invalid token.'
-      });
-    }
-    
-    if (error.name === 'TokenExpiredError') {
-      return res.status(401).json({
-        success: false,
-        message: 'Token expired. Please login again.'
+        message: error.message || 'Invalid token.'
       });
     }
     
@@ -492,9 +488,12 @@ const checkAdminHierarchy = (req, res, next) => {
 };
 
 const RBACMiddleware = require('./rbacMiddleware');
+const crossFranchiseResolver = require('./crossFranchiseResolver');
 
 module.exports = {
   authenticate,
+  authenticateCF: [authenticate, crossFranchiseResolver],
+  crossFranchiseResolver,
   authorize,
   checkRegionalAccess,
   checkProjectAccess,

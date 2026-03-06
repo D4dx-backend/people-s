@@ -735,6 +735,13 @@ router.post('/register-device', authenticate, [
 router.get('/status', authenticate, authController.checkAuthStatus);
 
 /**
+ * @route   GET /api/auth/my-franchises
+ * @desc    Get franchises the current user has access to (cross-franchise support)
+ * @access  Private
+ */
+router.get('/my-franchises', authenticate, authController.getMyFranchises);
+
+/**
  * @route   GET /api/auth/test-sms
  * @desc    Test DXing SMS service connection (Admin only)
  * @access  Private (Super Admin, State Admin)

@@ -1,6 +1,7 @@
 const { SchemeTarget, Scheme, Application, FormConfiguration } = require('../models');
 const ResponseHelper = require('../utils/responseHelper');
 const mongoose = require('mongoose');
+const { buildFranchiseReadFilter, buildFranchiseMatchStage, getWriteFranchiseId } = require('../utils/franchiseFilterHelper');
 
 class SchemeTargetController {
 
@@ -12,12 +13,12 @@ class SchemeTargetController {
     try {
       const { schemeId } = req.params;
 
-      const scheme = await Scheme.findOne({ _id: schemeId, franchise: req.franchiseId });
+      const scheme = await Scheme.findOne({ _id: schemeId, ...buildFranchiseReadFilter(req) });
       if (!scheme) {
         return ResponseHelper.error(res, 'Scheme not found', 404);
       }
 
-      const target = await SchemeTarget.findOne({ scheme: schemeId, franchise: req.franchiseId })
+      const target = await SchemeTarget.findOne({ scheme: schemeId, ...buildFranchiseReadFilter(req) })
         .populate('createdBy', 'name email')
         .populate('updatedBy', 'name email');
 
@@ -141,7 +142,7 @@ class SchemeTargetController {
       const { schemeId } = req.params;
 
       // Fetch the target configuration
-      const target = await SchemeTarget.findOne({ scheme: schemeId, franchise: req.franchiseId });
+      const target = await SchemeTarget.findOne({ scheme: schemeId, ...buildFranchiseReadFilter(req) });
       if (!target) {
         return ResponseHelper.error(res, 'No targets configured for this scheme', 404);
       }
@@ -149,7 +150,7 @@ class SchemeTargetController {
       // Count total approved/completed applications for this scheme
       const totalAchieved = await Application.countDocuments({
         scheme: schemeId,
-        franchise: req.franchiseId,
+        ...buildFranchiseReadFilter(req),
         status: { $in: ['approved', 'disbursed', 'completed'] }
       });
 
@@ -158,7 +159,7 @@ class SchemeTargetController {
         {
           $match: {
             scheme: new mongoose.Types.ObjectId(schemeId),
-            franchise: new mongoose.Types.ObjectId(req.franchiseId),
+            ...buildFranchiseMatchStage(req),
             status: { $in: ['approved', 'disbursed', 'completed'] }
           }
         },
@@ -269,7 +270,7 @@ class SchemeTargetController {
       const { schemeId } = req.params;
 
       // Validate scheme exists
-      const scheme = await Scheme.findOne({ _id: schemeId, franchise: req.franchiseId });
+      const scheme = await Scheme.findOne({ _id: schemeId, ...buildFranchiseReadFilter(req) });
       if (!scheme) {
         return ResponseHelper.error(res, 'Scheme not found', 404);
       }
@@ -277,7 +278,7 @@ class SchemeTargetController {
       // Fetch the form configuration for this scheme
       const formConfig = await FormConfiguration.findOne({ 
         scheme: schemeId, 
-        franchise: req.franchiseId,
+        ...buildFranchiseReadFilter(req),
         isRenewalForm: false 
       });
 

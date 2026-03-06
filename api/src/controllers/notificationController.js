@@ -1,5 +1,6 @@
 const notificationService = require('../services/notificationService');
 const ResponseHelper = require('../utils/responseHelper');
+const { buildFranchiseReadFilter, buildFranchiseMatchStage, getWriteFranchiseId } = require('../utils/franchiseFilterHelper');
 
 class NotificationController {
   /**
@@ -15,7 +16,7 @@ class NotificationController {
         unreadOnly: unreadOnly === 'true' || unreadOnly === true,
         limit: limit ? parseInt(limit, 10) : 50,
         offset: offset ? parseInt(offset, 10) : 0,
-        franchise: req.franchiseId || null  // Multi-tenant
+        ...buildFranchiseReadFilter(req)
       });
       return ResponseHelper.success(res, { notifications }, 'Notifications retrieved successfully');
     } catch (error) {

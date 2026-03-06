@@ -1,6 +1,7 @@
 const WebsiteSettings = require('../models/WebsiteSettings');
 const ResponseHelper = require('../utils/responseHelper');
 const orgConfig = require('../config/orgConfig');
+const { buildFranchiseReadFilter, buildFranchiseMatchStage, getWriteFranchiseId } = require('../utils/franchiseFilterHelper');
 
 class WebsiteController {
   /**
@@ -9,7 +10,7 @@ class WebsiteController {
    */
   async getSettings(req, res) {
     try {
-      let settings = await WebsiteSettings.findOne({ franchise: req.franchiseId }).populate('updatedBy', 'name');
+      let settings = await WebsiteSettings.findOne({ ...buildFranchiseReadFilter(req) }).populate('updatedBy', 'name');
       
       // Create default settings if none exist
       if (!settings) {
@@ -38,7 +39,7 @@ class WebsiteController {
    */
   async getPublicSettings(req, res) {
     try {
-      const settings = await WebsiteSettings.findOne({ franchise: req.franchiseId })
+      const settings = await WebsiteSettings.findOne({ ...buildFranchiseReadFilter(req) })
         .select('-updatedBy -__v -createdAt -updatedAt');
       
       if (!settings) {

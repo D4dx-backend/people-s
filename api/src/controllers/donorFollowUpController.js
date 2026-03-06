@@ -2,6 +2,7 @@ const { DonorFollowUp, Donor, Donation } = require('../models');
 const ResponseHelper = require('../utils/responseHelper');
 const donorReminderService = require('../services/donorReminderService');
 const mongoose = require('mongoose');
+const { buildFranchiseReadFilter, buildFranchiseMatchStage, getWriteFranchiseId } = require('../utils/franchiseFilterHelper');
 
 class DonorFollowUpController {
   /**
@@ -40,7 +41,7 @@ class DonorFollowUpController {
       // Search by donor name
       if (search) {
         const donors = await Donor.find({
-          ...(req.franchiseId ? { franchise: req.franchiseId } : {}),
+          ...buildFranchiseReadFilter(req),
           $or: [
             { name: { $regex: search, $options: 'i' } },
             { phone: { $regex: search, $options: 'i' } },
@@ -51,7 +52,7 @@ class DonorFollowUpController {
       }
 
       // Franchise scope
-      if (req.franchiseId) filter.franchise = req.franchiseId;
+      Object.assign(filter, buildFranchiseReadFilter(req));
 
       const pageNum = parseInt(page);
       const limitNum = parseInt(limit);
@@ -254,7 +255,7 @@ class DonorFollowUpController {
         return ResponseHelper.error(res, 'Invalid follow-up ID', 400);
       }
 
-      const followUp = await DonorFollowUp.findOne({ _id: id, franchise: req.franchiseId })
+      const followUp = await DonorFollowUp.findOne({ _id: id, ...buildFranchiseReadFilter(req) })
         .populate('donor', 'name email phone type category address donationStats communicationPreferences engagementScore followUpStatus')
         .populate('donation', 'amount method donationNumber status timeline')
         .populate('assignedTo', 'name email phone')

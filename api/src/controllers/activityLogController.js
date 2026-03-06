@@ -1,5 +1,6 @@
 const ActivityLogService = require('../services/activityLogService');
 const { logActivity } = require('../middleware/activityLogger');
+const { buildFranchiseReadFilter, buildFranchiseMatchStage, getWriteFranchiseId } = require('../utils/franchiseFilterHelper');
 
 class ActivityLogController {
   /**
@@ -34,7 +35,7 @@ class ActivityLogController {
       if (endDate) filters.endDate = endDate;
       if (search) filters.search = search;
       if (ipAddress) filters.ipAddress = ipAddress;
-      if (req.franchiseId) filters.franchise = req.franchiseId;  // Multi-tenant
+      Object.assign(filters, buildFranchiseReadFilter(req));
 
       const options = {
         page: parseInt(page),

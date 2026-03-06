@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const partnerController = require('../controllers/partnerController');
-const { authenticate } = require('../middleware/auth');
+const { authenticate, crossFranchiseResolver } = require('../middleware/auth');
 const { hasAnyPermission } = require('../middleware/rbacMiddleware');
 const { uploadSingleMemory } = require('../middleware/upload');
 const { createExportHandler } = require('../middleware/exportHandler');
@@ -14,6 +14,7 @@ router.get('/public/:id', partnerController.getPartnerById);
 
 // Protected routes
 router.use(authenticate);
+router.use(crossFranchiseResolver);
 
 // Export partners as CSV or JSON
 router.get('/export',

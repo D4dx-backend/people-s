@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const regionalAdminController = require('../controllers/regionalAdminController');
-const { authenticate, authorize } = require('../middleware/auth');
+const { authenticate, crossFranchiseResolver, authorize } = require('../middleware/auth');
 const { validateRequest } = require('../middleware/validation');
 const { body, param, query } = require('express-validator');
 
@@ -35,7 +35,7 @@ router.post('/auth/verify-otp', [
 
 // ============ PROFILE ROUTES (Protected) ============
 router.get('/auth/profile',
-  authenticate,
+  authenticate, crossFranchiseResolver,
   authorize('unit_admin', 'area_admin', 'district_admin'),
   regionalAdminController.getProfile
 );
@@ -44,7 +44,7 @@ router.get('/auth/profile',
 
 // Get applications list (READ ONLY for unit_admin and district_admin)
 router.get('/applications',
-  authenticate,
+  authenticate, crossFranchiseResolver,
   authorize('unit_admin', 'area_admin', 'district_admin'),
   [
     query('page').optional().isInt({ min: 1 }).withMessage('Page must be a positive integer'),
@@ -59,7 +59,7 @@ router.get('/applications',
 
 // Get single application details
 router.get('/applications/:id',
-  authenticate,
+  authenticate, crossFranchiseResolver,
   authorize('unit_admin', 'area_admin', 'district_admin'),
   [
     param('id').isMongoId().withMessage('Invalid application ID'),
@@ -70,7 +70,7 @@ router.get('/applications/:id',
 
 // Update application status (AREA ADMIN ONLY)
 router.put('/applications/:id/status',
-  authenticate,
+  authenticate, crossFranchiseResolver,
   authorize('area_admin'), // Only area admin can update status
   [
     param('id').isMongoId().withMessage('Invalid application ID'),
@@ -97,7 +97,7 @@ router.put('/applications/:id/status',
 
 // Get dashboard statistics
 router.get('/dashboard/stats',
-  authenticate,
+  authenticate, crossFranchiseResolver,
   authorize('unit_admin', 'area_admin', 'district_admin'),
   regionalAdminController.getDashboardStats
 );

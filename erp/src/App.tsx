@@ -7,6 +7,7 @@ import { Layout } from "./components/Layout";
 import { AuthGuard } from "./components/AuthGuard";
 import { AuthProvider } from "./hooks/useAuth";
 import { RBACProvider } from "./hooks/useRBAC";
+import { CrossFranchiseProvider } from "./hooks/useCrossFranchise";
 import { ConfigProvider } from "./contexts/ConfigContext";
 import { FranchiseProvider } from "./contexts/FranchiseContext";
 import CommandPalette from "./components/CommandPalette";
@@ -94,6 +95,7 @@ const App = () => (
       <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
         <FranchiseProvider>
         <AuthProvider>
+          <CrossFranchiseProvider>
           <RBACProvider>
             <ConfigProvider>
               <CommandPalette />
@@ -192,6 +194,7 @@ const App = () => (
             </Routes>
             </ConfigProvider>
           </RBACProvider>
+          </CrossFranchiseProvider>
         </AuthProvider>
         </FranchiseProvider>
       </BrowserRouter>
