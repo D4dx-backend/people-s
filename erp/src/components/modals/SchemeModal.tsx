@@ -151,7 +151,7 @@ export function SchemeModal({ open, onOpenChange, scheme, mode, onSuccess }: Sch
 
   const loadAvailableProjects = async () => {
     try {
-      const response = await projects.getAll({ limit: 100, status: 'active' });
+      const response = await projects.getAll({ limit: 100 });
       if (response.success) {
         setAvailableProjects(response.data?.projects || []);
       }

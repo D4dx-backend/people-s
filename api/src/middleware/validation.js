@@ -249,7 +249,7 @@ const projectSchemas = {
       'emergency_relief', 'infrastructure', 'social_welfare', 'other'
     ).required(),
     priority: Joi.string().valid('low', 'medium', 'high', 'critical').default('medium'),
-    scope: Joi.string().valid('state', 'district', 'area', 'unit', 'multi_region').required(),
+    scope: Joi.string().valid('state', 'district', 'area', 'unit', 'multi_region').optional().default('state'),
     targetRegions: Joi.array().items(commonSchemas.objectId).optional(),
     startDate: commonSchemas.date.required(),
     endDate: commonSchemas.date.greater(Joi.ref('startDate')).required(),
