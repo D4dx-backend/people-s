@@ -42,14 +42,13 @@ class BeneficiaryApplicationController {
       const schemes = await Scheme.find(query)
         .populate('project', 'name')
         .select(`
-          name description category priority
+          name description category priority project
           benefits.type benefits.amount benefits.frequency benefits.description
           eligibility.incomeLimit eligibility.ageRange eligibility.gender eligibility.documents
           applicationSettings.startDate applicationSettings.endDate applicationSettings.maxApplications
           applicationSettings.requiresInterview applicationSettings.allowMultipleApplications
           statistics.totalApplications statistics.approvedApplications statistics.totalBeneficiaries
-          hasFormConfiguration
-          renewalSettings
+          hasFormConfiguration renewalSettings createdAt
         `)
         .sort({ priority: -1, createdAt: -1 });
 
@@ -122,9 +121,9 @@ class BeneficiaryApplicationController {
           }
 
           // Format required documents
-          const requiredDocuments = scheme.eligibility.documents
+          const requiredDocuments = (scheme.eligibility.documents || [])
             .filter(doc => doc.required)
-            .map(doc => doc.description || doc.type.replace('_', ' ').toUpperCase());
+            .map(doc => doc.description || (doc.type ? doc.type.replace('_', ' ').toUpperCase() : 'Document'));
 
           return {
             _id: scheme._id,
