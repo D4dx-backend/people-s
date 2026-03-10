@@ -64,30 +64,30 @@ export default function BeneficiaryProfileCompletion() {
       const response = await beneficiaryApi.getProfile();
       const user = response.user;
       
-      // Pre-fill form with existing data
       if (user) {
-        setFormData({
-          name: user.name || "",
-          gender: user.profile?.gender || "",
-          districtId: user.profile?.location?.district?._id || user.profile?.location?.district || "",
-          areaId: user.profile?.location?.area?._id || user.profile?.location?.area || "",
-          unitId: user.profile?.location?.unit?._id || user.profile?.location?.unit || ""
-        });
+        const districtId = user.profile?.location?.district?._id || user.profile?.location?.district || "";
+        const areaId = user.profile?.location?.area?._id || user.profile?.location?.area || "";
+        const unitId = user.profile?.location?.unit?._id || user.profile?.location?.unit || "";
 
-        // Load dependent dropdowns if location data exists
-        if (user.profile?.location?.district) {
-          const districtId = user.profile.location.district._id || user.profile.location.district;
+        // Load dependent dropdown options BEFORE setting form data so the
+        // Select components have their items ready when the values are applied
+        if (districtId) {
           await loadAreas(districtId);
-          
-          if (user.profile?.location?.area) {
-            const areaId = user.profile.location.area._id || user.profile.location.area;
+          if (areaId) {
             await loadUnits(areaId);
           }
         }
+
+        setFormData({
+          name: user.name || "",
+          gender: user.profile?.gender || "",
+          districtId,
+          areaId,
+          unitId,
+        });
       }
     } catch (error) {
       console.error('Failed to load profile:', error);
-      // Don't show error toast - user might be completing profile for first time
     }
   };
 

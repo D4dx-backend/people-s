@@ -453,7 +453,7 @@ class BeneficiaryApiService {
 
     const url = `${API_BASE_URL}/beneficiary/auth/locations?${queryParams.toString()}`;
     const response = await fetch(url, {
-      headers: { 'Content-Type': 'application/json' }
+      headers: { 'Content-Type': 'application/json', ...this.getAuthHeaders() }
     });
 
     return this.handleResponse<{ locations: Array<{ _id: string; name: string; code: string; type: string; parent?: string }> }>(response);
