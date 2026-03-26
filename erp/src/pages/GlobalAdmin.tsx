@@ -16,6 +16,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { AlertDialog, AlertDialogContent, AlertDialogHeader, AlertDialogTitle, AlertDialogDescription, AlertDialogFooter, AlertDialogCancel, AlertDialogAction } from '@/components/ui/alert-dialog';
@@ -87,7 +88,7 @@ export default function GlobalAdmin() {
 
   // Create admin dialog
   const [createAdminOpen, setCreateAdminOpen] = useState(false);
-  const [newAdmin, setNewAdmin] = useState<{ name: string; phone: string; email: string; role: AdminRole }>({ name: '', phone: '', email: '', role: 'super_admin' });
+  const [newAdmin, setNewAdmin] = useState<{ name: string; phone: string; email: string; role: AdminRole; isCommonAdmin: boolean }>({ name: '', phone: '', email: '', role: 'super_admin', isCommonAdmin: false });
   const [creatingAdmin, setCreatingAdmin] = useState(false);
 
   // Scope selection state (district / area / unit / project) for scoped roles
@@ -310,6 +311,7 @@ export default function GlobalAdmin() {
         phone: newAdmin.phone.trim(),
         email: newAdmin.email.trim() || undefined,
         role: newAdmin.role,
+        isCommonAdmin: newAdmin.isCommonAdmin,
         districtId: scopeState.districtId || undefined,
         areaId: scopeState.areaId || undefined,
         unitId: scopeState.unitId || undefined,
@@ -318,7 +320,7 @@ export default function GlobalAdmin() {
       if (res.success) {
         toast.success(res.message || 'Admin assigned successfully');
         setCreateAdminOpen(false);
-        setNewAdmin({ name: '', phone: '', email: '', role: 'super_admin' });
+        setNewAdmin({ name: '', phone: '', email: '', role: 'super_admin', isCommonAdmin: false });
         setScopeState({ districtId: '', areaId: '', unitId: '', projectId: '' });
         setScopeAreas([]); setScopeUnits([]);
         openAdminsDialog(adminsDialogFranchise);
@@ -732,6 +734,21 @@ export default function GlobalAdmin() {
                     </SelectContent>
                   </Select>
                 </div>
+                <div className="space-y-1.5 rounded-md border bg-background/60 px-3 py-2">
+                  <div className="flex items-center space-x-2">
+                    <Checkbox
+                      id="common-admin"
+                      checked={newAdmin.isCommonAdmin}
+                      onCheckedChange={checked => setNewAdmin(a => ({ ...a, isCommonAdmin: checked === true }))}
+                    />
+                    <Label htmlFor="common-admin" className="text-xs cursor-pointer">
+                      Make as common admin (all franchises)
+                    </Label>
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    Grants this role across all active franchises.
+                  </p>
+                </div>
 
                 {/* ── Scope selects: shown only for scoped roles ── */}
                 {(newAdmin.role === 'district_admin' || newAdmin.role === 'area_admin' || newAdmin.role === 'unit_admin') && (
@@ -822,7 +839,7 @@ export default function GlobalAdmin() {
                   </Button>
                   <Button size="sm" variant="outline" onClick={() => {
                     setCreateAdminOpen(false);
-                    setNewAdmin({ name: '', phone: '', email: '', role: 'super_admin' });
+                    setNewAdmin({ name: '', phone: '', email: '', role: 'super_admin', isCommonAdmin: false });
                     setScopeState({ districtId: '', areaId: '', unitId: '', projectId: '' });
                     setScopeAreas([]); setScopeUnits([]);
                   }}>
