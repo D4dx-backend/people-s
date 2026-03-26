@@ -1,3 +1,4 @@
+const mongoose = require('mongoose');
 const Application = require('../models/Application');
 const Beneficiary = require('../models/Beneficiary');
 const Scheme = require('../models/Scheme');
@@ -12,13 +13,22 @@ const { validationResult } = require('express-validator');
 const RBACMiddleware = require('../middleware/rbacMiddleware');
 const { buildFranchiseReadFilter, buildFranchiseMatchStage, getWriteFranchiseId } = require('../utils/franchiseFilterHelper');
 
+// Returns the effective user context for regional filtering.
+// Franchise-specific role/adminScope (req.userFranchise) takes priority over the
+// legacy global fields on the User model (req.user).
+const getEffectiveUserForFilter = (req) => ({
+  role: req.userFranchise?.role || req.userRole || req.user.role,
+  adminScope: req.userFranchise?.adminScope || req.user.adminScope,
+  isSuperAdmin: req.user.isSuperAdmin
+});
+
 // Get all applications with pagination and search
 const getApplications = async (req, res) => {
   try {
     console.log('🔍 getApplications called by user:', {
       id: req.user._id,
-      role: req.user.role,
-      adminScope: req.user.adminScope
+      role: req.userFranchise?.role || req.user.role,
+      adminScope: req.userFranchise?.adminScope || req.user.adminScope
     });
 
     const { 
@@ -75,8 +85,8 @@ const getApplications = async (req, res) => {
     if (area) filter.area = area;
     if (unit) filter.unit = unit;
 
-    // Apply user's regional access restrictions
-    const userRegionalFilter = getUserRegionalFilter(req.user);
+    // Apply user's regional access restrictions (prefer franchise-specific scope)
+    const userRegionalFilter = getUserRegionalFilter(getEffectiveUserForFilter(req));
     console.log('🔍 User regional filter:', userRegionalFilter);
     
     // Apply regional filtering (super_admin and state_admin have no restrictions)
@@ -168,7 +178,7 @@ const getApplication = async (req, res) => {
     });
     
     // Try both access check methods
-    let hasAccess = hasAccessToApplication(req.user, application);
+    let hasAccess = hasAccessToApplication(getEffectiveUserForFilter(req), application);
     
     // If the simple check fails, try the RBAC middleware check (more comprehensive)
     if (!hasAccess) {
@@ -373,7 +383,7 @@ const updateApplication = async (req, res) => {
     }
 
     // Check if user has access to update this application
-    if (!hasAccessToApplication(req.user, application)) {
+    if (!hasAccessToApplication(getEffectiveUserForFilter(req), application)) {
       return res.status(403).json({ message: 'Access denied' });
     }
 
@@ -434,7 +444,7 @@ const reviewApplication = async (req, res) => {
     }
 
     // Check if user has access to review this application
-    if (!hasAccessToApplication(req.user, application)) {
+    if (!hasAccessToApplication(getEffectiveUserForFilter(req), application)) {
       return res.status(403).json({ message: 'Access denied' });
     }
 
@@ -484,7 +494,7 @@ const approveApplication = async (req, res) => {
     }
 
     // Check if user has access to approve this application
-    if (!hasAccessToApplication(req.user, application)) {
+    if (!hasAccessToApplication(getEffectiveUserForFilter(req), application)) {
       return res.status(403).json({ message: 'Access denied' });
     }
 
@@ -665,7 +675,7 @@ const deleteApplication = async (req, res) => {
     }
 
     // Check if user has access to delete this application
-    if (!hasAccessToApplication(req.user, application)) {
+    if (!hasAccessToApplication(getEffectiveUserForFilter(req), application)) {
       return res.status(403).json({ message: 'Access denied' });
     }
 
@@ -696,27 +706,30 @@ const getUserRegionalFilter = (user) => {
     role: user.role,
     adminScope: user.adminScope
   });
-  
+
   const filter = {};
-  
+
   // Super admin and state admin have access to all applications
   if (user.role === 'super_admin' || user.role === 'state_admin') {
     console.log(`🔍 ${user.role} - no restrictions`);
     return filter; // No restrictions
   }
-  
-  // Helper function to get ID from populated reference or direct ID
-  const getId = (ref) => {
+
+  // Helper function to get ObjectId from populated reference or direct ID
+  const getObjectId = (ref) => {
     if (!ref) return null;
-    if (typeof ref === 'object' && ref._id) return ref._id.toString();
-    return ref.toString();
+    if (ref instanceof mongoose.Types.ObjectId) return ref;
+    if (typeof ref === 'object' && ref._id) {
+      return ref._id instanceof mongoose.Types.ObjectId ? ref._id : new mongoose.Types.ObjectId(ref._id.toString());
+    }
+    return new mongoose.Types.ObjectId(ref.toString());
   };
-  
+
   // Check adminScope.regions array first (for backward compatibility)
   if (user.adminScope?.regions && user.adminScope.regions.length > 0) {
-    const regions = user.adminScope.regions.map(r => getId(r));
+    const regions = user.adminScope.regions.map(r => getObjectId(r));
     console.log('🔍 User has regions array:', regions);
-    
+
     if (user.role === 'district_admin') {
       // District admin can see applications from their district
       filter.district = { $in: regions };
@@ -732,10 +745,10 @@ const getUserRegionalFilter = (user) => {
     }
   } else {
     // Fallback: Check direct district/area/unit properties
-    const userUnitId = user.adminScope?.unit ? getId(user.adminScope.unit) : null;
-    const userAreaId = user.adminScope?.area ? getId(user.adminScope.area) : null;
-    const userDistrictId = user.adminScope?.district ? getId(user.adminScope.district) : null;
-    
+    const userUnitId = user.adminScope?.unit ? getObjectId(user.adminScope.unit) : null;
+    const userAreaId = user.adminScope?.area ? getObjectId(user.adminScope.area) : null;
+    const userDistrictId = user.adminScope?.district ? getObjectId(user.adminScope.district) : null;
+
     if (user.role === 'unit_admin' && userUnitId) {
       filter.unit = userUnitId;
       console.log('🔍 Unit admin filter applied (from direct unit):', filter);
@@ -749,7 +762,7 @@ const getUserRegionalFilter = (user) => {
       console.log('🔍 No adminScope found for user - no filter applied');
     }
   }
-  
+
   return filter;
 };
 
@@ -1878,7 +1891,7 @@ const getRenewalHistory = async (req, res) => {
       return res.status(404).json({ success: false, message: 'Application not found' });
     }
 
-    if (!hasAccessToApplication(req.user, application)) {
+    if (!hasAccessToApplication(getEffectiveUserForFilter(req), application)) {
       return res.status(403).json({ success: false, message: 'Access denied' });
     }
 
@@ -1949,7 +1962,7 @@ const modifyApprovedApplication = async (req, res) => {
     }
 
     // Check if user has access
-    if (!hasAccessToApplication(req.user, application)) {
+    if (!hasAccessToApplication(getEffectiveUserForFilter(req), application)) {
       return res.status(403).json({ success: false, message: 'Access denied' });
     }
 
