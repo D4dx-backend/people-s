@@ -37,7 +37,10 @@ export default function BeneficiaryProfileCompletion() {
   const [districts, setDistricts] = useState<Location[]>([]);
   const [areas, setAreas] = useState<Location[]>([]);
   const [units, setUnits] = useState<Location[]>([]);
-  const [loadingLocations, setLoadingLocations] = useState(false);
+  const [loadingDistricts, setLoadingDistricts] = useState(false);
+  const [loadingAreas, setLoadingAreas] = useState(false);
+  const [loadingUnits, setLoadingUnits] = useState(false);
+  const [pendingUnitId, setPendingUnitId] = useState<string | null>(null);
 
   useEffect(() => {
     // Check if user is authenticated
@@ -59,22 +62,36 @@ export default function BeneficiaryProfileCompletion() {
     loadDistricts();
   }, [navigate]);
 
+  // Effect to set unitId after units are loaded
+  useEffect(() => {
+    if (pendingUnitId && units.length > 0) {
+      const unitExists = units.some(u => u._id === pendingUnitId);
+      if (unitExists) {
+        setFormData(prev => ({ ...prev, unitId: pendingUnitId }));
+      }
+      setPendingUnitId(null);
+    }
+  }, [units, pendingUnitId]);
+
   const loadProfile = async () => {
     try {
       const response = await beneficiaryApi.getProfile();
       const user = response.user;
-      
+
       if (user) {
         const districtId = user.profile?.location?.district?._id || user.profile?.location?.district || "";
         const areaId = user.profile?.location?.area?._id || user.profile?.location?.area || "";
         const unitId = user.profile?.location?.unit?._id || user.profile?.location?.unit || "";
 
-        // Load dependent dropdown options BEFORE setting form data so the
-        // Select components have their items ready when the values are applied
+        // Load dependent dropdown options
         if (districtId) {
           await loadAreas(districtId);
           if (areaId) {
             await loadUnits(areaId);
+            // Set pendingUnitId so it gets applied after units are loaded via useEffect
+            if (unitId) {
+              setPendingUnitId(unitId);
+            }
           }
         }
 
@@ -83,7 +100,7 @@ export default function BeneficiaryProfileCompletion() {
           gender: user.profile?.gender || "",
           districtId,
           areaId,
-          unitId,
+          unitId: "", // Will be set by useEffect when units are loaded
         });
       }
     } catch (error) {
@@ -92,7 +109,7 @@ export default function BeneficiaryProfileCompletion() {
   };
 
   const loadDistricts = async () => {
-    setLoadingLocations(true);
+    setLoadingDistricts(true);
     try {
       const response = await beneficiaryApi.getLocations({ type: 'district' });
       setDistricts(response.locations);
@@ -104,12 +121,12 @@ export default function BeneficiaryProfileCompletion() {
         variant: "destructive",
       });
     } finally {
-      setLoadingLocations(false);
+      setLoadingDistricts(false);
     }
   };
 
   const loadAreas = async (districtId: string) => {
-    setLoadingLocations(true);
+    setLoadingAreas(true);
     try {
       const response = await beneficiaryApi.getLocations({ type: 'area', parent: districtId });
       setAreas(response.locations);
@@ -121,15 +138,16 @@ export default function BeneficiaryProfileCompletion() {
         variant: "destructive",
       });
     } finally {
-      setLoadingLocations(false);
+      setLoadingAreas(false);
     }
   };
 
-  const loadUnits = async (areaId: string) => {
-    setLoadingLocations(true);
+  const loadUnits = async (areaId: string): Promise<Location[]> => {
+    setLoadingUnits(true);
     try {
       const response = await beneficiaryApi.getLocations({ type: 'unit', parent: areaId });
       setUnits(response.locations);
+      return response.locations;
     } catch (error) {
       console.error('Failed to load units:', error);
       toast({
@@ -137,8 +155,9 @@ export default function BeneficiaryProfileCompletion() {
         description: "Failed to load units",
         variant: "destructive",
       });
+      return [];
     } finally {
-      setLoadingLocations(false);
+      setLoadingUnits(false);
     }
   };
 
@@ -331,7 +350,7 @@ export default function BeneficiaryProfileCompletion() {
                 <Select
                   value={formData.districtId}
                   onValueChange={(value) => handleInputChange('districtId', value)}
-                  disabled={loadingLocations}
+                  disabled={loadingDistricts}
                 >
                   <SelectTrigger id="district">
                     <SelectValue placeholder="Select your district" />
@@ -351,7 +370,7 @@ export default function BeneficiaryProfileCompletion() {
                 <Select
                   value={formData.areaId}
                   onValueChange={(value) => handleInputChange('areaId', value)}
-                  disabled={!formData.districtId || loadingLocations}
+                  disabled={!formData.districtId || loadingAreas}
                 >
                   <SelectTrigger id="area">
                     <SelectValue placeholder={formData.districtId ? "Select your area" : "Select district first"} />
@@ -375,7 +394,7 @@ export default function BeneficiaryProfileCompletion() {
                 <Select
                   value={formData.unitId}
                   onValueChange={(value) => handleInputChange('unitId', value)}
-                  disabled={!formData.areaId || loadingLocations}
+                  disabled={!formData.areaId || loadingUnits}
                 >
                   <SelectTrigger id="unit">
                     <SelectValue placeholder={formData.areaId ? "Select your unit" : "Select area first"} />
