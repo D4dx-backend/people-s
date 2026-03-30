@@ -350,7 +350,7 @@ export default function BeneficiaryDashboard() {
                   <CardHeader className="pb-2 px-3 pt-3">
                     <div className="flex justify-between items-start gap-2">
                       <div className="min-w-0 flex-1">
-                        <CardTitle className="text-sm truncate">{app.scheme.name}</CardTitle>
+                        <CardTitle className="text-sm truncate">{app.scheme?.name}</CardTitle>
                         <CardDescription className="text-xs">ID: {app.applicationId}</CardDescription>
                       </div>
                       <Badge className={`${getStatusColor(app.status)} text-xs flex-shrink-0`}>

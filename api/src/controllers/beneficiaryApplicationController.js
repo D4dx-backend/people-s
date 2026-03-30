@@ -724,20 +724,23 @@ class BeneficiaryApplicationController {
 
       const total = await Application.countDocuments(query);
 
-      // Format applications for response
-      const formattedApplications = applications.map(app => ({
-        _id: app._id,
-        applicationId: app.applicationNumber,
-        scheme: {
-          _id: app.scheme._id,
-          name: app.scheme.name,
-          category: app.scheme.category,
-          maxAmount: app.scheme.benefits?.amount || 0
-        },
-        status: app.status,
-        submittedAt: app.createdAt,
-        requestedAmount: app.requestedAmount
-      }));
+      // Format applications for response; scheme may be null if it was deleted/unlinked.
+      const formattedApplications = applications.map(app => {
+        const scheme = app.scheme || {};
+        return {
+          _id: app._id,
+          applicationId: app.applicationNumber,
+          scheme: {
+            _id: scheme._id || null,
+            name: scheme.name || 'Unknown Scheme',
+            category: scheme.category || 'general',
+            maxAmount: scheme.benefits?.amount || 0
+          },
+          status: app.status,
+          submittedAt: app.createdAt,
+          requestedAmount: app.requestedAmount
+        };
+      });
 
       return ResponseHelper.success(res, {
         applications: formattedApplications,

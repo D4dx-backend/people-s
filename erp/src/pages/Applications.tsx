@@ -27,6 +27,7 @@ import {
 } from "@/components/ui/pagination";
 import { applications, dashboard, projects, schemes, locations } from "@/lib/api";
 import { useAuth } from "@/hooks/useAuth";
+import { getApplicationDisplay } from "@/utils/applicationDisplay";
 
 // Interface for application data
 interface Application {
@@ -855,6 +856,7 @@ export default function Applications() {
                 filteredApplicationsForCurrentTab.map((app) => {
                 const statusInfo = statusConfig[app.status as keyof typeof statusConfig] || statusConfig.pending;
                 const StatusIcon = statusInfo.icon;
+                const display = getApplicationDisplay(app);
                 
                 return (
                   <div
@@ -864,7 +866,7 @@ export default function Applications() {
                     <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                       <div className="space-y-2 flex-1">
                         <div className="flex items-center gap-2 flex-wrap">
-                          <h3 className="font-semibold">{app.beneficiary.name}</h3>
+                          <h3 className="font-semibold">{display.beneficiaryName}</h3>
                           <Badge variant="outline" className="text-xs">
                             {app.applicationNumber}
                           </Badge>
@@ -891,16 +893,16 @@ export default function Applications() {
                         
                         <div className="grid md:grid-cols-2 gap-2 text-sm text-muted-foreground">
                           <div>
-                            <span className="font-medium">Scheme:</span> {app.scheme.name}
+                            <span className="font-medium">Scheme:</span> {display.schemeName}
                           </div>
                           <div>
-                            <span className="font-medium">Project:</span> {app.project?.name || 'N/A'}
+                            <span className="font-medium">Project:</span> {display.projectName}
                           </div>
                           <div>
-                            <span className="font-medium">District:</span> {app.district.name}
+                            <span className="font-medium">District:</span> {display.districtName}
                           </div>
                           <div>
-                            <span className="font-medium">Area:</span> {app.area.name}
+                            <span className="font-medium">Area:</span> {display.areaName}
                           </div>
                           <div>
                             <span className="font-medium">Applied:</span> {new Date(app.createdAt).toLocaleDateString()}
@@ -911,7 +913,7 @@ export default function Applications() {
                             </div>
                           )}
                           <div>
-                            <span className="font-medium">Phone:</span> {app.beneficiary.phone}
+                            <span className="font-medium">Phone:</span> {display.beneficiaryPhone}
                           </div>
                         </div>
                       </div>
@@ -992,7 +994,7 @@ export default function Applications() {
               setSelectedApp(null);
             }}
             applicationId={selectedApp.applicationNumber}
-            applicantName={selectedApp.beneficiary.name}
+            applicantName={getApplicationDisplay(selectedApp).beneficiaryName}
             mode={selectedApp.status === 'interview_scheduled' ? 'reschedule' : 'schedule'}
             existingInterview={selectedApp.status === 'interview_scheduled' ? selectedApp.interview : undefined}
             onSuccess={() => {
@@ -1006,7 +1008,7 @@ export default function Applications() {
               setSelectedApp(null);
             }}
             applicationId={selectedApp.applicationNumber}
-            applicantName={selectedApp.beneficiary.name}
+            applicantName={getApplicationDisplay(selectedApp).beneficiaryName}
           />
         </>
       )}

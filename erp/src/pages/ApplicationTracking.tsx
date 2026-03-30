@@ -254,7 +254,7 @@ export default function ApplicationTracking() {
           <CardHeader className="pb-3">
             <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-3">
               <div className="flex-1">
-                <CardTitle className="text-lg sm:text-xl mb-2">{application.scheme.name}</CardTitle>
+                <CardTitle className="text-lg sm:text-xl mb-2">{application.scheme?.name}</CardTitle>
                 <p className="text-sm text-muted-foreground">Application ID: {application.applicationId}</p>
                 <p className="text-xs text-muted-foreground mt-1">Category: {application.scheme.category}</p>
               </div>

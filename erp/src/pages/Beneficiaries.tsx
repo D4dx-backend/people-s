@@ -365,12 +365,12 @@ const Beneficiaries: React.FC = () => {
                     // Extract unique schemes and projects
                     const schemes = beneficiary.applications.length > 0 && typeof beneficiary.applications[0] === 'object'
                       ? Array.from(new Set((beneficiary.applications as Application[])
-                          .map(app => typeof app.scheme === 'object' ? app.scheme.name : null)
+                          .map(app => app.scheme && typeof app.scheme === 'object' ? app.scheme.name : null)
                           .filter(Boolean)))
                       : [];
                     const projects = beneficiary.applications.length > 0 && typeof beneficiary.applications[0] === 'object'
                       ? Array.from(new Set((beneficiary.applications as Application[])
-                          .map(app => typeof app.project === 'object' ? app.project.name : null)
+                          .map(app => app.project && typeof app.project === 'object' ? app.project.name : null)
                           .filter(Boolean)))
                       : [];
 
