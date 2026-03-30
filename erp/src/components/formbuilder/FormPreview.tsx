@@ -17,7 +17,7 @@ interface Field {
   required: boolean;
   enabled: boolean;
   placeholder?: string;
-  options?: string[];
+  options?: Array<string | { label?: string; value?: string | number }>; 
   columns?: number;
   columnTitles?: string[];
   rows?: number;
@@ -39,12 +39,43 @@ interface FormPreviewProps {
 }
 
 export function FormPreview({ formTitle, formDescription, pages, schemeId, isLiveForm = false }: FormPreviewProps) {
+  const toDisplayText = (value: unknown, fallback: string = ""): string => {
+    if (typeof value === "string") return value;
+    if (typeof value === "number" || typeof value === "boolean") return String(value);
+    if (value && typeof value === "object") {
+      const maybeOption = value as { label?: unknown; value?: unknown };
+      if (typeof maybeOption.label === "string") return maybeOption.label;
+      if (typeof maybeOption.value === "string" || typeof maybeOption.value === "number") {
+        return String(maybeOption.value);
+      }
+    }
+    return fallback;
+  };
+
+  const normalizeOptions = (options?: Array<string | { label?: string; value?: string | number }>) => {
+    const source = options && options.length > 0 ? options : ["Option 1", "Option 2", "Option 3"];
+    return source
+      .map((opt, index) => {
+        const label = toDisplayText(opt, `Option ${index + 1}`);
+        const rawValue =
+          opt && typeof opt === "object" && "value" in opt
+            ? (opt as { value?: unknown }).value
+            : label;
+        const value = toDisplayText(rawValue, label);
+        return { label, value };
+      })
+      .filter((opt) => opt.label.length > 0);
+  };
+
   const renderField = (field: Field) => {
     if (!field.enabled) return null;
 
+    const fieldLabel = toDisplayText(field.label, "Untitled field");
+    const options = normalizeOptions(field.options);
+
     const label = (
       <Label className="text-sm">
-        {field.label}
+        {fieldLabel}
         {field.required && <span className="text-destructive ml-1">*</span>}
       </Label>
     );
@@ -59,7 +90,7 @@ export function FormPreview({ formTitle, formDescription, pages, schemeId, isLiv
             {label}
             <Input
               type={field.type === "number" ? "number" : field.type === "email" ? "email" : "text"}
-              placeholder={field.placeholder || `Enter ${field.label.toLowerCase()}`}
+              placeholder={field.placeholder || `Enter ${fieldLabel.toLowerCase()}`}
               disabled
             />
           </div>
@@ -70,7 +101,7 @@ export function FormPreview({ formTitle, formDescription, pages, schemeId, isLiv
           <div key={field.id} className="space-y-2">
             {label}
             <Textarea
-              placeholder={field.placeholder || `Enter ${field.label.toLowerCase()}`}
+              placeholder={field.placeholder || `Enter ${fieldLabel.toLowerCase()}`}
               disabled
               rows={3}
             />
@@ -109,12 +140,12 @@ export function FormPreview({ formTitle, formDescription, pages, schemeId, isLiv
             {label}
             <Select disabled>
               <SelectTrigger>
-                <SelectValue placeholder={`Select ${field.label.toLowerCase()}`} />
+                <SelectValue placeholder={`Select ${fieldLabel.toLowerCase()}`} />
               </SelectTrigger>
               <SelectContent>
-                {(field.options || ["Option 1", "Option 2", "Option 3"]).map((opt, i) => (
-                  <SelectItem key={i} value={opt.toLowerCase().replace(/\s+/g, "-")}>
-                    {opt}
+                {options.map((opt, i) => (
+                  <SelectItem key={i} value={opt.value.toLowerCase().replace(/\s+/g, "-")}>
+                    {opt.label}
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -127,10 +158,10 @@ export function FormPreview({ formTitle, formDescription, pages, schemeId, isLiv
           <div key={field.id} className="space-y-2">
             {label}
             <RadioGroup disabled>
-              {(field.options || ["Option 1", "Option 2"]).map((opt, i) => (
+              {options.map((opt, i) => (
                 <div key={i} className="flex items-center space-x-2">
-                  <RadioGroupItem value={opt.toLowerCase()} id={`${field.id}-${i}`} />
-                  <Label htmlFor={`${field.id}-${i}`}>{opt}</Label>
+                  <RadioGroupItem value={opt.value.toLowerCase()} id={`${field.id}-${i}`} />
+                  <Label htmlFor={`${field.id}-${i}`}>{opt.label}</Label>
                 </div>
               ))}
             </RadioGroup>
@@ -142,10 +173,10 @@ export function FormPreview({ formTitle, formDescription, pages, schemeId, isLiv
           <div key={field.id} className="space-y-2">
             {label}
             <div className="space-y-2">
-              {(field.options || ["Option 1", "Option 2"]).map((opt, i) => (
+              {options.map((opt, i) => (
                 <div key={i} className="flex items-center space-x-2">
                   <Checkbox id={`${field.id}-${i}`} disabled />
-                  <Label htmlFor={`${field.id}-${i}`}>{opt}</Label>
+                  <Label htmlFor={`${field.id}-${i}`}>{opt.label}</Label>
                 </div>
               ))}
             </div>
@@ -180,7 +211,7 @@ export function FormPreview({ formTitle, formDescription, pages, schemeId, isLiv
       case "title":
         return (
           <div key={field.id} className="pt-2">
-            <h3 className="text-lg font-semibold">{field.label}</h3>
+            <h3 className="text-lg font-semibold">{fieldLabel}</h3>
             <Separator className="mt-2" />
           </div>
         );
@@ -198,7 +229,7 @@ export function FormPreview({ formTitle, formDescription, pages, schemeId, isLiv
       case "group":
         return (
           <div key={field.id} className="border-l-2 border-primary pl-4 space-y-3">
-            <h4 className="font-medium">{field.label}</h4>
+            <h4 className="font-medium">{fieldLabel}</h4>
           </div>
         );
 

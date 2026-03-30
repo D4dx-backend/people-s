@@ -16,6 +16,7 @@ import { toast } from "@/hooks/use-toast";
 import { Pagination, PaginationContent, PaginationItem, PaginationLink, PaginationNext, PaginationPrevious } from "@/components/ui/pagination";
 import { applications } from "@/lib/api";
 import { useAuth } from "@/hooks/useAuth";
+import { getApplicationDisplay } from "@/utils/applicationDisplay";
 
 interface Application {
   _id: string;
@@ -216,17 +217,17 @@ export default function RejectedApplications() {
                   <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                     <div className="space-y-2 flex-1">
                       <div className="flex items-center gap-2 flex-wrap">
-                        <h3 className="font-semibold">{app.beneficiary.name}</h3>
+                        <h3 className="font-semibold">{getApplicationDisplay(app).beneficiaryName}</h3>
                         <Badge variant="outline" className="text-xs">{app.applicationNumber}</Badge>
                         <div className="text-sm text-muted-foreground"><span className="font-medium">Requested Amount:</span> ₹{app.requestedAmount.toLocaleString()}</div>
                       </div>
                       <div className="grid md:grid-cols-2 gap-2 text-sm text-muted-foreground">
-                        <div><span className="font-medium">Scheme:</span> {app.scheme.name}</div>
-                        <div><span className="font-medium">Project:</span> {app.project?.name || 'N/A'}</div>
-                        <div><span className="font-medium">District:</span> {app.district.name}</div>
-                        <div><span className="font-medium">Area:</span> {app.area.name}</div>
+                        <div><span className="font-medium">Scheme:</span> {getApplicationDisplay(app).schemeName}</div>
+                        <div><span className="font-medium">Project:</span> {getApplicationDisplay(app).projectName}</div>
+                        <div><span className="font-medium">District:</span> {getApplicationDisplay(app).districtName}</div>
+                        <div><span className="font-medium">Area:</span> {getApplicationDisplay(app).areaName}</div>
                         <div><span className="font-medium">Applied:</span> {new Date(app.createdAt).toLocaleDateString()}</div>
-                        <div><span className="font-medium">Phone:</span> {app.beneficiary.phone}</div>
+                        <div><span className="font-medium">Phone:</span> {getApplicationDisplay(app).beneficiaryPhone}</div>
                       </div>
                     </div>
                     <div className="flex flex-col gap-2 items-end">
@@ -259,8 +260,8 @@ export default function RejectedApplications() {
                   <TableRow key={app._id}>
                     <TableCell>
                       <div>
-                        <div className="font-medium">{app.beneficiary.name}</div>
-                        <div className="text-sm text-muted-foreground">{app.beneficiary.phone}</div>
+                        <div className="font-medium">{getApplicationDisplay(app).beneficiaryName}</div>
+                        <div className="text-sm text-muted-foreground">{getApplicationDisplay(app).beneficiaryPhone}</div>
                       </div>
                     </TableCell>
                     <TableCell>
@@ -268,12 +269,12 @@ export default function RejectedApplications() {
                       <div className="text-xs text-muted-foreground">{new Date(app.createdAt).toLocaleDateString()}</div>
                       <div className="text-sm font-medium mt-1">₹{app.requestedAmount.toLocaleString()}</div>
                     </TableCell>
-                    <TableCell>{app.scheme.name}</TableCell>
-                    <TableCell>{app.project?.name || 'N/A'}</TableCell>
+                    <TableCell>{getApplicationDisplay(app).schemeName}</TableCell>
+                    <TableCell>{getApplicationDisplay(app).projectName}</TableCell>
                     <TableCell>
                       <div className="text-sm">
-                        <div>{app.district.name}</div>
-                        <div className="text-muted-foreground">{app.area.name}</div>
+                        <div>{getApplicationDisplay(app).districtName}</div>
+                        <div className="text-muted-foreground">{getApplicationDisplay(app).areaName}</div>
                       </div>
                     </TableCell>
                     <TableCell>
@@ -321,7 +322,7 @@ export default function RejectedApplications() {
       </Card>
 
       {selectedApp && (
-        <ReportsModal isOpen={showReportsModal} onClose={() => { setShowReportsModal(false); setSelectedApp(null); }} applicationId={selectedApp.applicationNumber} applicantName={selectedApp.beneficiary.name} />
+        <ReportsModal isOpen={showReportsModal} onClose={() => { setShowReportsModal(false); setSelectedApp(null); }} applicationId={selectedApp.applicationNumber} applicantName={getApplicationDisplay(selectedApp).beneficiaryName} />
       )}
     </div>
   );

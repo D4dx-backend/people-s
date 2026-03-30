@@ -358,7 +358,7 @@ class GlobalAdminController {
       const franchise = await Franchise.findById(req.params.id);
       if (!franchise) return res.status(404).json({ success: false, message: 'Franchise not found' });
 
-      const { name, phone, email, role = 'super_admin', districtId, areaId, unitId, projectId } = req.body;
+      const { name, phone, email, role = 'super_admin', isCommonAdmin = false, districtId, areaId, unitId, projectId } = req.body;
       if (!phone) return res.status(400).json({ success: false, message: 'Phone number is required' });
       if (!name)  return res.status(400).json({ success: false, message: 'Name is required' });
       if (!VALID_ROLES.includes(role)) {
@@ -392,29 +392,50 @@ class GlobalAdminController {
         });
       }
 
-      let membership = await UserFranchise.findOne({ user: user._id, franchise: franchise._id });
-      if (membership) {
-        if (membership.isActive && membership.role === role) {
-          return res.status(409).json({ success: false, message: `This user is already an active ${role.replace(/_/g, ' ')} for this franchise` });
+      const assignMembership = async (franchiseId, allowConflict = false) => {
+        let membership = await UserFranchise.findOne({ user: user._id, franchise: franchiseId });
+        if (membership) {
+          if (!allowConflict && membership.isActive && membership.role === role) {
+            return { membership, conflict: true };
+          }
+          membership.isActive = true;
+          membership.role = role;
+          membership.adminScope = fullScope;
+          await membership.save();
+          return { membership, conflict: false };
         }
-        membership.isActive = true;
-        membership.role = role;
-        membership.adminScope = fullScope;
-        await membership.save();
-      } else {
         membership = await UserFranchise.create({
           user: user._id,
-          franchise: franchise._id,
+          franchise: franchiseId,
           role,
           isActive: true,
           adminScope: fullScope,
           assignedBy: req.user._id,
         });
+        return { membership, conflict: false };
+      };
+
+      let membership;
+      if (isCommonAdmin) {
+        const activeFranchises = await Franchise.find({ isActive: true }).select('_id').lean();
+        const targetFranchiseIds = [...new Set([franchise._id.toString(), ...activeFranchises.map(f => f._id.toString())])];
+        for (const fid of targetFranchiseIds) {
+          const result = await assignMembership(fid, true);
+          if (fid === franchise._id.toString()) membership = result.membership;
+        }
+      } else {
+        const result = await assignMembership(franchise._id, false);
+        if (result.conflict) {
+          return res.status(409).json({ success: false, message: `This user is already an active ${role.replace(/_/g, ' ')} for this franchise` });
+        }
+        membership = result.membership;
       }
 
       return res.status(201).json({
         success: true,
-        message: `${user.name} assigned as ${role.replace(/_/g, ' ')} for ${franchise.displayName}`,
+        message: isCommonAdmin
+          ? `${user.name} assigned as ${role.replace(/_/g, ' ')} across all active franchises`
+          : `${user.name} assigned as ${role.replace(/_/g, ' ')} for ${franchise.displayName}`,
         data: {
           user: { id: user._id, name: user.name, phone: user.phone, email: user.email },
           membership: { id: membership._id, role: membership.role, isActive: membership.isActive },

@@ -433,13 +433,13 @@ export default function CommitteeApproval() {
                       <TableCell className="font-medium">{application.applicationNumber}</TableCell>
                       <TableCell>
                         <div>
-                          <p className="font-medium">{application.beneficiary.name}</p>
-                          <p className="text-sm text-muted-foreground">{application.beneficiary.phone}</p>
+                          <p className="font-medium">{application.beneficiary?.name}</p>
+                          <p className="text-sm text-muted-foreground">{application.beneficiary?.phone}</p>
                         </div>
                       </TableCell>
                       <TableCell>
                         <div>
-                          <p className="font-medium">{application.scheme.name}</p>
+                          <p className="font-medium">{application.scheme?.name}</p>
                           <p className="text-xs text-muted-foreground">{application.scheme.category}</p>
                         </div>
                       </TableCell>
@@ -555,11 +555,11 @@ export default function CommitteeApproval() {
                   </div>
                   <div>
                     <span className="text-muted-foreground">Beneficiary:</span>
-                    <p className="font-medium">{selectedApplication.beneficiary.name}</p>
+                    <p className="font-medium">{selectedApplication.beneficiary?.name}</p>
                   </div>
                   <div>
                     <span className="text-muted-foreground">Scheme:</span>
-                    <p className="font-medium">{selectedApplication.scheme.name}</p>
+                    <p className="font-medium">{selectedApplication.scheme?.name}</p>
                   </div>
                   <div>
                     <span className="text-muted-foreground">Requested Amount:</span>
@@ -611,13 +611,13 @@ export default function CommitteeApproval() {
                         {selectedApplication.district?.name && (
                           <div>
                             <span className="text-muted-foreground text-xs">District</span>
-                            <p className="font-medium">{selectedApplication.district.name}</p>
+                            <p className="font-medium">{selectedApplication.district?.name}</p>
                           </div>
                         )}
                         {selectedApplication.area?.name && (
                           <div>
                             <span className="text-muted-foreground text-xs">Area</span>
-                            <p className="font-medium">{selectedApplication.area.name}</p>
+                            <p className="font-medium">{selectedApplication.area?.name}</p>
                           </div>
                         )}
                         {selectedApplication.unit?.name && (
@@ -637,7 +637,7 @@ export default function CommitteeApproval() {
                       {selectedApplication.scheme?.name && (
                         <div>
                           <span className="text-muted-foreground text-xs">Scheme Name</span>
-                          <p className="font-medium">{selectedApplication.scheme.name}</p>
+                          <p className="font-medium">{selectedApplication.scheme?.name}</p>
                         </div>
                       )}
                       {selectedApplication.scheme?.category && (
