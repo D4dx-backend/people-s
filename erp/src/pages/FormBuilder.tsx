@@ -64,7 +64,8 @@ export default function FormBuilder() {
   const schemeId = searchParams.get('schemeId');
   const schemeName = searchParams.get('schemeName');
   const isRenewalForm = searchParams.get('renewal') === 'true';
-  const [schemeIsRenewable, setSchemeIsRenewable] = useState(false);
+  const isRenewableFromQuery = searchParams.get('isRenewable') === 'true';
+  const [schemeIsRenewable, setSchemeIsRenewable] = useState(isRenewableFromQuery);
   
   const [formTitle, setFormTitle] = useState("Student Scholarship Application");
   const [formDescription, setFormDescription] = useState("Application form for students seeking financial assistance for higher education.");
@@ -104,14 +105,13 @@ export default function FormBuilder() {
 
       setLoading(true);
       try {
-        // Check if scheme is renewable
+        // Check if scheme is renewable for showing renewal form switch.
+        // Keep query-derived value as fallback if scheme lookup fails.
         try {
           const schemeResponse = await schemesApi.getById(schemeId);
-          if (schemeResponse?.data?.scheme?.renewalSettings?.isRenewable) {
-            setSchemeIsRenewable(true);
-          }
+          setSchemeIsRenewable(!!schemeResponse?.data?.scheme?.renewalSettings?.isRenewable);
         } catch (e) {
-          // Non-critical - continue loading form
+          setSchemeIsRenewable(isRenewableFromQuery);
         }
 
         const response = isRenewalForm
@@ -212,7 +212,7 @@ export default function FormBuilder() {
     if (initialLoad) {
       loadFormConfiguration();
     }
-  }, [schemeId, schemeName, initialLoad, isRenewalForm, toast]);
+  }, [schemeId, schemeName, initialLoad, isRenewalForm, isRenewableFromQuery, toast]);
 
   // Reset initialLoad when switching between main/renewal form
   useEffect(() => {
