@@ -124,7 +124,10 @@ export default function Schemes() {
       const response = await schemesApi.getAll();
       
       if (response.success && response.data) {
-        setSchemeList(response.data.schemes);
+        const safeSchemes = Array.isArray(response.data.schemes)
+          ? response.data.schemes.filter((scheme): scheme is Scheme => Boolean(scheme && scheme.id))
+          : [];
+        setSchemeList(safeSchemes);
       }
     } catch (err: any) {
       setError(err.message || 'Failed to load schemes');
@@ -504,7 +507,7 @@ export default function Schemes() {
                       <div className="flex items-center justify-between text-sm">
                         <div>
                           <span className="text-muted-foreground">Project: </span>
-                          <span className="font-medium">{scheme.project.name}</span>
+                          <span className="font-medium">{scheme.project?.name || "Unassigned"}</span>
                         </div>
                         <div>
                           <span className="text-muted-foreground">Coverage: </span>
