@@ -104,6 +104,7 @@ router.get('/',
           // Since interviews don't have direct region fields, we need to filter through applications
           const Application = require('../models/Application');
           const applicationsInScope = await Application.find({
+            franchise: req.franchiseId,
             $or: [
               { state: { $in: userScope.regions } },
               { district: { $in: userScope.regions } },
@@ -296,7 +297,10 @@ router.post('/schedule/:applicationId',
         query = { applicationNumber: applicationId };
       }
 
-      const application = await Application.findOne(query);
+      const application = await Application.findOne({
+        ...query,
+        franchise: req.franchiseId
+      });
       console.log('Found application:', application ? application.applicationNumber : 'Not found');
 
       if (!application) {
@@ -321,6 +325,7 @@ router.post('/schedule/:applicationId',
       // Create new interview record
       const interview = new Interview({
         application: application._id,
+        franchise: req.franchiseId || application.franchise,
         scheduledDate: new Date(date),
         scheduledTime: time,
         type,
@@ -334,8 +339,34 @@ router.post('/schedule/:applicationId',
 
       await interview.save();
 
-      // Update application status
+      // Update application status and denormalized interview info
       application.status = 'interview_scheduled';
+      application.interview = {
+        scheduledDate: interview.scheduledDate,
+        scheduledTime: interview.scheduledTime,
+        type: interview.type,
+        location: interview.location,
+        meetingLink: interview.meetingLink,
+        interviewers: interview.interviewers || [],
+        scheduledBy: req.user._id,
+        scheduledAt: interview.scheduledAt,
+        notes: notes || '',
+        result: 'pending'
+      };
+      if (!Array.isArray(application.interviewHistory)) {
+        application.interviewHistory = [];
+      }
+      application.interviewHistory.push({
+        scheduledDate: interview.scheduledDate,
+        scheduledTime: interview.scheduledTime,
+        type: interview.type,
+        location: interview.location,
+        meetingLink: interview.meetingLink,
+        scheduledBy: req.user._id,
+        action: 'scheduled'
+      });
+      application.markModified('interview');
+      application.markModified('interviewHistory');
       await application.save();
 
       // Populate for response
@@ -445,7 +476,8 @@ router.put('/:applicationId',
         $or: [
           { _id: applicationId },
           { applicationNumber: applicationId }
-        ]
+        ],
+        franchise: req.franchiseId
       });
 
       if (!application) {
@@ -501,6 +533,37 @@ router.put('/:applicationId',
       console.log('✅ New interview created:', newInterview.interviewNumber);
 
       await newInterview.populate('scheduledBy', 'name');
+
+      // Keep application interview snapshot in sync for application listing pages
+      application.status = 'interview_scheduled';
+      application.interview = {
+        scheduledDate: newInterview.scheduledDate,
+        scheduledTime: newInterview.scheduledTime,
+        type: newInterview.type,
+        location: newInterview.location,
+        meetingLink: newInterview.meetingLink,
+        interviewers: newInterview.interviewers || [],
+        scheduledBy: req.user._id,
+        scheduledAt: newInterview.scheduledAt,
+        notes: newInterview.notes || '',
+        result: 'pending'
+      };
+      if (!Array.isArray(application.interviewHistory)) {
+        application.interviewHistory = [];
+      }
+      application.interviewHistory.push({
+        scheduledDate: newInterview.scheduledDate,
+        scheduledTime: newInterview.scheduledTime,
+        type: newInterview.type,
+        location: newInterview.location,
+        meetingLink: newInterview.meetingLink,
+        scheduledBy: req.user._id,
+        action: 'rescheduled',
+        reason: 'Interview rescheduled via API'
+      });
+      application.markModified('interview');
+      application.markModified('interviewHistory');
+      await application.save();
 
       // Populate application for notifications
       await application.populate('beneficiary', 'name phone');
@@ -597,12 +660,12 @@ router.patch('/:id/complete',
 
       // First, try to find by interview ID
       if (id.match(/^[0-9a-fA-F]{24}$/)) {
-        interview = await Interview.findById(id);
+        interview = await Interview.findOne({ _id: id, franchise: req.franchiseId });
         console.log('📋 Found interview by ID:', interview ? interview.interviewNumber : 'Not found');
         
         if (interview) {
           // Get the application for this interview
-          application = await Application.findById(interview.application);
+          application = await Application.findOne({ _id: interview.application, franchise: req.franchiseId });
           console.log('📄 Found application:', application ? application.applicationNumber : 'Not found');
         }
       }
@@ -627,7 +690,10 @@ router.patch('/:id/complete',
           query = { applicationNumber: id };
         }
         
-        application = await Application.findOne(query);
+        application = await Application.findOne({
+          ...query,
+          franchise: req.franchiseId
+        });
 
         if (application) {
           console.log('📄 Found application:', application.applicationNumber);
@@ -635,6 +701,7 @@ router.patch('/:id/complete',
           // Find the interview for this application (scheduled or completed for editing)
           interview = await Interview.findOne({ 
             application: application._id,
+            franchise: req.franchiseId,
             status: { $in: ['scheduled', 'completed'] }
           });
           
@@ -1328,7 +1395,8 @@ router.patch('/:applicationId/cancel',
         $or: [
           { _id: applicationId },
           { applicationNumber: applicationId }
-        ]
+        ],
+        franchise: req.franchiseId
       });
 
       if (!application) {
@@ -1402,7 +1470,8 @@ router.get('/history/:applicationId',
         $or: [
           { _id: applicationId },
           { applicationNumber: applicationId }
-        ]
+        ],
+        franchise: req.franchiseId
       });
 
       if (!application) {

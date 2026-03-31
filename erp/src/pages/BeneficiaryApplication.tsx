@@ -237,45 +237,48 @@ export default function BeneficiaryApplication() {
     try {
       setIsLoading(true);
       const response = await beneficiaryApi.getRenewalForm(renewApplicationId);
-      
-      if (response.renewalForm) {
-        setIsRenewalMode(true);
-        setParentApplicationId(renewApplicationId);
-        
-        // Build scheme-like object from renewal form data
-        const renewalData = response.renewalForm;
-        setScheme({
-          _id: renewalData.scheme._id,
-          name: renewalData.scheme.name,
-          description: renewalData.scheme.description || '',
-          category: renewalData.scheme.category || '',
-          priority: renewalData.scheme.priority || 'medium',
-          project: renewalData.scheme.project || { _id: '', name: '' },
-          benefitType: renewalData.scheme.benefitType || '',
-          maxAmount: renewalData.scheme.maxAmount || 0,
-          benefitFrequency: renewalData.scheme.benefitFrequency || '',
-          benefitDescription: renewalData.scheme.benefitDescription || '',
-          applicationDeadline: '',
-          daysRemaining: 0,
-          requiresInterview: false,
-          allowMultipleApplications: true,
-          eligibilityCriteria: [],
-          beneficiariesCount: 0,
-          totalApplications: 0,
-          successRate: 0,
-          hasApplied: false,
-          formConfig: {
-            title: renewalData.formConfig.title || 'Renewal Application',
-            description: renewalData.formConfig.description || '',
-            pages: renewalData.formConfig.pages || [],
-            confirmationMessage: 'Your renewal application has been submitted successfully.',
-          },
-        });
-        
-        // Pre-fill form data from parent application
-        if (renewalData.prefillData) {
-          setFormData(renewalData.prefillData);
-        }
+      const renewalFormConfig = response.formConfiguration;
+      const renewalScheme = response.scheme;
+
+      if (!renewalFormConfig || !renewalScheme) {
+        throw new Error('Renewal form is not available for this application');
+      }
+
+      setIsRenewalMode(true);
+      setParentApplicationId(renewApplicationId);
+
+      // Build a compatible scheme object for form rendering using renewal payload.
+      setScheme({
+        _id: renewalScheme._id,
+        name: renewalScheme.name,
+        description: renewalScheme.description || '',
+        category: renewalScheme.category || '',
+        priority: renewalScheme.priority || 'medium',
+        project: renewalScheme.project || { _id: '', name: '' },
+        benefitType: renewalScheme.benefitType || '',
+        maxAmount: renewalScheme.maxAmount || 0,
+        benefitFrequency: renewalScheme.benefitFrequency || '',
+        benefitDescription: renewalScheme.benefitDescription || '',
+        applicationDeadline: '',
+        daysRemaining: 0,
+        requiresInterview: false,
+        allowMultipleApplications: true,
+        eligibilityCriteria: [],
+        beneficiariesCount: 0,
+        totalApplications: 0,
+        successRate: 0,
+        hasApplied: false,
+        formConfig: {
+          title: renewalFormConfig.title || 'Renewal Application',
+          description: renewalFormConfig.description || '',
+          pages: renewalFormConfig.pages || [],
+          confirmationMessage: 'Your renewal application has been submitted successfully.',
+        },
+      });
+
+      // Pre-fill form data from parent application.
+      if (response.prefillData) {
+        setFormData(response.prefillData);
       }
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Failed to load renewal form';
@@ -568,7 +571,7 @@ export default function BeneficiaryApplication() {
         
         toast({
           title: "Renewal Submitted Successfully!",
-          description: `Your renewal application ID is ${response.application?.applicationId || 'generated'}`,
+          description: `Your renewal application ID is ${response.application?.applicationId || response.application?.applicationNumber || 'generated'}`,
         });
       } else {
         const applicationData = {

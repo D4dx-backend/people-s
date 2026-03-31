@@ -157,6 +157,7 @@ interviewSchema.methods.reschedule = async function(newData, rescheduleReason, u
   // Create new interview with updated details
   const newInterview = new this.constructor({
     application: this.application,
+    franchise: this.franchise,
     scheduledDate: newData.scheduledDate,
     scheduledTime: newData.scheduledTime,
     type: newData.type || this.type,

@@ -180,6 +180,14 @@ export interface Scheme {
     requiresInterview: boolean;
     allowMultipleApplications: boolean;
   };
+  renewalSettings?: {
+    isRenewable: boolean;
+    renewalPeriodDays?: number;
+    maxRenewals?: number;
+    autoNotifyBeforeDays?: number;
+    requiresReapproval?: boolean;
+    renewalFormConfigured?: boolean;
+  };
   distributionTimeline: Array<{
     description: string;
     percentage: number;
