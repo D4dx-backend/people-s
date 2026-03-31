@@ -14,7 +14,7 @@ import { useConfig } from "@/contexts/ConfigContext";
 import { useOrgLogoUrl } from "@/hooks/useOrgLogoUrl";
 import { config as configApi } from "@/lib/api";
 import { toast } from "sonner";
-import { useAuth } from "@/contexts/AuthContext";
+import { useAuth } from "@/hooks/useAuth";
 import defaultLogo from "@/assets/logo.svg";
 
 export default function Settings() {

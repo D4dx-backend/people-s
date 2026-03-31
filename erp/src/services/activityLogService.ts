@@ -108,7 +108,7 @@ class ActivityLogService {
       });
 
       const response = await api.request(`${this.baseUrl}?${queryParams.toString()}`);
-      return response.data;
+      return response as unknown as ActivityLogResponse;
     } catch (error) {
       console.error('Failed to fetch activity logs:', error);
       throw error;
@@ -129,7 +129,7 @@ class ActivityLogService {
       });
 
       const response = await api.request(`${this.baseUrl}/stats?${queryParams.toString()}`);
-      return response.data;
+      return response as unknown as { success: boolean; data: ActivityStats };
     } catch (error) {
       console.error('Failed to fetch activity stats:', error);
       throw error;
@@ -142,7 +142,7 @@ class ActivityLogService {
   async getActivityTrends(period: string = '7d', groupBy: string = 'day'): Promise<any> {
     try {
       const response = await api.request(`${this.baseUrl}/trends?period=${period}&groupBy=${groupBy}`);
-      return response.data;
+      return response;
     } catch (error) {
       console.error('Failed to fetch activity trends:', error);
       throw error;
@@ -155,7 +155,7 @@ class ActivityLogService {
   async getRecentActivity(limit: number = 10): Promise<{ success: boolean; data: ActivityLog[] }> {
     try {
       const response = await api.request(`${this.baseUrl}/recent?limit=${limit}`);
-      return response.data;
+      return response as unknown as { success: boolean; data: ActivityLog[] };
     } catch (error) {
       console.error('Failed to fetch recent activity:', error);
       throw error;
@@ -168,7 +168,7 @@ class ActivityLogService {
   async getFilterOptions(): Promise<{ success: boolean; data: FilterOptions }> {
     try {
       const response = await api.request(`${this.baseUrl}/filters`);
-      return response.data;
+      return response as unknown as { success: boolean; data: FilterOptions };
     } catch (error) {
       console.error('Failed to fetch filter options:', error);
       throw error;
@@ -181,7 +181,7 @@ class ActivityLogService {
   async getActivityLogById(id: string): Promise<{ success: boolean; data: ActivityLog }> {
     try {
       const response = await api.request(`${this.baseUrl}/${id}`);
-      return response.data;
+      return response as unknown as { success: boolean; data: ActivityLog };
     } catch (error) {
       console.error('Failed to fetch activity log:', error);
       throw error;
@@ -194,7 +194,7 @@ class ActivityLogService {
   async getUserActivitySummary(userId: string, days: number = 30): Promise<any> {
     try {
       const response = await api.request(`${this.baseUrl}/users/${userId}/summary?days=${days}`);
-      return response.data;
+      return response;
     } catch (error) {
       console.error('Failed to fetch user activity summary:', error);
       throw error;
@@ -270,7 +270,7 @@ class ActivityLogService {
         method: 'DELETE',
         body: JSON.stringify({ daysToKeep })
       });
-      return response.data;
+      return response;
     } catch (error) {
       console.error('Failed to clean old logs:', error);
       throw error;
