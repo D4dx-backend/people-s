@@ -460,6 +460,16 @@ class BeneficiaryApiService {
   }
 
   // Utility methods
+  async deleteAccount(): Promise<void> {
+    const response = await fetch(`${API_BASE_URL}/beneficiary/auth/account`, {
+      method: 'DELETE',
+      headers: this.getAuthHeaders()
+    });
+    await this.handleResponse<void>(response);
+    // Clear local session after successful deletion
+    this.logout();
+  }
+
   logout(): void {
     localStorage.removeItem('beneficiary_token');
     localStorage.removeItem('beneficiary_user');

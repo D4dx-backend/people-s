@@ -1,5 +1,5 @@
 const authService = require('../services/authService');
-const { User, Location, UserFranchise } = require('../models');
+const { User, Location, UserFranchise, Beneficiary } = require('../models');
 const ResponseHelper = require('../utils/responseHelper');
 const staticOTPConfig = require('../config/staticOTP');
 const whatsappOTPService = require('../utils/whatsappOtpService');
@@ -28,8 +28,9 @@ class BeneficiaryAuthController {
       // Check for test beneficiary account
       const isTestAccount = phone === '9999999999';
 
-      // Check if user exists, if not create a beneficiary account
-      let user = await User.findOne({ phone, isActive: true });
+      // Check if user exists, if not create a beneficiary account.
+      // isDeleted: $ne true ensures soft-deleted accounts are not reused.
+      let user = await User.findOne({ phone, isActive: true, isDeleted: { $ne: true } });
       
       if (!user) {
         // Create new beneficiary user
@@ -198,8 +199,8 @@ class BeneficiaryAuthController {
       // Check for test beneficiary account
       const isTestAccount = phone === '9999999999';
 
-      // Find user
-      const user = await User.findOne({ phone, isActive: true });
+      // Find user — exclude soft-deleted accounts
+      const user = await User.findOne({ phone, isActive: true, isDeleted: { $ne: true } });
       if (!user) {
         // Log failed login - user not found
         await LoginLogService.logLoginEvent({
@@ -435,7 +436,7 @@ class BeneficiaryAuthController {
       // Check for test beneficiary account
       const isTestAccount = phone === '9999999999';
 
-      const user = await User.findOne({ phone, isActive: true });
+      const user = await User.findOne({ phone, isActive: true, isDeleted: { $ne: true } });
       if (!user) {
         return ResponseHelper.error(res, 'User not found', 404);
       }
@@ -518,6 +519,65 @@ class BeneficiaryAuthController {
         metadata: { error: error.message }
       });
 
+      return ResponseHelper.error(res, error.message, 500);
+    }
+  }
+
+  /**
+   * Delete beneficiary account (self-service soft delete)
+   * Data is retained permanently in DB for NGO reporting and analysis.
+   * The User phone is mangled to free the number for fresh re-registration.
+   * DELETE /api/beneficiary/auth/account
+   */
+  async deleteAccount(req, res) {
+    try {
+      const userId = req.user._id;
+      const phone = req.user.phone;
+
+      // Soft-delete the Beneficiary profile record.
+      // All linked Application documents remain intact and queryable for reports.
+      await Beneficiary.findOneAndUpdate(
+        { phone, franchise: req.franchiseId, isDeleted: { $ne: true } },
+        {
+          $set: {
+            isDeleted: true,
+            deletedAt: new Date(),
+            deletedByUser: true,
+            status: 'inactive'
+          }
+        }
+      );
+
+      // Mangle the User's phone number to free it for re-registration.
+      // The original phone is stored in `originalPhone` for traceability.
+      const mangledPhone = `DELETED_${Date.now()}_${phone}`;
+      await User.findByIdAndUpdate(userId, {
+        $set: {
+          phone: mangledPhone,
+          originalPhone: phone,
+          isActive: false,
+          isDeleted: true,
+          deletedAt: new Date()
+        }
+      });
+
+      // Log the deletion event
+      await LoginLogService.logLoginEvent({
+        userId,
+        userType: 'beneficiary',
+        action: 'logout',
+        status: 'success',
+        phone,
+        req,
+        metadata: { event: 'account_deleted', reason: 'user_self_deleted' }
+      });
+
+      console.log(`✅ Beneficiary account soft-deleted: phone=${phone}, userId=${userId}`);
+
+      return ResponseHelper.success(res, {}, 'Account deleted successfully');
+
+    } catch (error) {
+      console.error('❌ Delete Beneficiary Account Error:', error);
       return ResponseHelper.error(res, error.message, 500);
     }
   }

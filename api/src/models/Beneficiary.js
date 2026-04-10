@@ -71,6 +71,19 @@ const beneficiarySchema = new mongoose.Schema({
   updatedBy: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User'
+  },
+
+  // Soft Delete — data is retained permanently for NGO reporting & analysis
+  isDeleted: {
+    type: Boolean,
+    default: false
+  },
+  deletedAt: {
+    type: Date
+  },
+  deletedByUser: {
+    type: Boolean,
+    default: false
   }
 }, {
   timestamps: true
@@ -94,8 +107,13 @@ beneficiarySchema.virtual('locationPath').get(function() {
 // Ensure virtual fields are serialized
 beneficiarySchema.set('toJSON', { virtuals: true });
 
-// Franchise multi-tenancy — compound unique: same phone can exist in different franchises
+// Franchise multi-tenancy — compound unique: same phone can exist in different franchises.
+// Partial index: uniqueness is only enforced on non-deleted records so that a soft-deleted
+// beneficiary and a new active beneficiary can share the same phone+franchise combination.
 beneficiarySchema.plugin(franchisePlugin);
-beneficiarySchema.index({ phone: 1, franchise: 1 }, { unique: true });
+beneficiarySchema.index(
+  { phone: 1, franchise: 1 },
+  { unique: true, partialFilterExpression: { isDeleted: { $ne: true } } }
+);
 
 module.exports = mongoose.model('Beneficiary', beneficiarySchema);
