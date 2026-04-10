@@ -405,7 +405,7 @@ class BeneficiaryApplicationController {
       }
 
       // Find or create beneficiary record
-      let beneficiary = await Beneficiary.findOne({ phone: req.user.phone, franchise: req.franchiseId });
+      let beneficiary = await Beneficiary.findOne({ phone: req.user.phone, franchise: req.franchiseId, isDeleted: { $ne: true } });
       
       if (!beneficiary) {
         // Get state from district's parent
@@ -694,7 +694,7 @@ class BeneficiaryApplicationController {
       const userId = req.user._id;
 
       // Find beneficiary record
-      const beneficiary = await Beneficiary.findOne({ phone: req.user.phone, ...buildFranchiseReadFilter(req) });
+      const beneficiary = await Beneficiary.findOne({ phone: req.user.phone, isDeleted: { $ne: true }, ...buildFranchiseReadFilter(req) });
       if (!beneficiary) {
         return ResponseHelper.success(res, {
           applications: [],
@@ -772,7 +772,7 @@ class BeneficiaryApplicationController {
       }
 
       // Find beneficiary record
-      const beneficiary = await Beneficiary.findOne({ phone: req.user.phone, ...buildFranchiseReadFilter(req) });
+      const beneficiary = await Beneficiary.findOne({ phone: req.user.phone, isDeleted: { $ne: true }, ...buildFranchiseReadFilter(req) });
       if (!beneficiary) {
         return ResponseHelper.error(res, 'Beneficiary record not found', 404);
       }
@@ -817,7 +817,7 @@ class BeneficiaryApplicationController {
       }
 
       // Find beneficiary record to verify ownership
-      const beneficiary = await Beneficiary.findOne({ phone: req.user.phone, ...buildFranchiseReadFilter(req) });
+      const beneficiary = await Beneficiary.findOne({ phone: req.user.phone, isDeleted: { $ne: true }, ...buildFranchiseReadFilter(req) });
       if (!beneficiary || application.beneficiary._id.toString() !== beneficiary._id.toString()) {
         return ResponseHelper.error(res, 'Access denied', 403);
       }
@@ -909,7 +909,7 @@ class BeneficiaryApplicationController {
       const userId = req.user._id;
 
       // Find beneficiary record
-      const beneficiary = await Beneficiary.findOne({ phone: req.user.phone, ...buildFranchiseReadFilter(req) });
+      const beneficiary = await Beneficiary.findOne({ phone: req.user.phone, isDeleted: { $ne: true }, ...buildFranchiseReadFilter(req) });
       if (!beneficiary) {
         return ResponseHelper.success(res, { 
           stats: {
@@ -969,7 +969,7 @@ class BeneficiaryApplicationController {
    */
   async getRenewalDueApplications(req, res) {
     try {
-      const beneficiary = await Beneficiary.findOne({ phone: req.user.phone, ...buildFranchiseReadFilter(req) });
+      const beneficiary = await Beneficiary.findOne({ phone: req.user.phone, isDeleted: { $ne: true }, ...buildFranchiseReadFilter(req) });
       if (!beneficiary) {
         return ResponseHelper.success(res, { applications: [] }, 'No renewal-due applications');
       }
@@ -1013,7 +1013,7 @@ class BeneficiaryApplicationController {
     try {
       const { id } = req.params;
 
-      const beneficiary = await Beneficiary.findOne({ phone: req.user.phone, ...buildFranchiseReadFilter(req) });
+      const beneficiary = await Beneficiary.findOne({ phone: req.user.phone, isDeleted: { $ne: true }, ...buildFranchiseReadFilter(req) });
       if (!beneficiary) {
         return ResponseHelper.error(res, 'Beneficiary not found', 404);
       }
@@ -1111,7 +1111,7 @@ class BeneficiaryApplicationController {
         return ResponseHelper.error(res, 'Form data is required', 400);
       }
 
-      const beneficiary = await Beneficiary.findOne({ phone: req.user.phone, franchise: req.franchiseId });
+      const beneficiary = await Beneficiary.findOne({ phone: req.user.phone, franchise: req.franchiseId, isDeleted: { $ne: true } });
       if (!beneficiary) {
         return ResponseHelper.error(res, 'Beneficiary not found', 404);
       }
@@ -1286,7 +1286,7 @@ class BeneficiaryApplicationController {
       }
 
       // Find or create beneficiary record
-      let beneficiary = await Beneficiary.findOne({ phone: req.user.phone, franchise: req.franchiseId });
+      let beneficiary = await Beneficiary.findOne({ phone: req.user.phone, franchise: req.franchiseId, isDeleted: { $ne: true } });
       if (!beneficiary) {
         const district = await Location.findById(user.profile.location.district);
         if (!district || !district.parent) {
@@ -1422,7 +1422,7 @@ class BeneficiaryApplicationController {
       }
 
       // Find beneficiary
-      const beneficiary = await Beneficiary.findOne({ phone: req.user.phone, franchise: req.franchiseId });
+      const beneficiary = await Beneficiary.findOne({ phone: req.user.phone, franchise: req.franchiseId, isDeleted: { $ne: true } });
       if (!beneficiary) {
         return ResponseHelper.error(res, 'Beneficiary record not found', 404);
       }
@@ -1486,7 +1486,7 @@ class BeneficiaryApplicationController {
       }
 
       // Find beneficiary
-      const beneficiary = await Beneficiary.findOne({ phone: req.user.phone, ...buildFranchiseReadFilter(req) });
+      const beneficiary = await Beneficiary.findOne({ phone: req.user.phone, isDeleted: { $ne: true }, ...buildFranchiseReadFilter(req) });
       if (!beneficiary) {
         return ResponseHelper.success(res, { draft: null }, 'No draft found');
       }
@@ -1534,7 +1534,7 @@ class BeneficiaryApplicationController {
       }
 
       // Find beneficiary
-      const beneficiary = await Beneficiary.findOne({ phone: req.user.phone, franchise: req.franchiseId });
+      const beneficiary = await Beneficiary.findOne({ phone: req.user.phone, franchise: req.franchiseId, isDeleted: { $ne: true } });
       if (!beneficiary) {
         return ResponseHelper.error(res, 'Beneficiary record not found', 404);
       }

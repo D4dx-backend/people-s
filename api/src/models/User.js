@@ -186,6 +186,21 @@ const userSchema = new mongoose.Schema({
   updatedBy: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User'
+  },
+
+  // Soft Delete — used when a beneficiary self-deletes their account.
+  // The User record is retained for audit trail; phone is mangled so the
+  // number is freed up for fresh re-registration.
+  isDeleted: {
+    type: Boolean,
+    default: false
+  },
+  deletedAt: {
+    type: Date
+  },
+  // Stores the original phone number after mangling, for traceability.
+  originalPhone: {
+    type: String
   }
 }, {
   timestamps: true,

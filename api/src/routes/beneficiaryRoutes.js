@@ -73,6 +73,14 @@ router.put('/auth/profile',
   beneficiaryAuthController.updateProfile
 );
 
+// Self-service account deletion \u2014 soft deletes the account and frees the phone
+// for re-registration; all data is retained in DB for reporting.
+router.delete('/auth/account',
+  authenticate, crossFranchiseResolver,
+  authorize('beneficiary'),
+  beneficiaryAuthController.deleteAccount
+);
+
 // Scheme routes
 router.get('/schemes', 
   authenticate, crossFranchiseResolver, 

@@ -11,6 +11,7 @@ import { toast } from "@/hooks/use-toast";
 import { beneficiaryApi } from "@/services/beneficiaryApi";
 import { useOrgLogoUrl } from "@/hooks/useOrgLogoUrl";
 import defaultLogo from "@/assets/logo.png";
+import DeleteAccountModal from "@/components/modals/DeleteAccountModal";
 
 interface Location {
   _id: string;
@@ -25,6 +26,7 @@ export default function BeneficiaryProfileCompletion() {
   const orgLogoUrl = useOrgLogoUrl();
   const [isLoading, setIsLoading] = useState(false);
   const [phoneNumber, setPhoneNumber] = useState("");
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
   
   const [formData, setFormData] = useState({
     name: "",
@@ -440,6 +442,32 @@ export default function BeneficiaryProfileCompletion() {
               </Button>
             </div>
           </form>
+
+          {/* Danger Zone */}
+          <div className="mt-8 border-t border-destructive/20 pt-6">
+            <div className="space-y-2">
+              <h3 className="text-sm font-semibold text-destructive">Danger Zone</h3>
+              <p className="text-xs text-muted-foreground">
+                Permanently remove your account access. Your registration data will be
+                retained by the organisation for compliance purposes, but you will no longer
+                be able to log in. If you re-register with the same number, a fresh profile
+                will open with no previous data.
+              </p>
+              <Button
+                type="button"
+                variant="destructive"
+                size="sm"
+                onClick={() => setShowDeleteModal(true)}
+              >
+                Delete Account
+              </Button>
+            </div>
+          </div>
+
+          <DeleteAccountModal
+            isOpen={showDeleteModal}
+            onClose={() => setShowDeleteModal(false)}
+          />
         </CardContent>
       </Card>
     </div>
