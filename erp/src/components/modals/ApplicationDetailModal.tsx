@@ -831,17 +831,36 @@ export const ApplicationDetailModal: React.FC<ApplicationDetailModalProps> = ({
     return null;
   };
 
-  const renderTableValue = (value: any, fieldConfig: any) => {
+  const renderTableValue = (value: any, fieldConfig: any, fieldKey?: string) => {
     const colCount = fieldConfig?.columns || 2;
-    const rowCount = fieldConfig?.rows || 2;
+    const baseRowCount = fieldConfig?.rows || 2;
     const columnTitles: string[] = fieldConfig?.columnTitles || [];
     const rowTitles: string[] = fieldConfig?.rowTitles || [];
     const hasRowLabels = rowTitles.some((t: string) => t);
 
+    // Check for row metadata (dynamic row duplication)
+    const metaKey = fieldKey ? `${fieldKey}__rowMeta` : null;
+    const rowMeta: { sourceRow: number; duplicateIndex: number }[] | null =
+      metaKey && formData?.[metaKey] && Array.isArray(formData[metaKey])
+        ? formData[metaKey]
+        : null;
+
+    const actualRowCount = rowMeta ? rowMeta.length : baseRowCount;
+
     // Normalize value to 2D array
     const tableData: string[][] = Array.isArray(value)
       ? value
-      : Array.from({ length: rowCount }, () => Array(colCount).fill(''));
+      : Array.from({ length: actualRowCount }, () => Array(colCount).fill(''));
+
+    // Compute row label from metadata or fall back to static titles
+    const getRowLabel = (rowIndex: number) => {
+      if (rowMeta && rowMeta[rowIndex]) {
+        const meta = rowMeta[rowIndex];
+        const baseLabel = rowTitles[meta.sourceRow] || `Row ${meta.sourceRow + 1}`;
+        return meta.duplicateIndex > 0 ? `${baseLabel} (${meta.duplicateIndex})` : baseLabel;
+      }
+      return rowTitles[rowIndex] || `Row ${rowIndex + 1}`;
+    };
 
     return (
       <div className="overflow-auto rounded border">
@@ -857,11 +876,11 @@ export const ApplicationDetailModal: React.FC<ApplicationDetailModalProps> = ({
             </tr>
           </thead>
           <tbody>
-            {Array.from({ length: rowCount }, (_, r) => (
+            {Array.from({ length: actualRowCount }, (_, r) => (
               <tr key={r} className={r % 2 === 0 ? '' : 'bg-muted/30'}>
                 {hasRowLabels && (
                   <td className="border p-2 text-xs font-medium text-muted-foreground bg-muted/50 whitespace-nowrap">
-                    {rowTitles[r] || `Row ${r + 1}`}
+                    {getRowLabel(r)}
                   </td>
                 )}
                 {Array.from({ length: colCount }, (_, c) => (
@@ -973,8 +992,8 @@ export const ApplicationDetailModal: React.FC<ApplicationDetailModalProps> = ({
     }
 
     const entries = Object.entries(formData).filter(([key]) => 
-      // Filter out internal fields
-      !['_id', '__v', 'id'].includes(key)
+      // Filter out internal fields and row metadata keys
+      !['_id', '__v', 'id'].includes(key) && !key.endsWith('__rowMeta')
     );
     
     if (entries.length === 0) {
@@ -1030,7 +1049,7 @@ export const ApplicationDetailModal: React.FC<ApplicationDetailModalProps> = ({
           return (
             <div key={key} className="space-y-2">
               <label className="text-sm font-medium text-muted-foreground">{label}</label>
-              {renderTableValue(value, config)}
+              {renderTableValue(value, config, key)}
             </div>
           );
         })}
