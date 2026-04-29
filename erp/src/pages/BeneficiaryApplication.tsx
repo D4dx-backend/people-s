@@ -420,6 +420,11 @@ export default function BeneficiaryApplication() {
   };
 
   const validateField = (field: FormField, value: any): string => {
+    // Skip validation for layout-only field types (they don't collect input)
+    if (["title", "html", "group", "page"].includes(field.type)) {
+      return "";
+    }
+
     if (field.type === "checkbox") {
       if (field.required && !value) {
         return `${field.label} is required`;
