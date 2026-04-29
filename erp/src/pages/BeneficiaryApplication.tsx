@@ -8,7 +8,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
-import { ArrowLeft, Upload, FileText, AlertCircle, CheckCircle, Loader2, RefreshCw, Save, Clock } from "lucide-react";
+import { ArrowLeft, Upload, FileText, AlertCircle, CheckCircle, Loader2, RefreshCw, Save, Clock, CopyPlus, Trash2 } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { beneficiaryApi } from "@/services/beneficiaryApi";
@@ -430,7 +430,8 @@ export default function BeneficiaryApplication() {
     // Table (row/column) validation: check that at least one cell has data
     if (field.type === "row" || field.type === "column") {
       if (field.required) {
-        if (!Array.isArray(value) || !value.some((row: string[]) => row?.some((cell: string) => cell?.trim()))) {
+        const tableValue = Array.isArray(value) ? value : [];
+        if (!tableValue.some((row: string[]) => row?.some((cell: string) => cell?.trim()))) {
           return `${field.label} is required — please fill in at least one cell`;
         }
       }
@@ -777,11 +778,60 @@ export default function BeneficiaryApplication() {
       case "row":
       case "column": {
         const colCount = field.columns || 2;
-        const rowCount = field.rows || 3;
+        const baseRowCount = field.rows || 3;
         const hasRowLabels = field.rowTitles?.some(t => t) ?? false;
-        // Initialize table data as 2D array if not exists
+        const metaKey = `${fieldKey}__rowMeta`;
+
+        // Initialize or restore row metadata
+        // Each entry: { sourceRow: number, duplicateIndex: number }
+        const rowMeta: { sourceRow: number; duplicateIndex: number }[] =
+          Array.isArray(formData[metaKey]) && formData[metaKey].length > 0
+            ? formData[metaKey]
+            : Array.from({ length: baseRowCount }, (_, i) => ({ sourceRow: i, duplicateIndex: 0 }));
+
+        const actualRowCount = rowMeta.length;
+
+        // Initialize table data as 2D array matching current row count
         const tableData: string[][] = Array.isArray(value) ? value :
-          Array.from({ length: rowCount }, () => Array(colCount).fill(""));
+          Array.from({ length: actualRowCount }, () => Array(colCount).fill(""));
+
+        // Ensure tableData length matches rowMeta length
+        while (tableData.length < actualRowCount) {
+          tableData.push(Array(colCount).fill(""));
+        }
+
+        // Compute row label from metadata
+        const getRowLabel = (meta: { sourceRow: number; duplicateIndex: number }) => {
+          const baseLabel = field.rowTitles?.[meta.sourceRow] || `Row ${meta.sourceRow + 1}`;
+          return meta.duplicateIndex > 0 ? `${baseLabel} (${meta.duplicateIndex})` : baseLabel;
+        };
+
+        // Duplicate a row: insert a new empty row after the given index
+        const handleDuplicateRow = (rowIndex: number) => {
+          const sourceMeta = rowMeta[rowIndex];
+          // Find max duplicateIndex for this sourceRow
+          const maxDupIndex = rowMeta
+            .filter(m => m.sourceRow === sourceMeta.sourceRow)
+            .reduce((max, m) => Math.max(max, m.duplicateIndex), 0);
+
+          const newMeta = [...rowMeta];
+          newMeta.splice(rowIndex + 1, 0, { sourceRow: sourceMeta.sourceRow, duplicateIndex: maxDupIndex + 1 });
+
+          const newData = tableData.map(row => [...row]);
+          newData.splice(rowIndex + 1, 0, Array(colCount).fill(""));
+
+          handleInputChange(fieldKey, newData);
+          handleInputChange(metaKey, newMeta);
+        };
+
+        // Delete a duplicated row (only non-original rows)
+        const handleDeleteRow = (rowIndex: number) => {
+          const newMeta = rowMeta.filter((_, i) => i !== rowIndex);
+          const newData = tableData.filter((_, i) => i !== rowIndex);
+
+          handleInputChange(fieldKey, newData);
+          handleInputChange(metaKey, newMeta);
+        };
 
         return (
           <div key={field.id} className="space-y-2">
@@ -800,14 +850,15 @@ export default function BeneficiaryApplication() {
                         {field.columnTitles?.[i] || `Column ${i + 1}`}
                       </th>
                     ))}
+                    <th className="border-b p-2 text-center font-medium text-xs w-[70px]"></th>
                   </tr>
                 </thead>
                 <tbody>
-                  {Array.from({ length: rowCount }, (_, r) => (
-                    <tr key={r} className={r % 2 === 0 ? "" : "bg-muted/30"}>
+                  {rowMeta.map((meta, r) => (
+                    <tr key={`${meta.sourceRow}-${meta.duplicateIndex}-${r}`} className={r % 2 === 0 ? "" : "bg-muted/30"}>
                       {hasRowLabels && (
                         <td className="border-r border-b p-2 font-medium text-xs text-muted-foreground bg-muted/50 whitespace-nowrap">
-                          {field.rowTitles?.[r] || `Row ${r + 1}`}
+                          {getRowLabel(meta)}
                         </td>
                       )}
                       {Array.from({ length: colCount }, (_, c) => (
@@ -820,10 +871,6 @@ export default function BeneficiaryApplication() {
                                   ? row.map((cell, ci) => (ci === c ? e.target.value : cell))
                                   : [...row]
                               );
-                              // Ensure all rows have correct number of columns
-                              while (newData.length < rowCount) {
-                                newData.push(Array(colCount).fill(""));
-                              }
                               handleInputChange(fieldKey, newData);
                             }}
                             placeholder={field.placeholder || `Enter ${field.columnTitles?.[c] || 'value'}`}
@@ -831,6 +878,32 @@ export default function BeneficiaryApplication() {
                           />
                         </td>
                       ))}
+                      <td className="border-b p-1 text-center w-[70px]">
+                        <div className="flex items-center justify-center gap-0.5">
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            className="h-7 w-7 text-muted-foreground hover:text-primary"
+                            onClick={() => handleDuplicateRow(r)}
+                            title="Duplicate row"
+                          >
+                            <CopyPlus className="h-3.5 w-3.5" />
+                          </Button>
+                          {meta.duplicateIndex > 0 && (
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="icon"
+                              className="h-7 w-7 text-muted-foreground hover:text-destructive"
+                              onClick={() => handleDeleteRow(r)}
+                              title="Remove row"
+                            >
+                              <Trash2 className="h-3.5 w-3.5" />
+                            </Button>
+                          )}
+                        </div>
+                      </td>
                     </tr>
                   ))}
                 </tbody>

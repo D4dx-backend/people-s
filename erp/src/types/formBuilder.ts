@@ -48,6 +48,12 @@ export interface FormField {
   scoring?: FieldScoring;
 }
 
+// Row metadata for dynamic row duplication in table fields
+export interface RowMeta {
+  sourceRow: number;       // Index into field.rowTitles (which original row this is based on)
+  duplicateIndex: number;  // 0 = original row, 1+ = duplicate number
+}
+
 // Form page definition
 export interface FormPage {
   id: number;

@@ -8,6 +8,7 @@ import { Switch } from "@/components/ui/switch";
 import { Checkbox } from "@/components/ui/checkbox";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Separator } from "@/components/ui/separator";
+import { CopyPlus } from "lucide-react";
 import { FileUploadField } from "./FileUploadField";
 
 interface Field {
@@ -261,6 +262,7 @@ export function FormPreview({ formTitle, formDescription, pages, schemeId, isLiv
                         {field.columnTitles?.[i] || `Column ${i + 1}`}
                       </th>
                     ))}
+                    <th className="border-b p-2 text-center font-medium text-xs w-[50px]"></th>
                   </tr>
                 </thead>
                 <tbody>
@@ -276,6 +278,9 @@ export function FormPreview({ formTitle, formDescription, pages, schemeId, isLiv
                           <Input disabled placeholder="..." className="h-7 text-xs" />
                         </td>
                       ))}
+                      <td className="border-b p-1.5 text-center w-[50px]">
+                        <CopyPlus className="h-3.5 w-3.5 text-muted-foreground/40 mx-auto" />
+                      </td>
                     </tr>
                   ))}
                 </tbody>
