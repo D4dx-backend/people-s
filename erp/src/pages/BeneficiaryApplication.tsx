@@ -632,6 +632,51 @@ export default function BeneficiaryApplication() {
     }
   };
 
+  const calculateAge = (dateString: string): number => {
+    const today = new Date();
+    const birthDate = new Date(dateString);
+    let age = today.getFullYear() - birthDate.getFullYear();
+    const monthDiff = today.getMonth() - birthDate.getMonth();
+    if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
+      age--;
+    }
+    return age;
+  };
+
+  const isDobField = (label: string): boolean => {
+    const lower = label.toLowerCase();
+    return (
+      lower.includes("date of birth") ||
+      lower.includes("dob") ||
+      lower.includes("birth date") ||
+      lower.includes("ജനന തീയതി") ||
+      lower.includes("birthdate")
+    );
+  };
+
+  const isAgeField = (label: string): boolean => {
+    const lower = label.toLowerCase().trim();
+    return (
+      lower === "age" ||
+      lower === "വയസ്സ്" ||
+      lower.startsWith("age ") ||
+      lower.includes("age in years") ||
+      lower.includes("current age")
+    );
+  };
+
+  const findAgeFieldKey = (): string | null => {
+    if (!scheme) return null;
+    for (const page of scheme.formConfig.pages) {
+      for (const f of page.fields) {
+        if (isAgeField(f.label)) {
+          return `field_${f.id}`;
+        }
+      }
+    }
+    return null;
+  };
+
   const renderField = (field: FormField) => {
     const fieldKey = `field_${field.id}`;
     const value = formData[fieldKey] || "";
@@ -936,7 +981,18 @@ export default function BeneficiaryApplication() {
               id={fieldKey}
               type={field.type === "datetime" ? "datetime-local" : "date"}
               value={value}
-              onChange={(e) => handleInputChange(fieldKey, e.target.value)}
+              onChange={(e) => {
+                handleInputChange(fieldKey, e.target.value);
+                if (isDobField(field.label) && e.target.value) {
+                  const age = calculateAge(e.target.value);
+                  if (age >= 0 && age <= 150) {
+                    const ageFieldKey = findAgeFieldKey();
+                    if (ageFieldKey) {
+                      handleInputChange(ageFieldKey, String(age));
+                    }
+                  }
+                }
+              }}
               className={error ? "border-red-500" : ""}
             />
             {field.helpText && <p className="text-xs text-muted-foreground">{field.helpText}</p>}
@@ -1215,7 +1271,7 @@ export default function BeneficiaryApplication() {
                 ) : (
                   <Save className="h-4 w-4 mr-1" />
                 )}
-                {isSavingDraft ? "Saving..." : "Save Draft"}
+                {isSavingDraft ? "Saving..." : "Save for Later"}
               </Button>
             )}
 
