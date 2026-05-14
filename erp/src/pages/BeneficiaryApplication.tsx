@@ -36,6 +36,7 @@ interface FormField {
   columnTitles?: string[];
   rows?: number;
   rowTitles?: string[];
+  firstColumnHeader?: string;
   conditionalLogic?: {
     field: number;
     operator: string;
@@ -894,7 +895,7 @@ export default function BeneficiaryApplication() {
               <table className="w-full text-sm">
                 <thead>
                   <tr className="bg-muted">
-                    {hasRowLabels && <th className="border-r border-b p-2 text-left font-medium text-xs"></th>}
+                    {hasRowLabels && <th className="border-r border-b p-2 text-left font-medium text-xs">{field.firstColumnHeader || ""}</th>}
                     {Array.from({ length: colCount }, (_, i) => (
                       <th key={i} className="border-r border-b p-2 text-left font-medium text-xs">
                         {field.columnTitles?.[i] || `Column ${i + 1}`}

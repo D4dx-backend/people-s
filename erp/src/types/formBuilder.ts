@@ -39,6 +39,7 @@ export interface FormField {
   columnTitles?: string[];
   rows?: number;
   rowTitles?: string[];
+  firstColumnHeader?: string;
   conditionalLogic?: {
     field: number;
     operator: string;

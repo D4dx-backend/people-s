@@ -23,6 +23,7 @@ interface Field {
   columnTitles?: string[];
   rows?: number;
   rowTitles?: string[];
+  firstColumnHeader?: string;
 }
 
 interface Page {
@@ -256,7 +257,7 @@ export function FormPreview({ formTitle, formDescription, pages, schemeId, isLiv
               <table className="w-full text-sm">
                 <thead>
                   <tr className="bg-muted">
-                    {hasRowLabels && <th className="border-r border-b p-2 text-left font-medium text-xs"></th>}
+                    {hasRowLabels && <th className="border-r border-b p-2 text-left font-medium text-xs">{field.firstColumnHeader || ""}</th>}
                     {Array.from({ length: colCount }, (_, i) => (
                       <th key={i} className="border-r border-b p-2 text-left font-medium text-xs">
                         {field.columnTitles?.[i] || `Column ${i + 1}`}

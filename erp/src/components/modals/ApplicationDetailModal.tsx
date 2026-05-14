@@ -837,6 +837,7 @@ export const ApplicationDetailModal: React.FC<ApplicationDetailModalProps> = ({
     const columnTitles: string[] = fieldConfig?.columnTitles || [];
     const rowTitles: string[] = fieldConfig?.rowTitles || [];
     const hasRowLabels = rowTitles.some((t: string) => t);
+    const firstColumnHeader: string = fieldConfig?.firstColumnHeader || "";
 
     // Check for row metadata (dynamic row duplication)
     const metaKey = fieldKey ? `${fieldKey}__rowMeta` : null;
@@ -867,7 +868,7 @@ export const ApplicationDetailModal: React.FC<ApplicationDetailModalProps> = ({
         <table className="w-full text-sm border-collapse">
           <thead>
             <tr className="bg-muted">
-              {hasRowLabels && <th className="border p-2 text-xs font-medium text-left text-muted-foreground" />}
+              {hasRowLabels && <th className="border p-2 text-xs font-medium text-left text-muted-foreground">{firstColumnHeader}</th>}
               {Array.from({ length: colCount }, (_, i) => (
                 <th key={i} className="border p-2 text-xs font-semibold text-left">
                   {columnTitles[i] || `Column ${i + 1}`}

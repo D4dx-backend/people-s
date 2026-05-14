@@ -28,6 +28,7 @@ interface Field {
   columnTitles?: string[];
   rows?: number;
   rowTitles?: string[];
+  firstColumnHeader?: string;
   conditionalLogic?: {
     field: number;
     operator: string;
@@ -199,7 +200,15 @@ export function FieldEditor({ field, onUpdate, onDelete, onMoveUp, onMoveDown, a
                       <table className="w-full text-xs">
                         <thead>
                           <tr className="bg-muted">
-                            <th className="border-r border-b p-0 text-left font-medium text-muted-foreground w-[100px]"></th>
+                            <th className="border-r border-b p-0 text-left font-medium text-muted-foreground w-[100px]">
+                              <input
+                                type="text"
+                                value={field.firstColumnHeader || ""}
+                                onChange={(e) => onUpdate({ ...field, firstColumnHeader: e.target.value })}
+                                placeholder="Header"
+                                className="w-full h-8 px-1.5 bg-transparent text-xs font-medium outline-none focus:bg-primary/5 focus:ring-1 focus:ring-primary/30 rounded-none text-foreground placeholder:text-muted-foreground/50"
+                              />
+                            </th>
                             {Array.from({ length: field.columns || 2 }, (_, i) => (
                               <th key={i} className="border-r border-b p-0 text-left font-medium">
                                 <input
