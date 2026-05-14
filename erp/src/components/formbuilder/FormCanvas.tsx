@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Plus, Trash2 } from "lucide-react";
+import { Plus, Trash2, GripHorizontal } from "lucide-react";
 import { FieldEditor } from "./FieldEditor";
 import { AddFieldPopover } from "./AddFieldPopover";
 
@@ -46,6 +46,39 @@ interface FormCanvasProps {
 
 export function FormCanvas({ pages, onUpdatePages, onAddField }: FormCanvasProps) {
   const [activePage, setActivePage] = useState(0);
+  const [dragStartIdx, setDragStartIdx] = useState<number | null>(null);
+  const [dragOverIdx, setDragOverIdx] = useState<number | null>(null);
+
+  const handlePageDragStart = (e: React.DragEvent, idx: number) => {
+    setDragStartIdx(idx);
+    e.dataTransfer.effectAllowed = "move";
+  };
+
+  const handlePageDragOver = (e: React.DragEvent, idx: number) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = "move";
+    if (dragOverIdx !== idx) setDragOverIdx(idx);
+  };
+
+  const handlePageDrop = (idx: number) => {
+    if (dragStartIdx === null || dragStartIdx === idx) {
+      setDragStartIdx(null);
+      setDragOverIdx(null);
+      return;
+    }
+    const newPages = [...pages];
+    const [moved] = newPages.splice(dragStartIdx, 1);
+    newPages.splice(idx, 0, moved);
+    onUpdatePages(newPages);
+    setActivePage(idx);
+    setDragStartIdx(null);
+    setDragOverIdx(null);
+  };
+
+  const handlePageDragEnd = () => {
+    setDragStartIdx(null);
+    setDragOverIdx(null);
+  };
 
   const addPage = () => {
     const newPage: Page = {
@@ -151,7 +184,23 @@ export function FormCanvas({ pages, onUpdatePages, onAddField }: FormCanvasProps
         <div className="flex items-center justify-between">
           <TabsList>
             {pages.map((page, idx) => (
-              <TabsTrigger key={page.id} value={idx.toString()}>
+              <TabsTrigger
+                key={page.id}
+                value={idx.toString()}
+                draggable
+                onDragStart={(e) => handlePageDragStart(e, idx)}
+                onDragOver={(e) => handlePageDragOver(e, idx)}
+                onDrop={() => handlePageDrop(idx)}
+                onDragEnd={handlePageDragEnd}
+                className={[
+                  "cursor-grab active:cursor-grabbing select-none",
+                  dragStartIdx === idx ? "opacity-40" : "",
+                  dragOverIdx === idx && dragStartIdx !== idx
+                    ? "ring-2 ring-primary ring-inset"
+                    : "",
+                ].join(" ")}
+              >
+                <GripHorizontal className="h-3 w-3 mr-1.5 text-muted-foreground/60 shrink-0" />
                 {page.title}
               </TabsTrigger>
             ))}

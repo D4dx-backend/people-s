@@ -831,12 +831,13 @@ export const ApplicationDetailModal: React.FC<ApplicationDetailModalProps> = ({
     return null;
   };
 
-  const renderTableValue = (value: any, fieldConfig: any, fieldKey?: string) => {
+  const renderTableValue = (value: any, fieldConfig: any, fieldKey?: string, formData?: any) => {
     const colCount = fieldConfig?.columns || 2;
     const baseRowCount = fieldConfig?.rows || 2;
     const columnTitles: string[] = fieldConfig?.columnTitles || [];
     const rowTitles: string[] = fieldConfig?.rowTitles || [];
     const hasRowLabels = rowTitles.some((t: string) => t);
+    const firstColumnHeader: string = fieldConfig?.firstColumnHeader || "";
 
     // Check for row metadata (dynamic row duplication)
     const metaKey = fieldKey ? `${fieldKey}__rowMeta` : null;
@@ -867,7 +868,7 @@ export const ApplicationDetailModal: React.FC<ApplicationDetailModalProps> = ({
         <table className="w-full text-sm border-collapse">
           <thead>
             <tr className="bg-muted">
-              {hasRowLabels && <th className="border p-2 text-xs font-medium text-left text-muted-foreground" />}
+              {hasRowLabels && <th className="border p-2 text-xs font-medium text-left text-muted-foreground">{firstColumnHeader}</th>}
               {Array.from({ length: colCount }, (_, i) => (
                 <th key={i} className="border p-2 text-xs font-semibold text-left">
                   {columnTitles[i] || `Column ${i + 1}`}
@@ -1049,7 +1050,7 @@ export const ApplicationDetailModal: React.FC<ApplicationDetailModalProps> = ({
           return (
             <div key={key} className="space-y-2">
               <label className="text-sm font-medium text-muted-foreground">{label}</label>
-              {renderTableValue(value, config, key)}
+              {renderTableValue(value, config, key, formData)}
             </div>
           );
         })}

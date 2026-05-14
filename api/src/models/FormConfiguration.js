@@ -62,6 +62,11 @@ const fieldSchema = new mongoose.Schema({
     type: String,
     maxlength: [200, 'Row title cannot exceed 200 characters']
   }],
+  firstColumnHeader: {
+    type: String,
+    maxlength: [200, 'First column header cannot exceed 200 characters'],
+    default: ''
+  },
   conditionalLogic: {
     field: Number,
     operator: {
