@@ -408,9 +408,9 @@ class BeneficiaryApplicationController {
       let beneficiary = await Beneficiary.findOne({ phone: req.user.phone, franchise: req.franchiseId, isDeleted: { $ne: true } });
       
       if (!beneficiary) {
-        // Get state from district's parent
+        // Get state from district's parent (may be null if districts have no parent state)
         const district = await Location.findById(user.profile.location.district);
-        if (!district || !district.parent) {
+        if (!district) {
           return ResponseHelper.error(res, 'Invalid location data. Please update your profile.', 400);
         }
 
@@ -419,7 +419,7 @@ class BeneficiaryApplicationController {
           name: req.user.name,
           phone: req.user.phone,
           franchise: req.franchiseId,
-          state: district.parent, // State is parent of district
+          state: district.parent || null,
           district: user.profile.location.district,
           area: user.profile.location.area,
           unit: user.profile.location.unit,
@@ -433,7 +433,7 @@ class BeneficiaryApplicationController {
       } else {
         // Update beneficiary location if it has changed in user profile
         const district = await Location.findById(user.profile.location.district);
-        beneficiary.state = district?.parent || beneficiary.state;
+        beneficiary.state = district?.parent || beneficiary.state || null;
         beneficiary.district = user.profile.location.district;
         beneficiary.area = user.profile.location.area;
         beneficiary.unit = user.profile.location.unit;
@@ -1289,14 +1289,14 @@ class BeneficiaryApplicationController {
       let beneficiary = await Beneficiary.findOne({ phone: req.user.phone, franchise: req.franchiseId, isDeleted: { $ne: true } });
       if (!beneficiary) {
         const district = await Location.findById(user.profile.location.district);
-        if (!district || !district.parent) {
+        if (!district) {
           return ResponseHelper.error(res, 'Invalid location data. Please update your profile.', 400);
         }
         beneficiary = new Beneficiary({
           name: req.user.name,
           phone: req.user.phone,
           franchise: req.franchiseId,
-          state: district.parent,
+          state: district.parent || null,
           district: user.profile.location.district,
           area: user.profile.location.area,
           unit: user.profile.location.unit,
