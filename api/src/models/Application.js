@@ -514,7 +514,7 @@ const applicationSchema = new mongoose.Schema({
   state: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Location',
-    required: true
+    default: null
   },
   district: {
     type: mongoose.Schema.Types.ObjectId,
