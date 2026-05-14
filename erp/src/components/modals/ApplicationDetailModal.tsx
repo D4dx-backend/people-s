@@ -831,7 +831,7 @@ export const ApplicationDetailModal: React.FC<ApplicationDetailModalProps> = ({
     return null;
   };
 
-  const renderTableValue = (value: any, fieldConfig: any, fieldKey?: string) => {
+  const renderTableValue = (value: any, fieldConfig: any, fieldKey?: string, formData?: any) => {
     const colCount = fieldConfig?.columns || 2;
     const baseRowCount = fieldConfig?.rows || 2;
     const columnTitles: string[] = fieldConfig?.columnTitles || [];
@@ -1050,7 +1050,7 @@ export const ApplicationDetailModal: React.FC<ApplicationDetailModalProps> = ({
           return (
             <div key={key} className="space-y-2">
               <label className="text-sm font-medium text-muted-foreground">{label}</label>
-              {renderTableValue(value, config, key)}
+              {renderTableValue(value, config, key, formData)}
             </div>
           );
         })}
