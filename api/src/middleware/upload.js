@@ -192,5 +192,30 @@ module.exports = {
   uploadMultiple,
   uploadFields,
   uploadMemory,
-  uploadSingleMemory
+  uploadSingleMemory,
+  uploadMultipleMemory: (fieldName = 'files', maxCount = 50) => {
+    return (req, res, next) => {
+      const uploadMiddleware = uploadMemory.array(fieldName, maxCount);
+      uploadMiddleware(req, res, (err) => {
+        if (err instanceof multer.MulterError) {
+          if (err.code === 'LIMIT_FILE_SIZE') {
+            return res.status(400).json({
+              success: false,
+              message: `File size exceeds the limit of ${maxFileSize} bytes`
+            });
+          }
+          if (err.code === 'LIMIT_UNEXPECTED_FILE') {
+            return res.status(400).json({
+              success: false,
+              message: `Too many files. Maximum allowed: ${maxCount}`
+            });
+          }
+          return res.status(400).json({ success: false, message: `Upload error: ${err.message}` });
+        } else if (err) {
+          return res.status(400).json({ success: false, message: err.message });
+        }
+        next();
+      });
+    };
+  }
 };

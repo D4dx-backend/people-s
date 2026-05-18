@@ -30,6 +30,16 @@ const Brochure = require('./Brochure');
 const Partner = require('./Partner');
 const Banner = require('./Banner');
 
+// Admin Report Module
+const AdminReport = require('./AdminReport');
+const AdminReportFormConfig = require('./AdminReportFormConfig');
+const AdminReportSubmission = require('./AdminReportSubmission');
+
+// Program Report Module
+const ProgramReport = require('./ProgramReport');
+const ProgramReportFormConfig = require('./ProgramReportFormConfig');
+const ProgramReportSubmission = require('./ProgramReportSubmission');
+
 // RBAC Models
 const Role = require('./Role');
 const Permission = require('./Permission');
@@ -69,6 +79,14 @@ module.exports = {
   Brochure,
   Partner,
   Banner,
+
+  AdminReport,
+  AdminReportFormConfig,
+  AdminReportSubmission,
+
+  ProgramReport,
+  ProgramReportFormConfig,
+  ProgramReportSubmission,
 
   Role,
   Permission,

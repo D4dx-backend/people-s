@@ -21,6 +21,7 @@ import {
   ImageIcon,
   CalendarClock,
   Bug,
+  ClipboardList,
   type LucideIcon,
 } from "lucide-react";
 
@@ -79,6 +80,20 @@ export const menuCategories: MenuCategory[] = [
         label: "Schemes",
         permissions: ["schemes.read.all", "schemes.read.assigned"],
         keywords: ["scheme", "plan"],
+      },
+      {
+        to: "/admin-reports",
+        icon: ClipboardList,
+        label: "Reports",
+        permissions: [],
+        keywords: ["report", "survey", "form", "fill"],
+      },
+      {
+        to: "/program-reports",
+        icon: ClipboardList,
+        label: "Program Reports",
+        permissions: [],
+        keywords: ["program", "report", "program report", "event"],
       },
       {
         label: "Applications",
@@ -522,6 +537,20 @@ export const limitedAdminMenuCategories: MenuCategory[] = [
   {
     label: "Projects Management",
     items: [
+      {
+        to: "/admin-reports",
+        icon: ClipboardList,
+        label: "Reports",
+        permissions: [],
+        keywords: ["report", "survey", "form", "fill"],
+      },
+      {
+        to: "/program-reports",
+        icon: ClipboardList,
+        label: "Program Reports",
+        permissions: [],
+        keywords: ["program", "report", "program report", "event"],
+      },
       {
         label: "Applications",
         icon: FileCheck,

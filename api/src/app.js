@@ -140,6 +140,7 @@ const donorFollowUpRoutes = require('./routes/donorFollowUpRoutes');
 const interviewRoutes = require('./routes/interviewRoutes');
 const paymentRoutes = require('./routes/paymentRoutes');
 const reportRoutes = require('./routes/reportRoutes');
+const adminReportRoutes = require('./routes/adminReportRoutes');
 const recurringPaymentRoutes = require('./routes/recurringPaymentRoutes');
 const speechRoutes = require('./routes/speechRoutes');
 const schemeTargetRoutes = require('./routes/schemeTargetRoutes');
@@ -183,6 +184,9 @@ app.use('/api/donor-followups', donorFollowUpRoutes);
 app.use('/api/interviews', interviewRoutes);
 app.use('/api/payments', paymentRoutes);
 app.use('/api/reports', reportRoutes);
+app.use('/api/admin-reports', adminReportRoutes);
+const programReportRoutes = require('./routes/programReportRoutes');
+app.use('/api/program-reports', programReportRoutes);
 app.use('/api/recurring-payments', recurringPaymentRoutes);
 app.use('/api/speech', speechRoutes);
 

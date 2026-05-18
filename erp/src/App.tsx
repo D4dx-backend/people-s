@@ -82,6 +82,12 @@ import Brochures from "./pages/Brochures";
 import Partners from "./pages/Partners";
 import Banners from "./pages/Banners";
 import FormBuilder from "./pages/FormBuilder";
+import AdminReports from "./pages/AdminReports";
+import AdminReportFormBuilder from "./pages/AdminReportFormBuilder";
+import AdminReportFill from "./pages/AdminReportFill";
+import ProgramReports from "./pages/ProgramReports";
+import ProgramReportFormBuilder from "./pages/ProgramReportFormBuilder";
+import ProgramReportFill from "./pages/ProgramReportFill";
 import Profile from "./pages/Profile";
 import GlobalAdmin from "./pages/GlobalAdmin";
 
@@ -119,6 +125,12 @@ const App = () => (
             <Route path="/schemes" element={<AuthGuard><Layout><Schemes /></Layout></AuthGuard>} />
             <Route path="/applications" element={<AuthGuard><Layout><Applications /></Layout></AuthGuard>} />
             <Route path="/form-builder" element={<AuthGuard><Layout><FormBuilder /></Layout></AuthGuard>} />
+            <Route path="/admin-reports" element={<AuthGuard><Layout><AdminReports /></Layout></AuthGuard>} />
+            <Route path="/admin-reports/form-builder" element={<AuthGuard><Layout><AdminReportFormBuilder /></Layout></AuthGuard>} />
+            <Route path="/admin-reports/fill" element={<AuthGuard><Layout><AdminReportFill /></Layout></AuthGuard>} />
+            <Route path="/program-reports" element={<AuthGuard><Layout><ProgramReports /></Layout></AuthGuard>} />
+            <Route path="/program-reports/form-builder" element={<AuthGuard><Layout><ProgramReportFormBuilder /></Layout></AuthGuard>} />
+            <Route path="/program-reports/fill" element={<AuthGuard><Layout><ProgramReportFill /></Layout></AuthGuard>} />
             <Route path="/applications/all" element={<AuthGuard><Layout><AllApplications /></Layout></AuthGuard>} />
             <Route path="/applications/pending" element={<AuthGuard><Layout><PendingApplications /></Layout></AuthGuard>} />
             <Route path="/applications/under-review" element={<AuthGuard><Layout><UnderReviewApplications /></Layout></AuthGuard>} />
