@@ -16,16 +16,46 @@ class FileUploadService {
       throw new Error('DigitalOcean Spaces configuration incomplete. Required: SPACES_ENDPOINT, SPACES_ACCESS_KEY_ID, SPACES_SECRET_ACCESS_KEY, SPACES_BUCKET_NAME');
     }
 
-    this.spacesEndpoint = new AWS.Endpoint(spacesEndpointValue);
-    
+    this.spacesEndpoint = new AWS.Endpoint(
+      spacesEndpointValue.startsWith('http') ? spacesEndpointValue : `https://${spacesEndpointValue}`
+    );
+
     this.s3 = new AWS.S3({
       endpoint: this.spacesEndpoint,
       accessKeyId: process.env.SPACES_ACCESS_KEY_ID,
       secretAccessKey: process.env.SPACES_SECRET_ACCESS_KEY,
-      region: regionValue || 'blr1'
+      region: regionValue || 'blr1',
     });
 
     this.bucketName = bucketNameValue;
+
+    // Optional CDN endpoint (e.g. d4dx-storage.blr1.cdn.digitaloceanspaces.com)
+    this.cdnEndpoint = getOptionalEnvVar('SPACES_CDN_ENDPOINT') || null;
+
+    // Optional base folder prefix within the bucket (e.g. "people-erp")
+    this.baseFolder = getOptionalEnvVar('SPACES_FOLDER') || '';
+  }
+
+  /**
+   * Resolve the full key path, prepending base folder if configured.
+   */
+  resolveKey(folder, fileName) {
+    const parts = [this.baseFolder, folder, fileName].filter(Boolean);
+    return parts.join('/');
+  }
+
+  /**
+   * Build the public URL for a stored key.
+   * Uses the CDN endpoint when SPACES_CDN_ENDPOINT is configured,
+   * otherwise falls back to the regular Spaces virtual-hosted URL.
+   */
+  getPublicUrl(key) {
+    if (this.cdnEndpoint) {
+      const cdn = this.cdnEndpoint.replace(/^https?:\/\//, '').replace(/\/$/, '');
+      return `https://${cdn}/${key}`;
+    }
+    const host = this.spacesEndpoint.hostname.replace(/^https?:\/\//, '');
+    return `https://${this.bucketName}.${host}/${key}`;
   }
 
   /**
@@ -44,7 +74,7 @@ class FileUploadService {
       const timestamp = Date.now();
       const sanitizedName = file.originalname.replace(/[^a-zA-Z0-9.-]/g, '_');
       const fileName = `${timestamp}-${sanitizedName}`;
-      const fileKey = `${folder}/${fileName}`;
+      const fileKey = this.resolveKey(folder, fileName);
 
       // Read file buffer
       const fileContent = fs.readFileSync(file.path);
@@ -72,7 +102,7 @@ class FileUploadService {
 
       return {
         success: true,
-        url: result.Location,
+        url: this.getPublicUrl(result.Key),
         key: result.Key,
         bucket: result.Bucket,
         fileName: fileName,
@@ -215,9 +245,10 @@ class FileUploadService {
    */
   async listFiles(folder = '', maxKeys = 1000) {
     try {
+      const prefix = [this.baseFolder, folder].filter(Boolean).join('/');
       const params = {
         Bucket: this.bucketName,
-        Prefix: folder,
+        Prefix: prefix,
         MaxKeys: maxKeys
       };
 
@@ -265,6 +296,55 @@ class FileUploadService {
       };
     } catch (error) {
       console.error('❌ Generate Presigned URL Error:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Upload a file directly from a Buffer (e.g. after sharp compression).
+   * @param {Buffer} buffer          File content as a Buffer
+   * @param {string} originalName    Original filename (used to derive stored name)
+   * @param {string} mimetype        MIME type of the buffer content
+   * @param {string} ext             File extension WITHOUT the leading dot (e.g. 'jpg')
+   * @param {string} folder          Destination folder in the bucket
+   * @param {number} originalSize    Original file size before compression (for metadata)
+   * @returns {Promise<Object>} Upload result with CDN URL and key
+   */
+  async uploadFileFromBuffer(buffer, originalName, mimetype, ext, folder = 'uploads', originalSize = 0) {
+    try {
+      const timestamp = Date.now();
+
+      const baseName = originalName.replace(/[^a-zA-Z0-9.-]/g, '_').replace(/\.[^.]+$/, '');
+      const fileName = `${timestamp}-${baseName}.${ext}`;
+      const fileKey = this.resolveKey(folder, fileName);
+
+      const params = {
+        Bucket: this.bucketName,
+        Key: fileKey,
+        Body: buffer,
+        ACL: 'public-read',
+        ContentType: mimetype,
+        Metadata: {
+          originalName,
+          uploadedAt: new Date().toISOString()
+        }
+      };
+
+      const result = await this.s3.upload(params).promise();
+
+      return {
+        success: true,
+        url: this.getPublicUrl(result.Key),
+        key: result.Key,
+        bucket: result.Bucket,
+        fileName,
+        originalName,
+        size: buffer.length,
+        originalSize,
+        mimetype
+      };
+    } catch (error) {
+      console.error('❌ Buffer Upload Error:', error);
       throw error;
     }
   }
