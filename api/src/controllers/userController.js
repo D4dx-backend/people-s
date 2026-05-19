@@ -15,6 +15,9 @@ class UserController {
         role,
         isActive,
         region,
+        district,
+        area,
+        unit,
         search,
         page = 1,
         limit = 10,
@@ -68,6 +71,38 @@ class UserController {
           delete query.$or;
         } else {
           query['adminScope.regions'] = region;
+        }
+      }
+
+      // Location-specific filters (district / area / unit)
+      if (district) {
+        query.$or = [
+          { 'adminScope.district': district },
+          { 'profile.location.district': district }
+        ];
+      }
+      if (area) {
+        const areaConditions = [
+          { 'adminScope.area': area },
+          { 'profile.location.area': area }
+        ];
+        if (query.$or) {
+          query.$and = [...(query.$and || []), { $or: query.$or }, { $or: areaConditions }];
+          delete query.$or;
+        } else {
+          query.$or = areaConditions;
+        }
+      }
+      if (unit) {
+        const unitConditions = [
+          { 'adminScope.unit': unit },
+          { 'profile.location.unit': unit }
+        ];
+        if (query.$or) {
+          query.$and = [...(query.$and || []), { $or: query.$or }, { $or: unitConditions }];
+          delete query.$or;
+        } else {
+          query.$or = unitConditions;
         }
       }
 

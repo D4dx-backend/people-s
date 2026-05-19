@@ -233,6 +233,9 @@ const userSchemas = {
     ),
     isActive: Joi.boolean(),
     region: commonSchemas.objectId,
+    district: commonSchemas.objectId,
+    area: commonSchemas.objectId,
+    unit: commonSchemas.objectId,
     search: Joi.string().trim().min(2).max(100)
   }).concat(commonSchemas.pagination)
 };
