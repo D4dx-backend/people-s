@@ -13,7 +13,7 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { UserModal } from "@/components/modals/UserModal";
 import { DeleteUserModal } from "@/components/modals/DeleteUserModal";
 import { UserDetailsModal } from "@/components/modals/UserDetailsModal";
-import { users as usersApi, locations, type User, type Location } from "@/lib/api";
+import { users as usersApi, type User, type Location } from "@/lib/api";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "@/hooks/use-toast";
 import { useRBAC } from "@/hooks/useRBAC";
@@ -60,13 +60,20 @@ export default function UserManagement() {
   const [loadingLocations, setLoadingLocations] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
   const [selectedRole, setSelectedRole] = useState<string>("all");
   const [selectedStatus, setSelectedStatus] = useState<string>("all");
+  const [selectedDistrict, setSelectedDistrict] = useState<string>("all");
+  const [selectedArea, setSelectedArea] = useState<string>("all");
+  const [selectedUnit, setSelectedUnit] = useState<string>("all");
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [totalItems, setTotalItems] = useState(0);
   const [stats, setStats] = useState<any>(null);
   const [locationMap, setLocationMap] = useState<Map<string, Location>>(new Map());
+  const [districtList, setDistrictList] = useState<Location[]>([]);
+  const [areaList, setAreaList] = useState<Location[]>([]);
+  const [unitList, setUnitList] = useState<Location[]>([]);
 
   // Modal states
   const [showUserModal, setShowUserModal] = useState(false);
@@ -75,15 +82,85 @@ export default function UserManagement() {
   const [selectedUser, setSelectedUser] = useState<User | undefined>(undefined);
   const [modalMode, setModalMode] = useState<"create" | "edit">("create");
 
+  // Debounce search — only trigger API when empty or ≥2 chars
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (searchTerm.length === 0 || searchTerm.length >= 2) {
+        setDebouncedSearch(searchTerm);
+        setCurrentPage(1);
+      }
+    }, 400);
+    return () => clearTimeout(timer);
+  }, [searchTerm]);
+
+  // Reset area/unit when role changes to roles that don't need them
+  useEffect(() => {
+    setSelectedDistrict("all");
+    setSelectedArea("all");
+    setSelectedUnit("all");
+    setCurrentPage(1);
+  }, [selectedRole]);
+
+  // Helper: fetch locations by type with optional parent filter
+  const fetchLocationsByType = async (type: string, parent?: string): Promise<Location[]> => {
+    const token = localStorage.getItem('token');
+    const slug = localStorage.getItem('franchiseSlug') || (import.meta as any).env?.VITE_FRANCHISE_SLUG;
+    const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+    if (token) headers['Authorization'] = `Bearer ${token}`;
+    if (slug) headers['X-Franchise-Slug'] = slug;
+    const url = parent
+      ? `/api/locations?type=${type}&parent=${parent}&isActive=true&limit=500`
+      : `/api/locations?type=${type}&isActive=true&limit=500`;
+    const res = await fetch(url, { headers });
+    const data = await res.json();
+    return (data.success && data.data?.locations) ? data.data.locations : [];
+  };
+
+  // Reset area+unit when district changes, and load areas for that district
+  useEffect(() => {
+    setSelectedArea("all");
+    setSelectedUnit("all");
+    if (selectedDistrict !== 'all') {
+      fetchLocationsByType('area', selectedDistrict)
+        .then(list => setAreaList(list))
+        .catch(() => {});
+    } else {
+      setAreaList([]);
+    }
+  }, [selectedDistrict]);
+
+  // Reset unit when area changes, and load units for that area
+  useEffect(() => {
+    setSelectedUnit("all");
+    if (selectedArea !== 'all') {
+      fetchLocationsByType('unit', selectedArea)
+        .then(list => setUnitList(list))
+        .catch(() => {});
+    } else {
+      setUnitList([]);
+    }
+  }, [selectedArea]);
+
+  // Normalize location id: prefer Mongoose's virtual `id`, fall back to `_id`
+  const locId = (loc: any): string => String(loc.id || loc._id);
+
+  // Determine which location filters to show based on selected role
+  const showDistrictFilter = ['district_admin', 'area_admin', 'unit_admin', 'project_coordinator', 'scheme_coordinator', 'beneficiary'].includes(selectedRole);
+  const showAreaFilter = ['area_admin', 'unit_admin', 'beneficiary'].includes(selectedRole);
+  const showUnitFilter = ['unit_admin', 'beneficiary'].includes(selectedRole);
+
   const { exportCSV, exportPDF, printData, exporting } = useExport({
     apiCall: (params) => usersApi.export(params),
     filenamePrefix: 'users',
     pdfTitle: 'Users Report',
     pdfColumns: userExportColumns,
     getFilterParams: () => ({
-      search: searchTerm || undefined,
+      search: debouncedSearch || undefined,
       role: selectedRole !== 'all' ? selectedRole : undefined,
       status: selectedStatus !== 'all' ? selectedStatus : undefined,
+      district: selectedDistrict !== 'all' ? selectedDistrict : undefined,
+      area: selectedArea !== 'all' ? selectedArea : undefined,
+      unit: selectedUnit !== 'all' ? selectedUnit : undefined,
     }),
   });
 
@@ -105,8 +182,11 @@ export default function UserManagement() {
         params.isActive = false;
       }
       // If selectedStatus is "all", don't add isActive filter at all
-      
-      if (searchTerm) params.search = searchTerm;
+
+      if (debouncedSearch) params.search = debouncedSearch;
+      if (selectedDistrict !== 'all') params.district = selectedDistrict;
+      if (selectedArea !== 'all') params.area = selectedArea;
+      if (selectedUnit !== 'all') params.unit = selectedUnit;
 
       const response = await usersApi.getAll(params);
       
@@ -139,41 +219,47 @@ export default function UserManagement() {
   };
 
   const loadLocations = async () => {
+    setLoadingLocations(true);
+
+    const token = localStorage.getItem('token');
+    const slug = localStorage.getItem('franchiseSlug') || (import.meta as any).env?.VITE_FRANCHISE_SLUG;
+    const buildHeaders = (): Record<string, string> => {
+      const h: Record<string, string> = { 'Content-Type': 'application/json' };
+      if (token) h['Authorization'] = `Bearer ${token}`;
+      if (slug) h['X-Franchise-Slug'] = slug;
+      return h;
+    };
+
+    // Fetch each location type with isolated error handling so one failure doesn't block others
+    const fetchLocType = async (type: string, limit = 500) => {
+      const res = await fetch(`/api/locations?type=${type}&limit=${limit}`, { headers: buildHeaders() });
+      const data = await res.json();
+      return (data.success && data.data?.locations) ? data.data.locations : [];
+    };
+
+    // Districts are critical for the filter dropdown
     try {
-      setLoadingLocations(true);
-      const response = await locations.getAll({ limit: 1000 });
-      if (response.success && response.data) {
-        const map = new Map<string, Location>();
-        response.data.locations.forEach((loc: Location) => {
-          // Store by both id and _id for compatibility (as strings)
-          const id = loc.id || (loc as any)._id;
-          const _id = (loc as any)._id || loc.id;
-          
-          if (id) {
-            // Store as string
-            map.set(String(id), loc);
-            // Also store as original type if it's not already a string
-            if (typeof id !== 'string') {
-              map.set(id as any, loc);
-            }
-          }
-          
-          if (_id && String(_id) !== String(id)) {
-            // Store as string
-            map.set(String(_id), loc);
-            // Also store as original type if it's not already a string
-            if (typeof _id !== 'string') {
-              map.set(_id as any, loc);
-            }
-          }
-        });
-        console.log('📍 Loaded locations:', map.size, 'locations');
-        console.log('📍 Sample location keys:', Array.from(map.keys()).slice(0, 5));
-        console.log('📍 Sample location (first):', response.data.locations[0]);
-        setLocationMap(map);
-      }
-    } catch (err: any) {
-      console.error('Failed to load locations:', err);
+      const districts = await fetchLocType('district', 500);
+      setDistrictList(districts);
+    } catch (err) {
+      console.error('Failed to load districts:', err);
+    }
+
+    // Build location name-lookup map (non-critical)
+    try {
+      const [districts, areas, units] = await Promise.all([
+        fetchLocType('district', 500),
+        fetchLocType('area', 2000),
+        fetchLocType('unit', 2000),
+      ]);
+      const map = new Map<string, Location>();
+      [...districts, ...areas, ...units].forEach((loc: any) => {
+        const id = String(loc.id || loc._id);
+        if (id) map.set(id, loc);
+      });
+      setLocationMap(map);
+    } catch (err) {
+      // locationMap is non-critical; swallow silently
     } finally {
       setLoadingLocations(false);
     }
@@ -192,7 +278,7 @@ export default function UserManagement() {
     if (canViewUsers) {
       loadUsers();
     }
-  }, [canViewUsers, currentPage, selectedRole, selectedStatus, searchTerm]);
+  }, [canViewUsers, currentPage, selectedRole, selectedStatus, debouncedSearch, selectedDistrict, selectedArea, selectedUnit]);
 
   // Access denied check - must be after all hooks
   if (!canViewUsers) {
@@ -394,8 +480,8 @@ export default function UserManagement() {
       )}
 
       {/* Filters */}
-      <div className="flex gap-3 items-center">
-        <div className="flex-1">
+      <div className="flex flex-wrap gap-3 items-center">
+        <div className="flex-1 min-w-[200px]">
           <div className="relative">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
             <Input
@@ -432,6 +518,45 @@ export default function UserManagement() {
             <SelectItem value="inactive">Inactive</SelectItem>
           </SelectContent>
         </Select>
+        {showDistrictFilter && (
+          <Select value={selectedDistrict} onValueChange={setSelectedDistrict}>
+            <SelectTrigger className="w-full sm:w-[180px]">
+              <SelectValue placeholder="All Districts" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Districts</SelectItem>
+              {districtList.map((d) => (
+                <SelectItem key={locId(d)} value={locId(d)}>{d.name}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        )}
+        {showAreaFilter && (
+          <Select value={selectedArea} onValueChange={setSelectedArea} disabled={selectedDistrict === 'all'}>
+            <SelectTrigger className="w-full sm:w-[180px]">
+              <SelectValue placeholder={selectedDistrict === 'all' ? 'Select District first' : 'All Areas'} />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Areas</SelectItem>
+              {areaList.map((a) => (
+                <SelectItem key={locId(a)} value={locId(a)}>{a.name}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        )}
+        {showUnitFilter && (
+          <Select value={selectedUnit} onValueChange={setSelectedUnit} disabled={selectedArea === 'all'}>
+            <SelectTrigger className="w-full sm:w-[180px]">
+              <SelectValue placeholder={selectedArea === 'all' ? 'Select Area first' : 'All Units'} />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Units</SelectItem>
+              {unitList.map((u) => (
+                <SelectItem key={locId(u)} value={locId(u)}>{u.name}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        )}
       </div>
 
       {/* Users Table */}
