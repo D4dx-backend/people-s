@@ -14,6 +14,30 @@ import { applications as applicationsApi, interviews } from '../../lib/api';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
 
+// Button that auto-syncs application top-level status based on current stage states
+const SyncStatusButton: React.FC<{ applicationId: string; onSynced: () => void }> = ({ applicationId, onSynced }) => {
+  const { toast } = useToast();
+  const [syncing, setSyncing] = useState(false);
+  const handleSync = async () => {
+    setSyncing(true);
+    try {
+      const res = await applicationsApi.syncStatus(applicationId);
+      toast({ title: 'Status Synced', description: (res as any)?.message || 'Status updated' });
+      onSynced();
+    } catch (err: any) {
+      toast({ title: 'Error', description: err.message || 'Failed to sync status', variant: 'destructive' });
+    } finally {
+      setSyncing(false);
+    }
+  };
+  return (
+    <Button size="sm" variant="outline" onClick={handleSync} disabled={syncing} className="h-6 text-[11px] px-2 border-orange-300 text-orange-700 hover:bg-orange-50">
+      {syncing ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : <RotateCcw className="h-3 w-3 mr-1" />}
+      Sync Status
+    </Button>
+  );
+};
+
 // Separate component for stage item to avoid hooks in map
 const StageItem: React.FC<{
   stage: any;
@@ -46,7 +70,17 @@ const StageItem: React.FC<{
     'state_admin': 'districtAdmin'
   };
   const myCommentField = userRole ? roleToCommentField[userRole] : null;
-  
+
+  // Stage-level role gating: a user can act on this stage only if their role is in stage.allowedRoles
+  // super_admin / state_admin always allowed; if allowedRoles is empty or undefined, fall back to allowed (legacy behaviour)
+  const allowedRoles: string[] = Array.isArray(stage.allowedRoles) ? stage.allowedRoles : [];
+  const canActOnStage = !!userRole && (
+    userRole === 'super_admin' ||
+    userRole === 'state_admin' ||
+    allowedRoles.length === 0 ||
+    allowedRoles.includes(userRole)
+  );
+
   const handleUpdateStage = async (newStatus: string) => {
     setUpdating(true);
     try {
@@ -215,7 +249,7 @@ const StageItem: React.FC<{
                           </p>
                         )}
                       </div>
-                    ) : isMyField && !showAction ? (
+                    ) : isMyField && canActOnStage && !showAction ? (
                       <div className="flex gap-1.5 mt-1">
                         <Textarea
                           placeholder="Add your comment..."
@@ -265,7 +299,7 @@ const StageItem: React.FC<{
                       <a href={doc.uploadedFile} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline flex items-center gap-0.5">
                         <Eye className="h-3 w-3" /> View
                       </a>
-                    ) : !showAction ? (
+                    ) : !showAction && canActOnStage ? (
                       <>
                         <input
                           type="file"
@@ -303,8 +337,8 @@ const StageItem: React.FC<{
             </div>
           )}
           
-          {/* Update Stage Form - Compact */}
-          {(stage.status === 'pending' || stage.status === 'in_progress') && !showAction && (
+          {/* Update Stage Form - Compact (hidden if user role not allowed on this stage) */}
+          {(stage.status === 'pending' || stage.status === 'in_progress') && !showAction && canActOnStage && (
             <div className="mt-2">
               {!showUpdateForm ? (
                 <Button
@@ -351,6 +385,13 @@ const StageItem: React.FC<{
                 </div>
               )}
             </div>
+          )}
+
+          {/* Restriction hint when user cannot act on this stage */}
+          {(stage.status === 'pending' || stage.status === 'in_progress') && !showAction && !canActOnStage && allowedRoles.length > 0 && (
+            <p className="text-[11px] text-muted-foreground italic mt-2">
+              You do not have permission to act on this stage. Allowed roles: {allowedRoles.join(', ')}
+            </p>
           )}
         </div>
       </div>
@@ -1396,10 +1437,18 @@ export const ApplicationDetailModal: React.FC<ApplicationDetailModalProps> = ({
                     </div>
                     <div>
                       <label className="text-sm font-medium text-muted-foreground">Status</label>
-                      <div className="mt-1">
+                      <div className="mt-1 flex items-center gap-2 flex-wrap">
                         <Badge className={getStatusColor(application.status)}>
                           {application.status.replace('_', ' ').toUpperCase()}
                         </Badge>
+                        {/* Sync Status button — visible when application is stuck in pending/under_review
+                            but stages may have progressed further */}
+                        {['pending', 'under_review', 'interview_completed'].includes(application.status) && (
+                          <SyncStatusButton
+                            applicationId={application._id}
+                            onSynced={() => fetchApplicationDetails()}
+                          />
+                        )}
                       </div>
                     </div>
                     <div>

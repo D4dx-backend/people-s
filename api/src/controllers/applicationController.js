@@ -1510,6 +1510,19 @@ const revertApplicationStage = async (req, res) => {
 };
 
 // ==============================
+// HELPER: Verify role can act on a specific stage
+// (super_admin / state_admin are always allowed)
+// ==============================
+const canRoleActOnStage = (userRole, stage) => {
+  if (!userRole) return false;
+  if (userRole === 'super_admin' || userRole === 'state_admin') return true;
+  const allowed = stage && Array.isArray(stage.allowedRoles) ? stage.allowedRoles : [];
+  // If stage has no allowedRoles configured, fall back to "any admin" (legacy behaviour)
+  if (allowed.length === 0) return true;
+  return allowed.includes(userRole);
+};
+
+// ==============================
 // UPDATE APPLICATION STAGE STATUS
 // ==============================
 const updateApplicationStage = async (req, res) => {
@@ -1522,6 +1535,14 @@ const updateApplicationStage = async (req, res) => {
       return res.status(404).json({
         success: false,
         message: 'Application not found'
+      });
+    }
+
+    // Enforce regional scope (unit/area/district admins only see their own)
+    if (!hasAccessToApplication(getEffectiveUserForFilter(req), application)) {
+      return res.status(403).json({
+        success: false,
+        message: 'You do not have access to this application'
       });
     }
 
@@ -1538,6 +1559,14 @@ const updateApplicationStage = async (req, res) => {
     }
 
     const stage = application.applicationStages[stageIndex];
+
+    // Enforce stage-level role restriction (e.g. unit_admin cannot complete Final Review)
+    if (!canRoleActOnStage(req.user.role, stage)) {
+      return res.status(403).json({
+        success: false,
+        message: `Your role (${req.user.role}) is not permitted to act on stage "${stage.name}". Allowed roles: ${(stage.allowedRoles || []).join(', ')}`
+      });
+    }
 
     // Validate status
     const validStatuses = ['pending', 'in_progress', 'completed', 'skipped'];
@@ -1594,6 +1623,45 @@ const updateApplicationStage = async (req, res) => {
       application.applicationStages[stageIndex].completedAt = new Date();
       application.applicationStages[stageIndex].completedBy = req.user._id;
     }
+
+    // ======================================================
+    // AUTO-SYNC APPLICATION STATUS FROM STAGE COMPLETION
+    // Maps stage pipeline progress to the top-level status field
+    // so the list view always reflects the real state.
+    // ======================================================
+    if (status === 'completed') {
+      const stageNameLower = (stage.name || '').toLowerCase().trim();
+      const terminalStatuses = ['rejected', 'cancelled'];
+
+      if (!terminalStatuses.includes(application.status)) {
+        const allStages = application.applicationStages;
+
+        // Check whether ALL stages are now done
+        const allDone = allStages.every(s => ['completed', 'skipped'].includes(s.status));
+
+        if (allDone && !['approved', 'disbursed'].includes(application.status)) {
+          // Every stage finished → mark the whole application completed
+          application.status = 'completed';
+        } else if (
+          (stageNameLower.includes('final review') || stageNameLower.includes('committee')) &&
+          !['approved', 'disbursed', 'completed'].includes(application.status)
+        ) {
+          // Final Review stage done → waiting for formal approval action
+          application.status = 'pending_committee_approval';
+        } else if (
+          stageNameLower.includes('interview') &&
+          !['approved', 'disbursed', 'completed', 'pending_committee_approval'].includes(application.status)
+        ) {
+          application.status = 'interview_completed';
+        } else if (application.status === 'pending') {
+          // First stage completed → application is now actively being reviewed
+          application.status = 'under_review';
+        }
+        // If status is already under_review / interview_scheduled etc., leave it unchanged
+        // until a more meaningful transition above fires.
+      }
+    }
+    // ======================================================
 
     // Add to stage history
     if (!application.stageHistory) {
@@ -1668,6 +1736,14 @@ const addStageComment = async (req, res) => {
       });
     }
 
+    // Enforce regional scope
+    if (!hasAccessToApplication(getEffectiveUserForFilter(req), application)) {
+      return res.status(403).json({
+        success: false,
+        message: 'You do not have access to this application'
+      });
+    }
+
     const stageIndex = application.applicationStages.findIndex(
       stage => stage._id.toString() === stageId
     );
@@ -1679,6 +1755,14 @@ const addStageComment = async (req, res) => {
     }
 
     const stage = application.applicationStages[stageIndex];
+
+    // Enforce stage-level role restriction
+    if (!canRoleActOnStage(userRole, stage)) {
+      return res.status(403).json({
+        success: false,
+        message: `Your role (${userRole}) is not permitted to comment on stage "${stage.name}". Allowed roles: ${(stage.allowedRoles || []).join(', ')}`
+      });
+    }
 
     // Determine which comment field to use
     let commentField = roleToFieldMap[userRole];
@@ -1753,6 +1837,14 @@ const uploadStageDocument = async (req, res) => {
       });
     }
 
+    // Enforce regional scope
+    if (!hasAccessToApplication(getEffectiveUserForFilter(req), application)) {
+      return res.status(403).json({
+        success: false,
+        message: 'You do not have access to this application'
+      });
+    }
+
     const stageIndex = application.applicationStages.findIndex(
       stage => stage._id.toString() === stageId
     );
@@ -1764,6 +1856,23 @@ const uploadStageDocument = async (req, res) => {
     }
 
     const stage = application.applicationStages[stageIndex];
+
+    // Enforce stage-level role restriction (cannot upload to stages outside your scope)
+    if (!canRoleActOnStage(req.user.role, stage)) {
+      return res.status(403).json({
+        success: false,
+        message: `Your role (${req.user.role}) is not permitted to upload documents on stage "${stage.name}". Allowed roles: ${(stage.allowedRoles || []).join(', ')}`
+      });
+    }
+
+    // Prevent uploads to already completed/skipped stages
+    if (['completed', 'skipped'].includes(stage.status)) {
+      return res.status(400).json({
+        success: false,
+        message: `Cannot upload documents to a ${stage.status} stage`
+      });
+    }
+
     const docIdx = parseInt(docIndex);
 
     if (isNaN(docIdx) || docIdx < 0 || docIdx >= (stage.requiredDocuments || []).length) {
@@ -2046,6 +2155,72 @@ const modifyApprovedApplication = async (req, res) => {
   }
 };
 
+// ==============================
+// SYNC APPLICATION STATUS FROM CURRENT STAGES
+// Fixes applications stuck in 'pending' when stages are already completed
+// POST /:id/sync-status — callable by admins
+// ==============================
+const syncApplicationStatus = async (req, res) => {
+  try {
+    const application = await Application.findOne({ _id: req.params.id, franchise: req.franchiseId });
+    if (!application) {
+      return res.status(404).json({ success: false, message: 'Application not found' });
+    }
+
+    if (!hasAccessToApplication(getEffectiveUserForFilter(req), application)) {
+      return res.status(403).json({ success: false, message: 'You do not have access to this application' });
+    }
+
+    // Don't touch terminal / explicitly-set statuses
+    if (['rejected', 'cancelled', 'approved', 'disbursed'].includes(application.status)) {
+      return res.json({
+        success: true,
+        message: `Status is already '${application.status}' — no change needed`,
+        data: { status: application.status }
+      });
+    }
+
+    const stages = application.applicationStages || [];
+    const allDone = stages.length > 0 && stages.every(s => ['completed', 'skipped'].includes(s.status));
+    const hasFinalReviewDone = stages.some(s =>
+      ['completed', 'skipped'].includes(s.status) &&
+      (s.name || '').toLowerCase().includes('final review')
+    );
+    const hasInterviewDone = stages.some(s =>
+      ['completed', 'skipped'].includes(s.status) &&
+      (s.name || '').toLowerCase().includes('interview')
+    );
+    const anyCompleted = stages.some(s => ['completed', 'skipped'].includes(s.status));
+
+    const oldStatus = application.status;
+
+    if (allDone) {
+      application.status = 'completed';
+    } else if (hasFinalReviewDone) {
+      application.status = 'pending_committee_approval';
+    } else if (hasInterviewDone) {
+      application.status = 'interview_completed';
+    } else if (anyCompleted && application.status === 'pending') {
+      application.status = 'under_review';
+    }
+
+    if (application.status !== oldStatus) {
+      await application.save();
+    }
+
+    res.json({
+      success: true,
+      message: application.status !== oldStatus
+        ? `Status updated from '${oldStatus}' → '${application.status}'`
+        : 'Status is already up-to-date',
+      data: { oldStatus, status: application.status }
+    });
+  } catch (error) {
+    console.error('Error syncing application status:', error);
+    res.status(500).json({ success: false, message: error.message || 'Server error' });
+  }
+};
+
 const recalculateScore = async (req, res) => {
   try {
     const application = await Application.findById(req.params.id);
@@ -2098,5 +2273,6 @@ module.exports = {
   uploadStageDocument,
   getRenewalDueApplications,
   getRenewalHistory,
-  recalculateScore
+  recalculateScore,
+  syncApplicationStatus
 };

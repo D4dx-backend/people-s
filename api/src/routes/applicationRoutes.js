@@ -16,7 +16,8 @@ const {
   uploadStageDocument,
   getRenewalDueApplications,
   getRenewalHistory,
-  recalculateScore
+  recalculateScore,
+  syncApplicationStatus
 } = require('../controllers/applicationController');
 const { authenticate, crossFranchiseResolver, authorize } = require('../middleware/auth');
 const { syncApplicationStages } = require('../middleware/syncStages');
@@ -225,6 +226,14 @@ router.post('/:id/recalculate-score',
   authenticate, crossFranchiseResolver,
   authorize('super_admin', 'state_admin', 'district_admin', 'area_admin', 'unit_admin', 'project_coordinator', 'scheme_coordinator'),
   recalculateScore
+);
+
+// Sync top-level application status from current stage completion state
+// Useful to fix applications stuck in 'pending' when stages are already completed
+router.post('/:id/sync-status',
+  authenticate, crossFranchiseResolver,
+  authorize('super_admin', 'state_admin', 'district_admin', 'area_admin', 'unit_admin'),
+  syncApplicationStatus
 );
 
 // Revert application to a previous stage
