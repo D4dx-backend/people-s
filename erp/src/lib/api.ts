@@ -1281,6 +1281,10 @@ export const applications = {
     }
     return response.json();
   },
+  syncStatus: (id: string) =>
+    extendedApiClient.request(`/applications/${id}/sync-status`, {
+      method: 'POST',
+    }),
   // Renewal endpoints
   getRenewalDue: (params?: any) => {
     const searchParams = new URLSearchParams();
