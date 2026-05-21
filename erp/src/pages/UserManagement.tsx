@@ -564,7 +564,7 @@ export default function UserManagement() {
       {/* Users Table */}
       <Card>
         <CardHeader>
-          <CardTitle>Users ({userList.length})</CardTitle>
+          <CardTitle>Users ({totalItems})</CardTitle>
         </CardHeader>
         <CardContent>
           {loading ? (

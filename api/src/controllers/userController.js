@@ -762,10 +762,28 @@ class UserController {
     try {
       const currentUser = req.user;
 
-      // Build query based on user's access level
+      // ── Franchise scoping ────────────────────────────────────────────────
+      // Only count users that belong to this franchise
+      let franchiseScopedIds = null;
+      const franchiseReadFilter = buildFranchiseReadFilter(req);
+      if (Object.keys(franchiseReadFilter).length > 0) {
+        franchiseScopedIds = await UserFranchise.find({
+          ...franchiseReadFilter,
+          isActive: true,
+        }).distinct('user');
+      }
+
+      // ── Base match query ─────────────────────────────────────────────────
       let matchQuery = {};
-      if (currentUser.role !== 'state_admin') {
-        if (currentUser.adminScope?.regions) {
+
+      // Apply franchise scope
+      if (franchiseScopedIds !== null) {
+        matchQuery._id = { $in: franchiseScopedIds };
+      }
+
+      // Apply region scope for non-super/state admins
+      if (currentUser.role !== 'super_admin' && currentUser.role !== 'state_admin') {
+        if (currentUser.adminScope?.regions?.length > 0) {
           matchQuery['adminScope.regions'] = { $in: currentUser.adminScope.regions };
         }
       }
