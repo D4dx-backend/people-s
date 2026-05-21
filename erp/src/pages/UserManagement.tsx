@@ -108,9 +108,10 @@ export default function UserManagement() {
     const headers: Record<string, string> = { 'Content-Type': 'application/json' };
     if (token) headers['Authorization'] = `Bearer ${token}`;
     if (slug) headers['X-Franchise-Slug'] = slug;
+    const base = import.meta.env.VITE_API_URL;
     const url = parent
-      ? `/api/locations?type=${type}&parent=${parent}&isActive=true&limit=500`
-      : `/api/locations?type=${type}&isActive=true&limit=500`;
+      ? `${base}/locations?type=${type}&parent=${parent}&isActive=true&limit=500`
+      : `${base}/locations?type=${type}&isActive=true&limit=500`;
     const res = await fetch(url, { headers });
     const data = await res.json();
     return (data.success && data.data?.locations) ? data.data.locations : [];
@@ -223,6 +224,7 @@ export default function UserManagement() {
 
     const token = localStorage.getItem('token');
     const slug = localStorage.getItem('franchiseSlug') || (import.meta as any).env?.VITE_FRANCHISE_SLUG;
+    const base = import.meta.env.VITE_API_URL;
     const buildHeaders = (): Record<string, string> => {
       const h: Record<string, string> = { 'Content-Type': 'application/json' };
       if (token) h['Authorization'] = `Bearer ${token}`;
@@ -232,7 +234,7 @@ export default function UserManagement() {
 
     // Fetch each location type with isolated error handling so one failure doesn't block others
     const fetchLocType = async (type: string, limit = 500) => {
-      const res = await fetch(`/api/locations?type=${type}&limit=${limit}`, { headers: buildHeaders() });
+      const res = await fetch(`${base}/locations?type=${type}&limit=${limit}`, { headers: buildHeaders() });
       const data = await res.json();
       return (data.success && data.data?.locations) ? data.data.locations : [];
     };

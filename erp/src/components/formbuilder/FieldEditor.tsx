@@ -5,7 +5,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Card, CardContent } from "@/components/ui/card";
+import { Card } from "@/components/ui/card";
 import { useState } from "react";
 import { 
   type ScoringRule, 
@@ -56,8 +56,7 @@ export function FieldEditor({ field, onUpdate, onDelete, onMoveUp, onMoveDown, a
   const [showScoring, setShowScoring] = useState(false);
 
   return (
-    <Card className="group hover:shadow-md transition-shadow">
-      <CardContent className="p-3">
+    <Card className="group hover:shadow-md transition-shadow p-3">
         <div className="space-y-3">
           {/* Compact Header Row */}
           <div className="flex items-center gap-2">
@@ -611,7 +610,6 @@ export function FieldEditor({ field, onUpdate, onDelete, onMoveUp, onMoveDown, a
             </div>
           )}
         </div>
-      </CardContent>
     </Card>
   );
 }

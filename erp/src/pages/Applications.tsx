@@ -184,7 +184,7 @@ export default function Applications() {
   const canApproveApplications = hasPermission('applications.approve');
   
   // Only area_admin, state_admin, and super_admin can review/approve applications
-  const canReviewApplications = user && ['super_admin', 'state_admin', 'area_admin'].includes(user.role);
+  const canReviewApplications = user && ['super_admin', 'state_admin', 'district_admin'].includes(user.role);
 
   // Check if user has admin permissions
   const hasAdminAccess = user && ['super_admin', 'state_admin', 'district_admin', 'area_admin', 'unit_admin'].includes(user.role);
@@ -440,42 +440,36 @@ export default function Applications() {
       return null;
     }
 
-    // Check if scheme requires interview
-    const requiresInterview = app.scheme?.requiresInterview || false;
+    const hasInterviewScheduled = app.interview?.scheduledDate != null;
 
     switch (app.status) {
       case 'pending':
       case 'under_review':
       case 'field_verification':
-        if (requiresInterview) {
-          // Show schedule interview button for schemes that require interviews
+      case 'on_hold':
+        // Interview process is open at ALL active stages — any reviewer can schedule
+        if (hasInterviewScheduled) {
           return (
             <Button variant="outline" size="sm" onClick={() => {
               setSelectedApp(app);
               setShowShortlistModal(true);
             }} className="flex-1">
-              <UserCheck className="mr-2 h-4 w-4" />
-              Schedule Interview
+              <CalendarIcon className="mr-2 h-4 w-4" />
+              Reschedule Interview
             </Button>
           );
-        } else {
-          // Show direct approve/reject buttons for schemes that don't require interviews
-          return (
-            <>
-              <Button variant="outline" size="sm" onClick={() => handleViewApplication(app, "approve")} className="flex-1">
-                <CheckCircle className="mr-2 h-4 w-4" />
-                Approve
-              </Button>
-              <Button variant="outline" size="sm" onClick={() => handleViewApplication(app, "reject")} className="flex-1">
-                <XCircle className="mr-2 h-4 w-4" />
-                Reject
-              </Button>
-            </>
-          );
         }
-      
+        return (
+          <Button variant="outline" size="sm" onClick={() => {
+            setSelectedApp(app);
+            setShowShortlistModal(true);
+          }} className="flex-1">
+            <UserCheck className="mr-2 h-4 w-4" />
+            Schedule Interview
+          </Button>
+        );
+
       case 'interview_scheduled':
-        // Show reschedule button for scheduled interviews
         return (
           <Button variant="outline" size="sm" onClick={() => {
             setSelectedApp(app);
@@ -519,31 +513,7 @@ export default function Applications() {
         return null;
       
       default:
-        // Default action based on interview requirement
-        if (requiresInterview) {
-          return (
-            <Button variant="outline" size="sm" onClick={() => {
-              setSelectedApp(app);
-              setShowShortlistModal(true);
-            }} className="flex-1">
-              <UserCheck className="mr-2 h-4 w-4" />
-              Schedule Interview
-            </Button>
-          );
-        } else {
-          return (
-            <>
-              <Button variant="outline" size="sm" onClick={() => handleViewApplication(app, "approve")} className="flex-1">
-                <CheckCircle className="mr-2 h-4 w-4" />
-                Approve
-              </Button>
-              <Button variant="outline" size="sm" onClick={() => handleViewApplication(app, "reject")} className="flex-1">
-                <XCircle className="mr-2 h-4 w-4" />
-                Reject
-              </Button>
-            </>
-          );
-        }
+        return null;
     }
   };
 

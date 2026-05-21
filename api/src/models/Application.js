@@ -32,7 +32,7 @@ const applicationSchema = new mongoose.Schema({
   status: {
     type: String,
     enum: [
-      'draft', 'pending', 'under_review', 'interview_scheduled', 'interview_completed', 'pending_committee_approval',
+      'draft', 'pending', 'under_review', 'field_verification', 'interview_scheduled', 'interview_completed', 'pending_committee_approval',
       'approved', 'rejected', 'on_hold', 'cancelled', 'disbursed', 'completed'
     ],
     default: 'pending'

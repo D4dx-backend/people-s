@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import ReactDOM from 'react-dom';
 import { X, FileText, Calendar, User, MapPin, IndianRupee, Download, Eye, CheckCircle, XCircle, Loader2, Plus, Trash2, AlertTriangle, AlertCircle, CheckCircle2, Repeat, MessageSquare, Upload, RotateCcw } from 'lucide-react';
 import { Button } from '../ui/button';
 import { Badge } from '../ui/badge';
@@ -453,6 +454,19 @@ export const ApplicationDetailModal: React.FC<ApplicationDetailModalProps> = ({
       fetchApplicationDetails();
     }
   }, [isOpen, applicationId]);
+
+  // Lock body scroll when modal is open to prevent navbar layout shift
+  useEffect(() => {
+    if (isOpen) {
+      const scrollbarWidth = window.innerWidth - document.documentElement.clientWidth;
+      document.body.style.overflow = 'hidden';
+      document.body.style.paddingRight = `${scrollbarWidth}px`;
+    }
+    return () => {
+      document.body.style.overflow = '';
+      document.body.style.paddingRight = '';
+    };
+  }, [isOpen]);
 
   useEffect(() => {
     if (application) {
@@ -1128,8 +1142,8 @@ export const ApplicationDetailModal: React.FC<ApplicationDetailModalProps> = ({
 
   if (!isOpen) return null;
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+  return ReactDOM.createPortal(
+    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50">
       <div className="bg-background rounded-lg shadow-lg w-full min-w-[60vw] max-w-4xl max-h-[90vh] overflow-hidden flex flex-col">
         {/* Header */}
         <div className="flex items-center justify-between p-6 border-b">
@@ -2123,10 +2137,11 @@ export const ApplicationDetailModal: React.FC<ApplicationDetailModalProps> = ({
           
           {application && !showAction && canApprove && (
             // Show approve/reject buttons if:
-            // 1. Status is interview_scheduled, OR
-            // 2. Status is pending AND scheme doesn't require interview
+            // 1. Status is interview_scheduled or interview_completed, OR
+            // 2. Status is pending/under_review/field_verification AND scheme doesn't require interview
             (application.status === 'interview_scheduled' || 
-             (application.status === 'pending' && 
+             application.status === 'interview_completed' ||
+             (['pending', 'under_review', 'field_verification'].includes(application.status) && 
               !application.scheme?.applicationSettings?.requiresInterview))
           ) && (
             <div className="flex gap-3">
@@ -2353,5 +2368,5 @@ export const ApplicationDetailModal: React.FC<ApplicationDetailModalProps> = ({
         </div>
       </div>
     </div>
-  );
+  , document.body);
 };

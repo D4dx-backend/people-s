@@ -68,7 +68,7 @@ const updateApplicationValidation = [
 
 const reviewApplicationValidation = [
   body('status')
-    .isIn(['under_review', 'approved', 'rejected'])
+    .isIn(['under_review', 'field_verification', 'approved', 'rejected'])
     .withMessage('Invalid review status'),
   body('comments')
     .optional()
@@ -141,14 +141,14 @@ router.post('/',
 // Full application edit is restricted to senior admin roles only
 router.put('/:id', 
   authenticate, crossFranchiseResolver, 
-  authorize('super_admin', 'state_admin', 'area_admin'), 
+  authorize('super_admin', 'state_admin', 'district_admin'), 
   updateApplicationValidation, 
   updateApplication
 );
 
 router.patch('/:id/review', 
   authenticate, crossFranchiseResolver, 
-  authorize('super_admin', 'state_admin', 'area_admin'), 
+  authorize('super_admin', 'state_admin', 'district_admin'), 
   reviewApplicationValidation, 
   reviewApplication
 );
@@ -156,7 +156,7 @@ router.patch('/:id/review',
 // Approve application - PATCH (keep for backward compatibility)
 router.patch('/:id/approve', 
   authenticate, crossFranchiseResolver, 
-  authorize('super_admin', 'state_admin', 'area_admin'), 
+  authorize('super_admin', 'state_admin', 'district_admin'), 
   approveApplicationValidation, 
   approveApplication
 );
@@ -164,7 +164,7 @@ router.patch('/:id/approve',
 // Approve application - PUT (preferred method)
 router.put('/:id/approve', 
   authenticate, crossFranchiseResolver, 
-  authorize('super_admin', 'state_admin', 'area_admin'), 
+  authorize('super_admin', 'state_admin', 'district_admin'), 
   approveApplicationValidation, 
   approveApplication
 );
@@ -195,7 +195,7 @@ router.patch('/:id/modify-approved',
 
 router.delete('/:id', 
   authenticate, crossFranchiseResolver, 
-  authorize('super_admin', 'state_admin', 'area_admin'), 
+  authorize('super_admin', 'state_admin', 'district_admin'), 
   deleteApplication
 );
 
