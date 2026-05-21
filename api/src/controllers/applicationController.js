@@ -434,7 +434,7 @@ const reviewApplication = async (req, res) => {
   try {
     const { status, comments } = req.body;
 
-    if (!['under_review', 'approved', 'rejected'].includes(status)) {
+    if (!['under_review', 'field_verification', 'approved', 'rejected'].includes(status)) {
       return res.status(400).json({ message: 'Invalid review status' });
     }
 
@@ -448,10 +448,10 @@ const reviewApplication = async (req, res) => {
       return res.status(403).json({ message: 'Access denied' });
     }
 
-    // Only pending applications can be reviewed
-    if (application.status !== 'pending') {
+    // Only pending, under_review, or field_verification applications can be reviewed/transitioned
+    if (!['pending', 'under_review', 'field_verification'].includes(application.status)) {
       return res.status(400).json({ 
-        message: 'Only pending applications can be reviewed' 
+        message: 'Only pending, under_review, or field_verification applications can be reviewed' 
       });
     }
 
@@ -498,10 +498,10 @@ const approveApplication = async (req, res) => {
       return res.status(403).json({ message: 'Access denied' });
     }
 
-    // Allow approval from 'pending' or 'under_review' status
-    if (!['pending', 'under_review'].includes(application.status)) {
+    // Allow approval from 'pending', 'under_review', or 'field_verification' status
+    if (!['pending', 'under_review', 'field_verification', 'interview_completed'].includes(application.status)) {
       return res.status(400).json({ 
-        message: `Only pending or under_review applications can be approved. Current status: ${application.status}` 
+        message: `Application cannot be approved from current status: ${application.status}` 
       });
     }
 
@@ -1642,6 +1642,11 @@ const updateApplicationStage = async (req, res) => {
         if (allDone && !['approved', 'disbursed'].includes(application.status)) {
           // Every stage finished → mark the whole application completed
           application.status = 'completed';
+        } else if (
+          stageNameLower.includes('field verification') &&
+          !['approved', 'disbursed', 'completed', 'pending_committee_approval', 'interview_scheduled', 'interview_completed'].includes(application.status)
+        ) {
+          application.status = 'field_verification';
         } else if (
           (stageNameLower.includes('final review') || stageNameLower.includes('committee')) &&
           !['approved', 'disbursed', 'completed'].includes(application.status)

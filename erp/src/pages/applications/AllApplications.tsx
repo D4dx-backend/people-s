@@ -101,7 +101,7 @@ export default function AllApplications() {
   const hasAdminAccess = user && ['super_admin', 'state_admin', 'district_admin', 'area_admin', 'unit_admin', 'project_coordinator', 'scheme_coordinator'].includes(user.role);
   
   // Only area_admin, state_admin, and super_admin can review/approve applications
-  const canReviewApplications = user && ['super_admin', 'state_admin', 'area_admin'].includes(user.role);
+  const canReviewApplications = user && ['super_admin', 'state_admin', 'district_admin'].includes(user.role);
 
   useEffect(() => {
     if (!hasAdminAccess) {
@@ -209,31 +209,30 @@ export default function AllApplications() {
       return null;
     }
 
-    const requiresInterview = app.scheme?.requiresInterview || app.scheme?.applicationSettings?.requiresInterview || false;
     const hasInterviewScheduled = app.interview?.scheduledDate != null;
+    const terminalStatuses = ['approved', 'rejected', 'completed', 'disbursed', 'cancelled'];
 
-    // Don't show schedule interview button for approved, rejected, or completed applications
-    if (app.status === 'approved' || app.status === 'rejected' || app.status === 'completed') {
+    // No action buttons for terminal states
+    if (terminalStatuses.includes(app.status)) {
       return null;
     }
 
-    // For schemes requiring interview
-    if (requiresInterview) {
-      // Check if interview is scheduled but not completed
-      if (hasInterviewScheduled || app.status === 'interview_scheduled') {
-        // Interview is scheduled, show reschedule button
-        return isTableView ? (
-          <Button variant="outline" size="sm" onClick={() => { setSelectedApp(app); setShowShortlistModal(true); }}>
-            <CalendarIcon className="h-4 w-4" />
-          </Button>
-        ) : (
-          <Button variant="outline" size="sm" onClick={() => { setSelectedApp(app); setShowShortlistModal(true); }} className="flex-1">
-            <CalendarIcon className="mr-2 h-4 w-4" />Reschedule
-          </Button>
-        );
-      }
-      
-      // Interview not scheduled yet, show schedule button
+    // Interview already scheduled — show Reschedule button
+    if (hasInterviewScheduled || app.status === 'interview_scheduled') {
+      return isTableView ? (
+        <Button variant="outline" size="sm" onClick={() => { setSelectedApp(app); setShowShortlistModal(true); }}>
+          <CalendarIcon className="h-4 w-4" />
+        </Button>
+      ) : (
+        <Button variant="outline" size="sm" onClick={() => { setSelectedApp(app); setShowShortlistModal(true); }} className="flex-1">
+          <CalendarIcon className="mr-2 h-4 w-4" />Reschedule
+        </Button>
+      );
+    }
+
+    // Interview process is open at ALL active stages (pending, under_review, field_verification, etc.)
+    // Super admin or any reviewer can schedule interview at any point
+    if (['pending', 'under_review', 'field_verification', 'on_hold'].includes(app.status)) {
       return isTableView ? (
         <Button variant="outline" size="sm" onClick={() => { setSelectedApp(app); setShowShortlistModal(true); }}>
           <UserCheck className="h-4 w-4" />
@@ -245,8 +244,6 @@ export default function AllApplications() {
       );
     }
 
-    // For schemes NOT requiring interview - no action buttons in list view
-    // Users should approve/reject from the Details modal
     return null;
   };
 
