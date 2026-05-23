@@ -272,7 +272,7 @@ router.get('/',
  */
 router.post('/schedule/:applicationId',
   authenticate, crossFranchiseResolver,
-  // RBACMiddleware.hasPermission('interviews.schedule'), // Temporarily disabled for debugging
+  RBACMiddleware.hasPermission('interviews.schedule'),
   validate(scheduleInterviewSchema),
   async (req, res) => {
     try {

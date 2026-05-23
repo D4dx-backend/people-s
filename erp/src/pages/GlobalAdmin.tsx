@@ -9,7 +9,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Building2, Users, Plus, Trash2, UserPlus, UserX,
-  RefreshCw, ShieldAlert, BarChart3, Globe, Phone, Mail, Link2, X as XIcon, LogOut,
+  RefreshCw, ShieldAlert, BarChart3, Globe, Phone, Mail, Link2, X as XIcon, LogOut, Search,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -85,6 +85,9 @@ export default function GlobalAdmin() {
   const [adminsDialogFranchise, setAdminsDialogFranchise] = useState<Franchise | null>(null);
   const [admins, setAdmins] = useState<FranchiseAdmin[]>([]);
   const [adminsLoading, setAdminsLoading] = useState(false);
+
+  // Admins search
+  const [adminSearch, setAdminSearch] = useState('');
 
   // Create admin dialog
   const [createAdminOpen, setCreateAdminOpen] = useState(false);
@@ -621,7 +624,7 @@ export default function GlobalAdmin() {
       </AlertDialog>
 
       {/* ── Manage Admins Dialog ── */}
-      <Dialog open={!!adminsDialogFranchise} onOpenChange={open => !open && setAdminsDialogFranchise(null)}>
+      <Dialog open={!!adminsDialogFranchise} onOpenChange={open => { if (!open) { setAdminsDialogFranchise(null); setAdminSearch(''); } }}>
         <DialogContent className="max-w-lg">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
@@ -631,52 +634,6 @@ export default function GlobalAdmin() {
           </DialogHeader>
 
           <div className="space-y-3 py-2 overflow-y-auto max-h-[65vh] pr-1">
-            {adminsLoading ? (
-              <div className="py-8 text-center text-muted-foreground text-sm">Loading admins…</div>
-            ) : admins.length === 0 ? (
-              <div className="py-8 text-center text-muted-foreground">
-                <UserPlus className="h-8 w-8 mx-auto mb-2 opacity-30" />
-                <p className="text-sm">No admins yet. Assign one below.</p>
-              </div>
-            ) : (
-              <div className="space-y-2">
-                {admins.map(a => (
-                  <div
-                    key={a.membershipId}
-                    className={`flex items-center justify-between p-3 rounded-lg border ${!a.isActive ? 'opacity-50 bg-muted/30' : 'bg-card'}`}
-                  >
-                    <div className="min-w-0">
-                      <p className="font-medium text-sm truncate">{a.user?.name || '—'}</p>
-                      <div className="flex items-center gap-3 text-xs text-muted-foreground mt-0.5">
-                        <span className="flex items-center gap-1"><Phone className="h-3 w-3" />{a.user?.phone}</span>
-                        {a.user?.email && <span className="flex items-center gap-1 truncate"><Mail className="h-3 w-3" />{a.user.email}</span>}
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-2 shrink-0 ml-2">
-                      <Badge variant="secondary" className="text-xs capitalize">
-                        {ADMIN_ROLES.find(r => r.value === a.role)?.label ?? a.role}
-                      </Badge>
-                      {a.isActive
-                        ? <Badge variant="outline" className="text-xs text-green-600 border-green-300">Active</Badge>
-                        : <Badge variant="secondary" className="text-xs">Inactive</Badge>}
-                      {a.isActive && adminsDialogFranchise && (
-                        <Button
-                          size="icon"
-                          variant="ghost"
-                          className="h-7 w-7 text-destructive hover:text-destructive"
-                          onClick={() => handleDeactivateAdmin(adminsDialogFranchise, a.user?._id || a.user?.id, a.user?.name)}
-                        >
-                          <UserX className="h-4 w-4" />
-                        </Button>
-                      )}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-
-            <Separator />
-
             {/* Create admin inline form */}
             {!createAdminOpen ? (
               <Button
@@ -846,6 +803,73 @@ export default function GlobalAdmin() {
                     Cancel
                   </Button>
                 </div>
+              </div>
+            )}
+
+            <Separator />
+
+            {/* Search admins */}
+            <div className="relative">
+              <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Search by name or phone…"
+                className="pl-8"
+                value={adminSearch}
+                onChange={e => setAdminSearch(e.target.value)}
+              />
+            </div>
+
+            {/* Admins list */}
+            {adminsLoading ? (
+              <div className="py-8 text-center text-muted-foreground text-sm">Loading admins…</div>
+            ) : admins.length === 0 ? (
+              <div className="py-8 text-center text-muted-foreground">
+                <UserPlus className="h-8 w-8 mx-auto mb-2 opacity-30" />
+                <p className="text-sm">No admins yet. Assign one above.</p>
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {admins
+                  .filter(a => {
+                    const q = adminSearch.trim().toLowerCase();
+                    if (!q) return true;
+                    return (
+                      a.user?.name?.toLowerCase().includes(q) ||
+                      String(a.user?.phone ?? '').includes(q)
+                    );
+                  })
+                  .map(a => (
+                    <div
+                      key={a.membershipId}
+                      className={`flex items-center justify-between p-3 rounded-lg border ${!a.isActive ? 'opacity-50 bg-muted/30' : 'bg-card'}`}
+                    >
+                      <div className="min-w-0">
+                        <p className="font-medium text-sm truncate">{a.user?.name || '—'}</p>
+                        <div className="flex items-center gap-3 text-xs text-muted-foreground mt-0.5">
+                          <span className="flex items-center gap-1"><Phone className="h-3 w-3" />{a.user?.phone}</span>
+                          {a.user?.email && <span className="flex items-center gap-1 truncate"><Mail className="h-3 w-3" />{a.user.email}</span>}
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2 shrink-0 ml-2">
+                        <Badge variant="secondary" className="text-xs capitalize">
+                          {ADMIN_ROLES.find(r => r.value === a.role)?.label ?? a.role}
+                        </Badge>
+                        {a.isActive
+                          ? <Badge variant="outline" className="text-xs text-green-600 border-green-300">Active</Badge>
+                          : <Badge variant="secondary" className="text-xs">Inactive</Badge>}
+                        {a.isActive && adminsDialogFranchise && (
+                          <Button
+                            size="icon"
+                            variant="ghost"
+                            className="h-7 w-7 text-destructive hover:text-destructive"
+                            onClick={() => handleDeactivateAdmin(adminsDialogFranchise, a.user?._id || a.user?.id, a.user?.name)}
+                          >
+                            <UserX className="h-4 w-4" />
+                          </Button>
+                        )}
+                      </div>
+                    </div>
+                  ))}
               </div>
             )}
           </div>

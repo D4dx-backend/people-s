@@ -67,7 +67,7 @@ export default function FieldVerificationApplications() {
   const hasAdminAccess = user && ['super_admin', 'state_admin', 'district_admin', 'area_admin', 'unit_admin', 'project_coordinator', 'scheme_coordinator'].includes(user.role);
   
   // Only area_admin, state_admin, and super_admin can review/approve applications
-  const canReviewApplications = user && ['super_admin', 'state_admin', 'district_admin'].includes(user.role);
+  const canReviewApplications = user && ['super_admin', 'state_admin'].includes(user.role);
 
   useEffect(() => {
     if (!hasAdminAccess) {

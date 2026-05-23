@@ -1274,7 +1274,7 @@ class RBACService {
           'roles.read', 'roles.assign',
           'permissions.read',
           'beneficiaries.create', 'beneficiaries.read.regional', 'beneficiaries.update.regional',
-          'applications.read.regional', 'applications.update.regional', 'applications.approve',
+          'applications.read.regional', 'applications.update.regional',
           'projects.read.all', 'projects.read.assigned',
           'schemes.read.all', 'schemes.read.assigned',
           'reports.read.regional', 'reports.export',
@@ -1284,7 +1284,7 @@ class RBACService {
           'donations.create', 'donations.read.regional', 'donations.update.regional',
           'communications.send',
           'documents.create', 'documents.read.regional', 'documents.update',
-          'interviews.schedule', 'interviews.read', 'interviews.update', 'interviews.cancel'
+          'interviews.read', 'interviews.update', 'interviews.cancel'
         ]
       },
       {

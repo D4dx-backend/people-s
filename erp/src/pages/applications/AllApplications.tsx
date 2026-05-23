@@ -100,8 +100,10 @@ export default function AllApplications() {
   const canApproveApplications = hasPermission('applications.approve');
   const hasAdminAccess = user && ['super_admin', 'state_admin', 'district_admin', 'area_admin', 'unit_admin', 'project_coordinator', 'scheme_coordinator'].includes(user.role);
   
-  // Only area_admin, state_admin, and super_admin can review/approve applications
-  const canReviewApplications = user && ['super_admin', 'state_admin', 'district_admin'].includes(user.role);
+  // Only state_admin and super_admin can review/approve applications
+  const canReviewApplications = user && ['super_admin', 'state_admin'].includes(user.role);
+  // Only state_admin and super_admin can schedule/reschedule interviews
+  const canScheduleInterviews = user && ['super_admin', 'state_admin'].includes(user.role);
 
   useEffect(() => {
     if (!hasAdminAccess) {
@@ -217,8 +219,9 @@ export default function AllApplications() {
       return null;
     }
 
-    // Interview already scheduled — show Reschedule button
+    // Interview already scheduled — show Reschedule button (only state/super admin)
     if (hasInterviewScheduled || app.status === 'interview_scheduled') {
+      if (!canScheduleInterviews) return null;
       return isTableView ? (
         <Button variant="outline" size="sm" onClick={() => { setSelectedApp(app); setShowShortlistModal(true); }}>
           <CalendarIcon className="h-4 w-4" />
@@ -230,9 +233,9 @@ export default function AllApplications() {
       );
     }
 
-    // Interview process is open at ALL active stages (pending, under_review, field_verification, etc.)
-    // Super admin or any reviewer can schedule interview at any point
+    // Schedule interview — only state/super admin
     if (['pending', 'under_review', 'field_verification', 'on_hold'].includes(app.status)) {
+      if (!canScheduleInterviews) return null;
       return isTableView ? (
         <Button variant="outline" size="sm" onClick={() => { setSelectedApp(app); setShowShortlistModal(true); }}>
           <UserCheck className="h-4 w-4" />
