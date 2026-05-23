@@ -183,8 +183,10 @@ export default function Applications() {
   const canUpdateApplications = hasPermission('applications.update.regional');
   const canApproveApplications = hasPermission('applications.approve');
   
-  // Only area_admin, state_admin, and super_admin can review/approve applications
-  const canReviewApplications = user && ['super_admin', 'state_admin', 'district_admin'].includes(user.role);
+  // Only state_admin and super_admin can review/approve applications
+  const canReviewApplications = user && ['super_admin', 'state_admin'].includes(user.role);
+  // Only state_admin and super_admin can schedule/reschedule interviews
+  const canScheduleInterviews = user && ['super_admin', 'state_admin'].includes(user.role);
 
   // Check if user has admin permissions
   const hasAdminAccess = user && ['super_admin', 'state_admin', 'district_admin', 'area_admin', 'unit_admin'].includes(user.role);
@@ -447,7 +449,7 @@ export default function Applications() {
       case 'under_review':
       case 'field_verification':
       case 'on_hold':
-        // Interview process is open at ALL active stages — any reviewer can schedule
+        if (!canScheduleInterviews) return null;
         if (hasInterviewScheduled) {
           return (
             <Button variant="outline" size="sm" onClick={() => {
@@ -470,6 +472,7 @@ export default function Applications() {
         );
 
       case 'interview_scheduled':
+        if (!canScheduleInterviews) return null;
         return (
           <Button variant="outline" size="sm" onClick={() => {
             setSelectedApp(app);

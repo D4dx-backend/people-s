@@ -72,8 +72,10 @@ export default function InterviewScheduledApplications() {
 
   const canViewApplications = hasAnyPermission(['applications.read.all', 'applications.read.regional', 'applications.read.own']);
   const hasAdminAccess = user && ['super_admin', 'state_admin', 'district_admin', 'area_admin', 'unit_admin', 'project_coordinator', 'scheme_coordinator'].includes(user.role);
-  // Only area_admin, state_admin, and super_admin can review/approve applications
-  const canReviewApplications = user && ['super_admin', 'state_admin', 'district_admin'].includes(user.role);
+  // Only state_admin and super_admin can review/approve applications
+  const canReviewApplications = user && ['super_admin', 'state_admin'].includes(user.role);
+  // Only state_admin and super_admin can schedule/reschedule interviews
+  const canScheduleInterviews = user && ['super_admin', 'state_admin'].includes(user.role);
 
   useEffect(() => {
     if (!hasAdminAccess) {
@@ -377,7 +379,9 @@ export default function InterviewScheduledApplications() {
                       <div className="flex flex-col gap-2 w-full">
                         <Button variant="outline" size="sm" onClick={() => handleViewApplication(app)} className="w-full"><Eye className="mr-2 h-4 w-4" />Forward</Button>
                         <div className="flex gap-1">
-                          <Button variant="secondary" size="sm" className="text-xs px-2 py-1 h-7 flex-1" onClick={() => { setSelectedApp(app); setShowShortlistModal(true); }}><CalendarIcon className="mr-1 h-3 w-3" />Reschedule</Button>
+                          {canScheduleInterviews && (
+                            <Button variant="secondary" size="sm" className="text-xs px-2 py-1 h-7 flex-1" onClick={() => { setSelectedApp(app); setShowShortlistModal(true); }}><CalendarIcon className="mr-1 h-3 w-3" />Reschedule</Button>
+                          )}
                           <Button variant="secondary" size="sm" className="text-xs px-2 py-1 h-7 flex-1" onClick={() => handleViewHistory(app)}><History className="mr-1 h-3 w-3" />History</Button>
                         </div>
                         <Button variant="secondary" size="sm" className="text-xs px-2 py-1 h-7 w-full" onClick={() => { setSelectedApp(app); setShowReportsModal(true); }}><FileText className="mr-1 h-3 w-3" />Reports</Button>
@@ -454,9 +458,11 @@ export default function InterviewScheduledApplications() {
                         <Button variant="outline" size="sm" onClick={() => handleViewApplication(app)}>
                           <Eye className="h-4 w-4" />
                         </Button>
-                        <Button variant="outline" size="sm" onClick={() => { setSelectedApp(app); setShowShortlistModal(true); }}>
-                          <CalendarIcon className="h-4 w-4" />
-                        </Button>
+                        {canScheduleInterviews && (
+                          <Button variant="outline" size="sm" onClick={() => { setSelectedApp(app); setShowShortlistModal(true); }}>
+                            <CalendarIcon className="h-4 w-4" />
+                          </Button>
+                        )}
                         <Button variant="outline" size="sm" onClick={() => handleViewHistory(app)}>
                           <History className="h-4 w-4" />
                         </Button>

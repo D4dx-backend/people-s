@@ -91,6 +91,62 @@ interface Scheme {
   };
 }
 
+// ---- Profile auto-fill helpers ----
+interface BeneficiaryProfileUser {
+  name: string;
+  phone: string;
+  profile?: {
+    gender?: string;
+    dateOfBirth?: string;
+    address?: {
+      district?: string;
+      area?: string;
+    };
+    location?: {
+      district?: { name?: string };
+      area?: { name?: string };
+      unit?: { name?: string };
+    };
+  };
+}
+
+function getProfileValueForField(field: FormField, user: BeneficiaryProfileUser): string | null {
+  const label = (field.label || '').toLowerCase();
+  const type = field.type;
+  const profile = user.profile || {};
+
+  if (type === 'phone') return user.phone || null;
+
+  if ((type === 'text' || type === 'name') && (label.includes('name') || label.includes('പേര്')))
+    return user.name || null;
+
+  if (label.includes('district') || label.includes('ജില്ല'))
+    return profile.location?.district?.name || profile.address?.district || null;
+
+  if (label.includes('area') || label.includes('ഏരിയ'))
+    return profile.location?.area?.name || profile.address?.area || null;
+
+  if (label.includes('unit') || label.includes('യൂണിറ്റ്'))
+    return profile.location?.unit?.name || null;
+
+  if (label.includes('gender') || label.includes('ലിംഗ') || label.includes('sex') || label.includes('ജൻഡർ'))
+    return profile.gender || null;
+
+  if (
+    label.includes('dob') ||
+    label.includes('date of birth') ||
+    label.includes('birth') ||
+    label.includes('ജനനതിയതി') ||
+    label.includes('ജനന')
+  ) {
+    if (profile.dateOfBirth)
+      return new Date(profile.dateOfBirth).toISOString().split('T')[0];
+  }
+
+  return null;
+}
+// ---- End profile auto-fill helpers ----
+
 export default function BeneficiaryApplication() {
   const navigate = useNavigate();
   const { schemeId } = useParams();
@@ -281,6 +337,34 @@ export default function BeneficiaryApplication() {
       if (response.prefillData) {
         setFormData(response.prefillData);
       }
+
+      // Auto-fill fields from beneficiary profile
+      if (renewalFormConfig.pages) {
+        let renewalProfileUser: BeneficiaryProfileUser | null = null;
+        try {
+          const profileResp = await beneficiaryApi.getProfile();
+          renewalProfileUser = profileResp.user as BeneficiaryProfileUser;
+        } catch {
+          const stored = localStorage.getItem('beneficiary_user');
+          if (stored) renewalProfileUser = JSON.parse(stored) as BeneficiaryProfileUser;
+        }
+        if (renewalProfileUser) {
+          const pages = renewalFormConfig.pages as FormPage[];
+          setFormData(prev => {
+            const updates: Record<string, string> = {};
+            pages.forEach((page: FormPage) => {
+              page.fields.forEach((field: FormField) => {
+                const key = `field_${field.id}`;
+                if (!prev[key]) {
+                  const val = getProfileValueForField(field, renewalProfileUser!);
+                  if (val) updates[key] = val;
+                }
+              });
+            });
+            return Object.keys(updates).length > 0 ? { ...prev, ...updates } : prev;
+          });
+        }
+      }
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Failed to load renewal form';
       toast({
@@ -337,6 +421,34 @@ export default function BeneficiaryApplication() {
         }
       } catch {
         // No draft exists, that's fine
+      }
+
+      // Auto-fill fields from beneficiary profile
+      const schemePages = (response.scheme as unknown as Scheme).formConfig?.pages;
+      if (schemePages) {
+        let schemeProfileUser: BeneficiaryProfileUser | null = null;
+        try {
+          const profileResp = await beneficiaryApi.getProfile();
+          schemeProfileUser = profileResp.user as BeneficiaryProfileUser;
+        } catch {
+          const stored = localStorage.getItem('beneficiary_user');
+          if (stored) schemeProfileUser = JSON.parse(stored) as BeneficiaryProfileUser;
+        }
+        if (schemeProfileUser) {
+          setFormData(prev => {
+            const updates: Record<string, string> = {};
+            schemePages.forEach((page: FormPage) => {
+              page.fields.forEach((field: FormField) => {
+                const key = `field_${field.id}`;
+                if (!prev[key]) {
+                  const val = getProfileValueForField(field, schemeProfileUser!);
+                  if (val) updates[key] = val;
+                }
+              });
+            });
+            return Object.keys(updates).length > 0 ? { ...prev, ...updates } : prev;
+          });
+        }
       }
     } catch (error) {
       
@@ -891,7 +1003,9 @@ export default function BeneficiaryApplication() {
               {field.required && <span className="text-red-500 ml-1">*</span>}
             </Label>
             {field.helpText && <p className="text-xs text-muted-foreground">{field.helpText}</p>}
-            <div className="border rounded-md overflow-auto">
+
+            {/* Desktop table view (hidden on mobile) */}
+            <div className="hidden md:block border rounded-md overflow-auto">
               <table className="w-full text-sm">
                 <thead>
                   <tr className="bg-muted">
@@ -960,6 +1074,71 @@ export default function BeneficiaryApplication() {
                 </tbody>
               </table>
             </div>
+
+            {/* Mobile card view (hidden on desktop) */}
+            <div className="md:hidden space-y-3">
+              {rowMeta.map((meta, r) => (
+                <div
+                  key={`mobile-${meta.sourceRow}-${meta.duplicateIndex}-${r}`}
+                  className={`border rounded-lg overflow-hidden ${error ? "border-red-300" : ""}`}
+                >
+                  {/* Card header: row label + actions */}
+                  <div className="flex items-center justify-between bg-muted px-3 py-2">
+                      <span className="text-xs font-semibold text-muted-foreground">
+                        {hasRowLabels ? getRowLabel(meta) : `Row ${r + 1}`}
+                      </span>
+                      <div className="flex items-center gap-1">
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          className="h-7 w-7 text-muted-foreground hover:text-primary"
+                          onClick={() => handleDuplicateRow(r)}
+                          title="Duplicate row"
+                        >
+                          <CopyPlus className="h-3.5 w-3.5" />
+                        </Button>
+                        {meta.duplicateIndex > 0 && (
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            className="h-7 w-7 text-muted-foreground hover:text-destructive"
+                            onClick={() => handleDeleteRow(r)}
+                            title="Remove row"
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </Button>
+                        )}
+                      </div>
+                  </div>
+                  {/* Card body: each column as a labelled input */}
+                  <div className="p-3 space-y-3">
+                    {Array.from({ length: colCount }, (_, c) => (
+                      <div key={c} className="space-y-1">
+                        <p className="text-xs font-medium text-muted-foreground">
+                          {field.columnTitles?.[c] || `Column ${c + 1}`}
+                        </p>
+                        <Input
+                          value={tableData[r]?.[c] || ""}
+                          onChange={(e) => {
+                            const newData = tableData.map((row, ri) =>
+                              ri === r
+                                ? row.map((cell, ci) => (ci === c ? e.target.value : cell))
+                                : [...row]
+                            );
+                            handleInputChange(fieldKey, newData);
+                          }}
+                          placeholder={field.placeholder || `Enter ${field.columnTitles?.[c] || 'value'}`}
+                          className={`h-10 text-sm ${error ? "border-red-300 bg-red-50" : ""}`}
+                        />
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+
             {error && <p className="text-sm text-red-500">{error}</p>}
           </div>
         );
