@@ -251,14 +251,11 @@ class AuthService {
   }
 
   /**
-   * Verify OTP and authenticate user (OTP-only authentication)
-   * @param {string} phone - Mobile number
-   * @param {string} otp - OTP code
-   * @param {string} purpose - OTP purpose
-   * @returns {Promise<Object>} Authentication result
-   */
-  /**
    * Verify OTP and log user in for a specific franchise.
+   * After OTP verification, if the user belongs to multiple franchises or holds
+   * multiple roles within a franchise, returns a short-lived selection token
+   * that the client must exchange via POST /api/auth/select-role.
+   *
    * @param {string} phone
    * @param {string} otp
    * @param {string} purpose
@@ -282,17 +279,14 @@ class AuthService {
       const otpVerification = user.verifyOTP(otp, purpose);
       
       if (!otpVerification.success) {
-        // Increment login attempts on failed OTP
         await user.incLoginAttempts();
         throw new Error(otpVerification.message);
       }
 
       // Handle registration completion flow
       if (purpose === 'registration' && !user.isActive) {
-        // Mark OTP as verified but don't complete login yet
         user.otp.verified = true;
         await user.save();
-        
         return {
           success: true,
           requiresRegistration: true,
@@ -302,62 +296,126 @@ class AuthService {
         };
       }
 
-      // Check if user account is active for login
       if (!user.isActive) {
         throw new Error('Your account is deactivated. Please contact the administrator.');
       }
 
-      // Successful login - clear OTP and update user
+      // Clear OTP and mark login
       user.clearOTP();
       user.lastLogin = new Date();
       user.isVerified = true;
       await user.resetLoginAttempts();
       await user.save();
 
-      // ── Franchise-aware token generation ─────────────────────────────────
-      let userFranchise = null;
-      let effectiveRole = user.role;
-      let effectiveAdminScope = user.adminScope;
+      // Beneficiaries and global super-admins skip franchise membership logic
+      if (user.role === 'beneficiary' || user.isSuperAdmin) {
+        const tokens = this.generateTokens(user, franchiseId, null);
+        return {
+          success: true,
+          message: 'Login successful',
+          user: {
+            id: user._id, name: user.name, email: user.email, phone: user.phone,
+            role: user.role, adminScope: user.adminScope, franchiseId: franchiseId || null,
+            profile: user.profile, isVerified: user.isVerified, isActive: user.isActive,
+            lastLogin: user.lastLogin, isSuperAdmin: !!user.isSuperAdmin,
+          },
+          tokens,
+          loginMethod: 'otp'
+        };
+      }
 
-      if (franchiseId && user.role !== 'beneficiary' && !user.isSuperAdmin) {
-        try {
-          const UserFranchise = require('../models/UserFranchise');
-          userFranchise = await UserFranchise.getMembership(user._id, franchiseId);
-          if (!userFranchise) {
-            throw new Error('You do not have access to this organization. Please contact the administrator.');
+      // ── Multi-franchise / multi-role selection ─────────────────────────────
+      const UserFranchise = require('../models/UserFranchise');
+
+      // Build a short-lived selection token to secure the select-role step
+      const selectionToken = jwt.sign(
+        { userId: String(user._id), phone: user.phone, type: 'role_selection' },
+        config.JWT_SECRET,
+        { expiresIn: '10m', issuer: 'erp-api', audience: 'erp-client' }
+      );
+
+      // Step 1: Determine the target franchise
+      let targetFranchiseId = franchiseId;
+      let allMemberships;
+
+      if (!targetFranchiseId) {
+        // No franchise pre-selected — gather all active memberships
+        allMemberships = await UserFranchise.find({ user: user._id, isActive: true })
+          .populate('franchise', 'slug displayName logoUrl isActive');
+        const activeMemberships = allMemberships.filter(m => m.franchise?.isActive);
+
+        if (activeMemberships.length === 0) {
+          throw new Error('You do not have access to this organisation. Please contact the administrator.');
+        }
+
+        if (activeMemberships.length > 1) {
+          // Multiple franchises → ask user to pick one first
+          const uniqueFranchises = [];
+          const seen = new Set();
+          for (const m of activeMemberships) {
+            const fid = String(m.franchise._id);
+            if (!seen.has(fid)) {
+              seen.add(fid);
+              uniqueFranchises.push({
+                id: m.franchise._id,
+                slug: m.franchise.slug,
+                displayName: m.franchise.displayName,
+                logoUrl: m.franchise.logoUrl,
+              });
+            }
           }
-          effectiveRole = userFranchise.role;
-          effectiveAdminScope = userFranchise.adminScope;
-        } catch (membershipErr) {
-          // Re-throw access-denied errors; swallow lookup errors gracefully
-          if (membershipErr.message.includes('access to this organization')) throw membershipErr;
-          console.error('⚠ UserFranchise lookup failed during login:', membershipErr.message);
+          if (uniqueFranchises.length > 1) {
+            return {
+              success: true,
+              requiresFranchiseSelection: true,
+              franchises: uniqueFranchises,
+              selectionToken,
+              message: 'Please select the organisation you want to log into.'
+            };
+          }
+          // Only one unique franchise (user has multiple roles) → fall through
+          targetFranchiseId = String(uniqueFranchises[0].id);
+        } else {
+          targetFranchiseId = String(activeMemberships[0].franchise._id);
         }
       }
 
-      // Generate authentication tokens with franchise context
-      const tokens = this.generateTokens(user, franchiseId, userFranchise);
+      // Step 2: Check roles in the target franchise
+      const franchiseMemberships = await UserFranchise.getMemberships(user._id, targetFranchiseId);
 
-      // Prepare user data for response (exclude sensitive fields)
-      const userData = {
-        id: user._id,
-        name: user.name,
-        email: user.email,
-        phone: user.phone,
-        role: effectiveRole,
-        adminScope: effectiveAdminScope,
-        franchiseId: franchiseId || null,
-        profile: user.profile,
-        isVerified: user.isVerified,
-        isActive: user.isActive,
-        lastLogin: user.lastLogin,
-        isSuperAdmin: !!user.isSuperAdmin,
-      };
+      if (!franchiseMemberships || franchiseMemberships.length === 0) {
+        throw new Error('You do not have access to this organisation. Please contact the administrator.');
+      }
+
+      if (franchiseMemberships.length > 1) {
+        // Multiple roles in this franchise → ask user to choose
+        return {
+          success: true,
+          requiresRoleSelection: true,
+          franchiseId: targetFranchiseId,
+          roles: franchiseMemberships.map(m => ({
+            role: m.role,
+            displayName: this._roleDisplayName(m.role)
+          })),
+          selectionToken,
+          message: 'You hold multiple roles. Please select the role you want to use.'
+        };
+      }
+
+      // Single role in single franchise → direct login
+      const userFranchise = franchiseMemberships[0];
+      const tokens = this.generateTokens(user, targetFranchiseId, userFranchise);
 
       return {
         success: true,
         message: 'Login successful',
-        user: userData,
+        user: {
+          id: user._id, name: user.name, email: user.email, phone: user.phone,
+          role: userFranchise.role, adminScope: userFranchise.adminScope,
+          franchiseId: targetFranchiseId, profile: user.profile,
+          isVerified: user.isVerified, isActive: user.isActive,
+          lastLogin: user.lastLogin, isSuperAdmin: false,
+        },
         tokens,
         loginMethod: 'otp'
       };
@@ -365,6 +423,110 @@ class AuthService {
       console.error('❌ OTP Verification Error:', error);
       throw error;
     }
+  }
+
+  /**
+   * Exchange a selection token + chosen franchise/role for a full JWT.
+   * Called after the user selects their franchise and/or role during login.
+   *
+   * @param {string} selectionToken - Short-lived token from verifyOTPAndLogin
+   * @param {string} franchiseId    - Chosen franchise ObjectId
+   * @param {string} role           - Chosen role string (e.g. 'area_president')
+   */
+  async selectRole(selectionToken, franchiseId, role) {
+    try {
+      // Validate selection token
+      let decoded;
+      try {
+        decoded = jwt.verify(selectionToken, config.JWT_SECRET);
+      } catch {
+        throw new Error('Selection session expired. Please log in again.');
+      }
+      if (decoded.type !== 'role_selection') {
+        throw new Error('Invalid selection token.');
+      }
+
+      const user = await User.findById(decoded.userId);
+      if (!user || !user.isActive) {
+        throw new Error('User not found or inactive.');
+      }
+
+      const UserFranchise = require('../models/UserFranchise');
+
+      // If no role provided, check memberships in the franchise and return roles if multiple
+      if (!role) {
+        const franchiseMemberships = await UserFranchise.getMemberships(user._id, franchiseId);
+        if (!franchiseMemberships || franchiseMemberships.length === 0) {
+          throw new Error('You do not have access to this organisation. Please contact the administrator.');
+        }
+
+        if (franchiseMemberships.length > 1) {
+          return {
+            success: true,
+            requiresRoleSelection: true,
+            franchiseId,
+            roles: franchiseMemberships.map(m => ({
+              role: m.role,
+              displayName: this._roleDisplayName(m.role)
+            })),
+            selectionToken,
+            message: 'You hold multiple roles. Please select the role you want to use.'
+          };
+        }
+
+        // Single role — complete login directly
+        const userFranchise = franchiseMemberships[0];
+        const tokens = this.generateTokens(user, franchiseId, userFranchise);
+        return {
+          success: true,
+          message: 'Login successful',
+          user: {
+            id: user._id, name: user.name, email: user.email, phone: user.phone,
+            role: userFranchise.role, adminScope: userFranchise.adminScope,
+            franchiseId, profile: user.profile,
+            isVerified: user.isVerified, isActive: user.isActive,
+            lastLogin: user.lastLogin, isSuperAdmin: false,
+          },
+          tokens,
+          loginMethod: 'otp'
+        };
+      }
+
+      const membership = await UserFranchise.getMembership(user._id, franchiseId, role);
+      if (!membership) {
+        throw new Error('You do not have that role in this organisation.');
+      }
+
+      const tokens = this.generateTokens(user, franchiseId, membership);
+
+      return {
+        success: true,
+        message: 'Login successful',
+        user: {
+          id: user._id, name: user.name, email: user.email, phone: user.phone,
+          role: membership.role, adminScope: membership.adminScope,
+          franchiseId, profile: user.profile,
+          isVerified: user.isVerified, isActive: user.isActive,
+          lastLogin: user.lastLogin, isSuperAdmin: false,
+        },
+        tokens,
+        loginMethod: 'otp'
+      };
+    } catch (error) {
+      console.error('❌ selectRole Error:', error);
+      throw error;
+    }
+  }
+
+  /** Human-readable label for a role key */
+  _roleDisplayName(role) {
+    const labels = {
+      super_admin: 'Super Admin', state_admin: 'State Admin',
+      district_admin: 'District Admin', area_admin: 'Area Admin',
+      unit_admin: 'Unit Admin', area_president: 'Area President',
+      project_coordinator: 'Project Coordinator', scheme_coordinator: 'Scheme Coordinator'
+    };
+    return labels[role] || role;
   }
 
   /**
@@ -522,6 +684,17 @@ class AuthService {
         }
       },
       unit_admin: {
+        level: 'unit',
+        permissions: {
+          canCreateUsers: false,
+          canManageProjects: false,
+          canManageSchemes: false,
+          canApproveApplications: true,
+          canViewReports: true,
+          canManageFinances: false
+        }
+      },
+      area_president: {
         level: 'unit',
         permissions: {
           canCreateUsers: false,

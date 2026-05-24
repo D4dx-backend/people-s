@@ -22,6 +22,7 @@ import {
   CalendarClock,
   Bug,
   ClipboardList,
+  ReceiptText,
   type LucideIcon,
 } from "lucide-react";
 
@@ -164,6 +165,16 @@ export const menuCategories: MenuCategory[] = [
               "applications.read.own",
             ],
             keywords: ["completed", "finished", "done"],
+          },
+          {
+            to: "/applications/consolidation",
+            label: "Consolidation",
+            permissions: [
+              "applications.read.all",
+              "applications.read.regional",
+              "applications.read.own",
+            ],
+            keywords: ["consolidation", "summary", "report", "stats"],
           },
         ],
       },
@@ -314,6 +325,17 @@ export const menuCategories: MenuCategory[] = [
             keywords: ["forecast", "prediction", "budget"],
           },
         ],
+      },
+      {
+        to: "/receipts",
+        icon: ReceiptText,
+        label: "Receipts",
+        permissions: [
+          "finances.read.all",
+          "finances.read.regional",
+          "finances.manage",
+        ],
+        keywords: ["receipt", "disbursement", "paid", "download"],
       },
       {
         to: "/budget",
@@ -520,6 +542,9 @@ export const menuCategories: MenuCategory[] = [
 ];
 
 // ── Limited-admin override (area_admin / district_admin / unit_admin) ──
+// Note: area_president uses its own /area-president-dashboard route (see App.tsx)
+// and does NOT see the Admin Hierarchy page. Area admins (area_admin, district_admin,
+// state_admin) DO see Admin Hierarchy.
 
 export const limitedAdminMenuCategories: MenuCategory[] = [
   {
@@ -531,6 +556,13 @@ export const limitedAdminMenuCategories: MenuCategory[] = [
         label: "Dashboard",
         permissions: [],
         keywords: ["home", "overview", "main"],
+      },
+      {
+        to: "/admin-hierarchy",
+        icon: Users,
+        label: "Admin Hierarchy",
+        permissions: [],
+        keywords: ["hierarchy", "subordinates", "admins", "team"],
       },
     ],
   },
@@ -590,6 +622,16 @@ export const limitedAdminMenuCategories: MenuCategory[] = [
               "applications.read.own",
             ],
             keywords: ["interview", "scheduled"],
+          },
+          {
+            to: "/applications/consolidation",
+            label: "Consolidation",
+            permissions: [
+              "applications.read.all",
+              "applications.read.regional",
+              "applications.read.own",
+            ],
+            keywords: ["consolidation", "summary", "report", "stats"],
           },
         ],
       },

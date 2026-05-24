@@ -343,6 +343,10 @@ const applicationSchema = new mongoose.Schema({
         enabled: { type: Boolean, default: false },
         required: { type: Boolean, default: false }
       },
+      areaPresident: {
+        enabled: { type: Boolean, default: false },
+        required: { type: Boolean, default: false }
+      },
       areaAdmin: {
         enabled: { type: Boolean, default: false },
         required: { type: Boolean, default: false }
@@ -355,6 +359,11 @@ const applicationSchema = new mongoose.Schema({
     // Actual comments from each role
     comments: {
       unitAdmin: {
+        comment: String,
+        commentedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+        commentedAt: Date
+      },
+      areaPresident: {
         comment: String,
         commentedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
         commentedAt: Date
@@ -563,6 +572,50 @@ const applicationSchema = new mongoose.Schema({
     type: Boolean,
     default: false
   },
+
+  // Duplicate Application Detection
+  // Populated at submission time by checking phone/aadhaar/ration card fields
+  // across other applications for the same scheme. Never auto-rejects — just flags.
+  duplicateInfo: {
+    isDuplicate: {
+      type: Boolean,
+      default: false
+    },
+    matchedFields: [{
+      fieldType: {
+        type: String,
+        enum: ['phone', 'aadhaar', 'ration_card', 'custom']
+      },
+      fieldLabel: String,
+      fieldId: Number,
+      matchedApplicationIds: [{
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'Application'
+      }]
+    }],
+    checkedAt: {
+      type: Date
+    }
+  },
+
+  // Location Change History — tracks when area/unit admins correct the location
+  locationChangeHistory: [{
+    changedBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User'
+    },
+    changedAt: {
+      type: Date,
+      default: Date.now
+    },
+    previousDistrict: { type: mongoose.Schema.Types.ObjectId, ref: 'Location' },
+    previousArea: { type: mongoose.Schema.Types.ObjectId, ref: 'Location' },
+    previousUnit: { type: mongoose.Schema.Types.ObjectId, ref: 'Location' },
+    newDistrict: { type: mongoose.Schema.Types.ObjectId, ref: 'Location' },
+    newArea: { type: mongoose.Schema.Types.ObjectId, ref: 'Location' },
+    newUnit: { type: mongoose.Schema.Types.ObjectId, ref: 'Location' },
+    reason: String
+  }],
 
   // Metadata
   createdBy: {

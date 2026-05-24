@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { ReportsModal } from "@/components/modals/ReportsModal";
-import { Eye, XCircle, FileText, Loader2, Grid, List, Filter } from "lucide-react";
+import { Eye, XCircle, FileText, Loader2, Grid, List, Filter , AlertTriangle } from "lucide-react";
 import { useRBAC } from "@/hooks/useRBAC";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -36,6 +36,11 @@ interface Application {
     percentage: number;
     meetsThreshold: boolean;
     autoRejected: boolean;
+  };
+  duplicateInfo?: {
+    isDuplicate: boolean;
+    matchedFields?: Array<{ fieldType: string; fieldLabel: string }>;
+    checkedAt?: string;
   };
 }
 
@@ -219,6 +224,12 @@ export default function RejectedApplications() {
                       <div className="flex items-center gap-2 flex-wrap">
                         <h3 className="font-semibold">{getApplicationDisplay(app).beneficiaryName}</h3>
                         <Badge variant="outline" className="text-xs">{app.applicationNumber}</Badge>
+                          {app.duplicateInfo?.isDuplicate && (
+                            <Badge variant="outline" className="bg-orange-50 text-orange-700 border-orange-300 text-xs flex items-center gap-1">
+                              <AlertTriangle className="h-3 w-3" />
+                              Duplicate Detected
+                            </Badge>
+                          )}
                         <div className="text-sm text-muted-foreground"><span className="font-medium">Requested Amount:</span> ₹{app.requestedAmount.toLocaleString()}</div>
                       </div>
                       <div className="grid md:grid-cols-2 gap-2 text-sm text-muted-foreground">

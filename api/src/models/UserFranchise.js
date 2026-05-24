@@ -18,6 +18,7 @@ const ADMIN_ROLES = [
   'district_admin',
   'area_admin',
   'unit_admin',
+  'area_president',
   'project_coordinator',
   'scheme_coordinator'
 ];
@@ -84,8 +85,9 @@ const userFranchiseSchema = new mongoose.Schema({
 });
 
 // ── Indexes ──────────────────────────────────────────────────────────────────
-// Primary: one user ↔ one franchise (unique membership)
-userFranchiseSchema.index({ user: 1, franchise: 1 }, { unique: true });
+// Primary: one user ↔ one franchise PER ROLE (unique per role, not per franchise)
+// A user can hold multiple roles within the same franchise.
+userFranchiseSchema.index({ user: 1, franchise: 1, role: 1 }, { unique: true });
 userFranchiseSchema.index({ franchise: 1, role: 1 });
 userFranchiseSchema.index({ franchise: 1, isActive: 1 });
 userFranchiseSchema.index({ user: 1, isActive: 1 });
@@ -124,14 +126,21 @@ userFranchiseSchema.statics.hasAccess = async function (userId, franchiseId) {
 
 /**
  * Returns the UserFranchise doc (with role + adminScope) for a user in a franchise.
+ * If role is specified, returns the doc for that specific role.
+ * If role is omitted, returns the first active membership (backward-compat).
  * Returns null if not found.
  */
-userFranchiseSchema.statics.getMembership = function (userId, franchiseId) {
-  return this.findOne({
-    user: userId,
-    franchise: franchiseId,
-    isActive: true
-  });
+userFranchiseSchema.statics.getMembership = function (userId, franchiseId, role = null) {
+  const query = { user: userId, franchise: franchiseId, isActive: true };
+  if (role) query.role = role;
+  return this.findOne(query);
+};
+
+/**
+ * Returns all active memberships for a user in a given franchise (across all roles).
+ */
+userFranchiseSchema.statics.getMemberships = function (userId, franchiseId) {
+  return this.find({ user: userId, franchise: franchiseId, isActive: true });
 };
 
 // ── Instance methods ─────────────────────────────────────────────────────────
@@ -166,6 +175,7 @@ userFranchiseSchema.methods.getAdminLevel = function () {
     district_admin: 2,
     area_admin: 3,
     unit_admin: 4,
+    area_president: 4,
     project_coordinator: 5,
     scheme_coordinator: 5
   };

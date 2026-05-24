@@ -33,6 +33,7 @@ import DueSoonPayments from "./pages/payments/DueSoonPayments";
 import UpcomingPayments from "./pages/payments/UpcomingPayments";
 import ProcessingPayments from "./pages/payments/ProcessingPayments";
 import CompletedPayments from "./pages/payments/CompletedPayments";
+import Receipts from "./pages/receipts/Receipts";
 import RecurringPaymentsDashboard from "./pages/recurring-payments/RecurringPaymentsDashboard";
 import ScheduleOverview from "./pages/recurring-payments/ScheduleOverview";
 import PaymentScheduleView from "./pages/recurring-payments/PaymentScheduleView";
@@ -73,6 +74,8 @@ import SystemEvents from "./pages/SystemEvents";
 import LoginLogs from "./pages/LoginLogs";
 import LoginAnalytics from "./pages/LoginAnalytics";
 import SuspiciousActivity from "./pages/SuspiciousActivity";
+import AreaPresidentDashboard from "./pages/AreaPresidentDashboard";
+import AdminHierarchy from "./pages/AdminHierarchy";
 import ErrorLogs from "./pages/ErrorLogs";
 import ErrorAnalytics from "./pages/ErrorAnalytics";
 import TimelineDemo from "./pages/TimelineDemo";
@@ -82,6 +85,7 @@ import Brochures from "./pages/Brochures";
 import Partners from "./pages/Partners";
 import Banners from "./pages/Banners";
 import FormBuilder from "./pages/FormBuilder";
+import ApplicationConsolidation from "./pages/ApplicationConsolidation";
 import AdminReports from "./pages/AdminReports";
 import AdminReportFormBuilder from "./pages/AdminReportFormBuilder";
 import AdminReportFill from "./pages/AdminReportFill";
@@ -121,9 +125,12 @@ const App = () => (
 
             {/* Admin Routes - Protected */}
             <Route path="/dashboard" element={<AuthGuard><Layout><Dashboard /></Layout></AuthGuard>} />
+            <Route path="/area-president-dashboard" element={<AuthGuard><Layout><AreaPresidentDashboard /></Layout></AuthGuard>} />
+            <Route path="/admin-hierarchy" element={<AuthGuard><Layout><AdminHierarchy /></Layout></AuthGuard>} />
             <Route path="/projects" element={<AuthGuard><Layout><Projects /></Layout></AuthGuard>} />
             <Route path="/schemes" element={<AuthGuard><Layout><Schemes /></Layout></AuthGuard>} />
             <Route path="/applications" element={<AuthGuard><Layout><Applications /></Layout></AuthGuard>} />
+            <Route path="/applications/consolidation" element={<AuthGuard><Layout><ApplicationConsolidation /></Layout></AuthGuard>} />
             <Route path="/form-builder" element={<AuthGuard><Layout><FormBuilder /></Layout></AuthGuard>} />
             <Route path="/admin-reports" element={<AuthGuard><Layout><AdminReports /></Layout></AuthGuard>} />
             <Route path="/admin-reports/form-builder" element={<AuthGuard><Layout><AdminReportFormBuilder /></Layout></AuthGuard>} />
@@ -149,6 +156,9 @@ const App = () => (
             <Route path="/payment-tracking/upcoming" element={<AuthGuard><Layout><UpcomingPayments /></Layout></AuthGuard>} />
             <Route path="/payment-tracking/processing" element={<AuthGuard><Layout><ProcessingPayments /></Layout></AuthGuard>} />
             <Route path="/payment-tracking/completed" element={<AuthGuard><Layout><CompletedPayments /></Layout></AuthGuard>} />
+
+            {/* Receipts */}
+            <Route path="/receipts" element={<AuthGuard><Layout><Receipts /></Layout></AuthGuard>} />
             
             {/* Recurring Payments Routes */}
             <Route path="/recurring-payments" element={<AuthGuard><Layout><RecurringPaymentsDashboard /></Layout></AuthGuard>} />

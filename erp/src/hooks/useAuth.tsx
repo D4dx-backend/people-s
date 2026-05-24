@@ -11,12 +11,51 @@ interface User {
   isSuperAdmin?: boolean;
 }
 
+export interface FranchiseOption {
+  id: string;
+  slug: string;
+  displayName: string;
+  logoUrl?: string;
+}
+
+export interface RoleOption {
+  role: string;
+  displayName: string;
+}
+
+export interface LoginResult {
+  /** Direct login succeeded — user and tokens stored */
+  success: true;
+  requiresFranchiseSelection?: false;
+  requiresRoleSelection?: false;
+}
+
+export interface FranchiseSelectionRequired {
+  requiresFranchiseSelection: true;
+  franchises: FranchiseOption[];
+  selectionToken: string;
+  message: string;
+}
+
+export interface RoleSelectionRequired {
+  requiresRoleSelection: true;
+  franchiseId: string;
+  roles: RoleOption[];
+  selectionToken: string;
+  message: string;
+}
+
+export type LoginResponse = LoginResult | FranchiseSelectionRequired | RoleSelectionRequired;
+
 interface AuthContextType {
   user: User | null;
   token: string | null;
   isAuthenticated: boolean;
   isLoading: boolean;
-  login: (phone: string, otp: string) => Promise<void>;
+  login: (phone: string, otp: string) => Promise<LoginResponse>;
+  selectRole: (selectionToken: string, franchiseId: string, role: string) => Promise<void>;
+  /** Persist a user+tokens pair into both localStorage and React state. */
+  storeSession: (user: User, tokens: { accessToken: string; refreshToken?: string }) => void;
   logout: () => void;
   refreshToken: () => Promise<void>;
   updateUser: (userData: Partial<User>) => void;
@@ -46,7 +85,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     setIsLoading(false);
   }, []);
 
-  const login = async (phone: string, otp: string) => {
+  const login = async (phone: string, otp: string): Promise<LoginResponse> => {
     try {
       setIsLoading(true);
       
@@ -69,32 +108,94 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
 
       const data = await response.json();
       
-      if (data.success && data.data.user && data.data.tokens) {
-        const { user: userData, tokens } = data.data;
-        
-        setUser(userData);
-        setToken(tokens.accessToken);
-        
-        // Clear any beneficiary-related data (admin login)
-        localStorage.removeItem('beneficiary_token');
-        localStorage.removeItem('beneficiary_user');
-        localStorage.removeItem('user_role'); // Clear user_role as it's only for beneficiaries
-        
-        // Store in localStorage
-        localStorage.setItem('token', tokens.accessToken);
-        localStorage.setItem('user', JSON.stringify(userData));
-        
-        if (tokens.refreshToken) {
-          localStorage.setItem('refreshToken', tokens.refreshToken);
-        }
-      } else {
-        throw new Error('Invalid response format');
+      if (!data.success) {
+        throw new Error(data.message || 'Login failed');
       }
+
+      const payload = data.data;
+
+      // Multi-franchise selection required
+      if (payload.requiresFranchiseSelection) {
+        return {
+          requiresFranchiseSelection: true,
+          franchises: payload.franchises,
+          selectionToken: payload.selectionToken,
+          message: payload.message,
+        };
+      }
+
+      // Multi-role selection required
+      if (payload.requiresRoleSelection) {
+        return {
+          requiresRoleSelection: true,
+          franchiseId: payload.franchiseId,
+          roles: payload.roles,
+          selectionToken: payload.selectionToken,
+          message: payload.message,
+        };
+      }
+
+      // Direct login — store user and tokens
+      if (payload.user && payload.tokens) {
+        _storeSession(payload.user, payload.tokens);
+        return { success: true };
+      }
+
+      throw new Error('Invalid response format');
     } catch (error) {
       console.error('Login error:', error);
       throw error;
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const selectRole = async (selectionToken: string, franchiseId: string, role: string): Promise<void> => {
+    try {
+      setIsLoading(true);
+
+      const API_BASE_URL = import.meta.env.VITE_API_URL;
+      if (!API_BASE_URL) {
+        throw new Error('VITE_API_URL environment variable is required');
+      }
+      const response = await fetch(`${API_BASE_URL}/auth/select-role`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ selectionToken, franchiseId, role }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Role selection failed');
+      }
+
+      const data = await response.json();
+      if (!data.success || !data.data?.user || !data.data?.tokens) {
+        throw new Error(data.message || 'Invalid response format');
+      }
+
+      _storeSession(data.data.user, data.data.tokens);
+    } catch (error) {
+      console.error('selectRole error:', error);
+      throw error;
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const _storeSession = (userData: User, tokens: { accessToken: string; refreshToken?: string }) => {
+    setUser(userData);
+    setToken(tokens.accessToken);
+
+    localStorage.removeItem('beneficiary_token');
+    localStorage.removeItem('beneficiary_user');
+    localStorage.removeItem('user_role');
+
+    localStorage.setItem('token', tokens.accessToken);
+    localStorage.setItem('user', JSON.stringify(userData));
+
+    if (tokens.refreshToken) {
+      localStorage.setItem('refreshToken', tokens.refreshToken);
     }
   };
 
@@ -105,6 +206,8 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     localStorage.removeItem('token');
     localStorage.removeItem('user');
     localStorage.removeItem('refreshToken');
+    // Clear active franchise (cross-franchise users)
+    localStorage.removeItem('activeFranchiseSlug');
     // Also clear any beneficiary data that might be lingering
     localStorage.removeItem('beneficiary_token');
     localStorage.removeItem('beneficiary_user');
@@ -167,8 +270,10 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     user,
     token,
     isAuthenticated: !!user && !!token,
+    storeSession: _storeSession,
     isLoading,
     login,
+    selectRole,
     logout,
     refreshToken,
     updateUser,

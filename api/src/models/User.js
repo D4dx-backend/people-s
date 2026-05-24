@@ -40,7 +40,7 @@ const userSchema = new mongoose.Schema({
   // Role and Permissions - Multi-layer hierarchy
   role: {
     type: String,
-    enum: ['super_admin', 'state_admin', 'district_admin', 'area_admin', 'unit_admin', 'project_coordinator', 'scheme_coordinator', 'beneficiary'],
+    enum: ['super_admin', 'state_admin', 'district_admin', 'area_admin', 'unit_admin', 'area_president', 'project_coordinator', 'scheme_coordinator', 'beneficiary'],
     required: [true, 'Role is required']
   },
 

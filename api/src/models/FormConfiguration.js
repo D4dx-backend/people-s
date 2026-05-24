@@ -249,6 +249,18 @@ const formConfigurationSchema = new mongoose.Schema({
     }
   },
   
+  // Pre-form Instructions (bullet points shown to beneficiary before filling the form)
+  instructions: [{
+    id: { type: Number, required: true },
+    text: {
+      type: String,
+      required: true,
+      trim: true,
+      maxlength: [500, 'Instruction text cannot exceed 500 characters']
+    },
+    order: { type: Number, default: 0 }
+  }],
+
   // Scoring Configuration (form-level settings)
   scoringConfig: {
     enabled: {
@@ -270,6 +282,30 @@ const formConfigurationSchema = new mongoose.Schema({
       default: true
     }
   },
+
+  // Duplicate Detection Configuration
+  // Admins can mark specific fields (phone, aadhaar, ration card) for cross-beneficiary
+  // duplicate checking. Applications sharing the same value for any of these fields
+  // will be flagged (not auto-rejected) at each admin review stage.
+  duplicateDetection: [{
+    fieldId: {
+      type: Number,
+      required: true
+    },
+    fieldType: {
+      type: String,
+      enum: ['phone', 'aadhaar', 'ration_card', 'custom'],
+      required: true
+    },
+    fieldLabel: {
+      type: String,
+      required: true
+    },
+    enabled: {
+      type: Boolean,
+      default: true
+    }
+  }],
 
   // Version Control
   version: {

@@ -21,6 +21,11 @@ if (!API_BASE_URL) {
  *  3. Falls back to undefined (no header sent) — backend will 404 for protected routes
  */
 function getFranchiseSlug(): string | undefined {
+  // For cross-franchise users: the active franchise slug is stored in localStorage
+  // when a franchise is selected at login or switched via the header menu.
+  const storedSlug = localStorage.getItem('activeFranchiseSlug');
+  if (storedSlug) return storedSlug;
+
   // Hard override for local development / testing
   const envSlug = import.meta.env.VITE_FRANCHISE_SLUG as string | undefined;
   if (envSlug) return envSlug;
@@ -351,15 +356,7 @@ class ApiClient {
   ): Promise<ApiResponse<T>> {
     let url = `${this.baseURL}${endpoint}`;
 
-    // Cross-franchise: append franchiseFilter to GET requests when a filter is active
     const method = (options.method || 'GET').toUpperCase();
-    if (method === 'GET') {
-      const crossFilter = localStorage.getItem('crossFranchiseFilter');
-      if (crossFilter && crossFilter !== 'all') {
-        const separator = url.includes('?') ? '&' : '?';
-        url = `${url}${separator}franchiseFilter=${encodeURIComponent(crossFilter)}`;
-      }
-    }
 
     const headers = new Headers(this.getHeaders());
     if (options.headers) {
@@ -801,6 +798,27 @@ class ApiClient {
       body: JSON.stringify({ role, adminScope }),
     });
   }
+
+  async getUserRoles(id: string): Promise<ApiResponse<{ roles: any[] }>> {
+    return this.request(`/users/${id}/roles`);
+  }
+
+  async getUserFranchiseMemberships(id: string): Promise<ApiResponse<{ franchises: any[] }>> {
+    return this.request(`/users/${id}/franchise-memberships`);
+  }
+
+  async addUserRole(id: string, role: string, adminScope?: any, franchiseIds?: string[]): Promise<ApiResponse<{ results: any[] }>> {
+    return this.request(`/users/${id}/roles`, {
+      method: 'POST',
+      body: JSON.stringify({ role, adminScope, franchiseIds }),
+    });
+  }
+
+  async removeUserRole(id: string, role: string): Promise<ApiResponse<{}>> {
+    return this.request(`/users/${id}/roles/${role}`, {
+      method: 'DELETE',
+    });
+  }
 }
 
 // Export singleton instance
@@ -891,6 +909,10 @@ export const users = {
   toggleStatus: (id: string, isActive: boolean) => apiClient.toggleUserStatus(id, isActive),
   resetPassword: (id: string, newPassword: string) => apiClient.resetUserPassword(id, newPassword),
   assignRole: (id: string, role: string, adminScope?: any) => apiClient.assignRole(id, role, adminScope),
+  getRoles: (id: string) => apiClient.getUserRoles(id),
+  getFranchiseMemberships: (id: string) => apiClient.getUserFranchiseMemberships(id),
+  addRole: (id: string, role: string, adminScope?: any, franchiseIds?: string[]) => apiClient.addUserRole(id, role, adminScope, franchiseIds),
+  removeRole: (id: string, role: string) => apiClient.removeUserRole(id, role),
   export: (params?: any) => extendedApiClient.request(buildExportUrl('/users/export', params)),
 };
 
@@ -1303,7 +1325,35 @@ export const applications = {
       method: 'PATCH',
       body: JSON.stringify(data),
     }),
+  getDuplicates: (id: string) =>
+    extendedApiClient.request(`/applications/${id}/duplicates`),
+  updateLocation: (id: string, data: { district?: string; area: string; unit: string; reason?: string }) =>
+    extendedApiClient.request(`/applications/${id}/location`, {
+      method: 'PATCH',
+      body: JSON.stringify(data),
+    }),
+  getReceipts: (params?: any) => {
+    const searchParams = new URLSearchParams();
+    if (params) {
+      Object.entries(params).forEach(([key, value]) => {
+        if (value !== undefined && value !== null && value !== '') {
+          searchParams.append(key, (value as string).toString());
+        }
+      });
+    }
+    return extendedApiClient.request(`/applications/receipts${searchParams.toString() ? `?${searchParams.toString()}` : ''}`);
+  },
   export: (params?: any) => extendedApiClient.request(buildExportUrl('/applications/export', params)),
+  downloadPdf: async (id: string): Promise<Blob> => {
+    const baseUrl = import.meta.env.VITE_API_URL || '/api/v1';
+    const token = localStorage.getItem('token');
+    const response = await fetch(`${baseUrl}/applications/${id}/pdf`, {
+      method: 'GET',
+      headers: { 'Authorization': `Bearer ${token}` },
+    });
+    if (!response.ok) throw new Error('Failed to download application PDF');
+    return response.blob();
+  },
 };
 
 export const budget = {

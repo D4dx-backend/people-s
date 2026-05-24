@@ -8,6 +8,7 @@ const FormConfiguration = require('../models/FormConfiguration');
 const User = require('../models/User');
 const notificationService = require('../services/notificationService');
 const recurringPaymentService = require('../services/recurringPaymentService');
+const applicationPdfService = require('../services/applicationPdfService');
 const { calculateApplicationScore } = require('../utils/scoringEngine');
 const { validationResult } = require('express-validator');
 const RBACMiddleware = require('../middleware/rbacMiddleware');
@@ -1329,7 +1330,7 @@ const getAvailableRevertRoles = async (req, res) => {
     const roles = Array.from(rolesSet);
 
     // Sort roles by hierarchy: unit_admin < area_admin < district_admin
-    const roleHierarchy = { unit_admin: 1, area_admin: 2, district_admin: 3 };
+    const roleHierarchy = { unit_admin: 1, area_president: 1, area_admin: 2, district_admin: 3 };
     roles.sort((a, b) => roleHierarchy[a] - roleHierarchy[b]);
 
     // Get user counts for each role
@@ -2258,6 +2259,521 @@ const recalculateScore = async (req, res) => {
   }
 };
 
+// ─── Application PDF Download ────────────────────────────────────────────────
+
+/**
+ * Generate and download a filled application PDF
+ * GET /api/applications/:id/pdf
+ */
+const downloadApplicationPdf = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const application = await Application.findById(id)
+      .populate('beneficiary', 'name phone')
+      .populate('scheme', 'name description')
+      .populate('project', 'name')
+      .populate('district', 'name')
+      .populate('area', 'name')
+      .populate('unit', 'name')
+      .populate('approvedBy', 'name')
+      .populate('reviewedBy', 'name');
+
+    if (!application) {
+      return res.status(404).json({ success: false, message: 'Application not found' });
+    }
+
+    const formConfig = await FormConfiguration.findOne({
+      scheme: application.scheme._id || application.scheme,
+      isRenewalForm: false
+    });
+
+    const filePath = await applicationPdfService.generateFilledApplicationPdf(application, formConfig);
+
+    const fileName = `Application_${application.applicationNumber || id}.pdf`;
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `attachment; filename="${fileName}"`);
+
+    const fileStream = require('fs').createReadStream(filePath);
+    fileStream.pipe(res);
+    fileStream.on('end', () => {
+      require('fs').unlink(filePath, () => {}); // cleanup
+    });
+  } catch (error) {
+    console.error('Error generating application PDF:', error);
+    res.status(500).json({ success: false, message: 'Failed to generate application PDF' });
+  }
+};
+
+/**
+ * Generate and download a blank form PDF for a scheme
+ * GET /api/schemes/:schemeId/form-pdf/blank
+ */
+const downloadBlankFormPdf = async (req, res) => {
+  try {
+    const schemeId = req.params.id || req.params.schemeId;
+
+    const scheme = await Scheme.findById(schemeId).select('name');
+    if (!scheme) {
+      return res.status(404).json({ success: false, message: 'Scheme not found' });
+    }
+
+    const formConfig = await FormConfiguration.findOne({
+      scheme: schemeId,
+      isRenewalForm: false
+    });
+
+    if (!formConfig) {
+      return res.status(404).json({ success: false, message: 'Form configuration not found for this scheme' });
+    }
+
+    const filePath = await applicationPdfService.generateBlankFormPdf(formConfig, scheme.name);
+
+    const fileName = `${scheme.name.replace(/\s+/g, '_')}_Application_Form.pdf`;
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `attachment; filename="${fileName}"`);
+
+    const fileStream = require('fs').createReadStream(filePath);
+    fileStream.pipe(res);
+    fileStream.on('end', () => {
+      require('fs').unlink(filePath, () => {}); // cleanup
+    });
+  } catch (error) {
+    console.error('Error generating blank form PDF:', error);
+    res.status(500).json({ success: false, message: 'Failed to generate blank form PDF' });
+  }
+};
+
+// ─── Consolidation Report ─────────────────────────────────────────────────────
+
+/**
+ * Get application consolidation stats for any admin level
+ * GET /api/applications/consolidation?startDate=&endDate=&scheme=&status=
+ */
+const getApplicationConsolidation = async (req, res) => {
+  try {
+    const { startDate, endDate, scheme, status } = req.query;
+    const { role, adminScope, isSuperAdmin } = getEffectiveUserForFilter(req);
+
+    const franchiseFilter = buildFranchiseReadFilter(req);
+
+    // Date filter
+    const dateFilter = {};
+    if (startDate) dateFilter.$gte = new Date(startDate);
+    if (endDate) {
+      const end = new Date(endDate);
+      end.setHours(23, 59, 59, 999);
+      dateFilter.$lte = end;
+    }
+
+    const baseFilter = { ...franchiseFilter };
+    if (Object.keys(dateFilter).length > 0) baseFilter.createdAt = dateFilter;
+
+    // Location scoping
+    if (!isSuperAdmin && role !== 'state_admin') {
+      if (role === 'district_admin' && adminScope?.district) {
+        baseFilter.district = new mongoose.Types.ObjectId(adminScope.district);
+      } else if (role === 'area_admin' && adminScope?.area) {
+        baseFilter.area = new mongoose.Types.ObjectId(adminScope.area);
+      } else if (role === 'unit_admin' && adminScope?.unit) {
+        baseFilter.unit = new mongoose.Types.ObjectId(adminScope.unit);
+      }
+    }
+
+    if (scheme) baseFilter.scheme = new mongoose.Types.ObjectId(scheme);
+    if (status) baseFilter.status = status;
+
+    // Count by status using a single aggregation
+    const statusGroups = await Application.aggregate([
+      { $match: baseFilter },
+      { $group: { _id: '$status', count: { $sum: 1 } } }
+    ]);
+
+    const counts = {
+      total: 0,
+      pending: 0,
+      under_review: 0,
+      field_verification: 0,
+      interview_scheduled: 0,
+      interview_completed: 0,
+      pending_committee_approval: 0,
+      approved: 0,
+      rejected: 0,
+      on_hold: 0,
+      cancelled: 0,
+      disbursed: 0,
+      completed: 0,
+      draft: 0
+    };
+
+    statusGroups.forEach(({ _id, count }) => {
+      counts.total += count;
+      if (_id && counts.hasOwnProperty(_id)) {
+        counts[_id] = count;
+      }
+    });
+
+    res.json({ success: true, data: counts });
+  } catch (error) {
+    console.error('Error getting application consolidation:', error);
+    res.status(500).json({ success: false, message: 'Failed to get consolidation data' });
+  }
+};
+
+// ─── Feature: Duplicate Application Detection ─────────────────────────────────
+
+/**
+ * Get duplicate application details for a specific application
+ * GET /api/applications/:id/duplicates
+ *
+ * Returns the list of other applications that share the same phone/aadhaar/ration
+ * card values as this application, based on the form's duplicateDetection config.
+ * Also triggers a fresh re-check and updates the stored duplicateInfo.
+ */
+const getApplicationDuplicates = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const application = await Application.findOne({ _id: id, ...buildFranchiseReadFilter(req) })
+      .populate('beneficiary', 'name phone')
+      .populate('scheme', 'name code');
+
+    if (!application) {
+      return res.status(404).json({ success: false, message: 'Application not found' });
+    }
+
+    if (!hasAccessToApplication(getEffectiveUserForFilter(req), application)) {
+      return res.status(403).json({ success: false, message: 'Access denied' });
+    }
+
+    // Get formConfiguration for this scheme
+    const formConfig = await FormConfiguration.findOne({
+      scheme: application.scheme._id || application.scheme,
+      franchise: req.franchiseId,
+      enabled: true
+    }).lean();
+
+    if (!formConfig || !formConfig.duplicateDetection || formConfig.duplicateDetection.length === 0) {
+      return res.json({
+        success: true,
+        message: 'No duplicate detection configured for this scheme',
+        data: { isDuplicate: false, matchedFields: [], checkedAt: null }
+      });
+    }
+
+    const enabledChecks = formConfig.duplicateDetection.filter(d => d.enabled);
+    const matchedFields = [];
+
+    for (const check of enabledChecks) {
+      const fieldKey = `field_${check.fieldId}`;
+      const fieldValue = application.formData && application.formData[fieldKey];
+      if (!fieldValue || String(fieldValue).trim() === '') continue;
+
+      const dupApps = await Application.find({
+        _id: { $ne: application._id },
+        scheme: application.scheme._id || application.scheme,
+        franchise: req.franchiseId,
+        [`formData.${fieldKey}`]: String(fieldValue).trim()
+      })
+        .populate('beneficiary', 'name phone')
+        .select('_id applicationNumber status createdAt beneficiary')
+        .lean();
+
+      if (dupApps.length > 0) {
+        matchedFields.push({
+          fieldType: check.fieldType,
+          fieldLabel: check.fieldLabel,
+          fieldId: check.fieldId,
+          fieldValue: String(fieldValue).trim(),
+          matchedApplications: dupApps.map(a => ({
+            _id: a._id,
+            applicationNumber: a.applicationNumber,
+            status: a.status,
+            createdAt: a.createdAt,
+            beneficiaryName: a.beneficiary?.name || 'Unknown',
+            beneficiaryPhone: a.beneficiary?.phone || ''
+          }))
+        });
+      }
+    }
+
+    // Persist updated duplicate info
+    const updatedDuplicateInfo = {
+      isDuplicate: matchedFields.length > 0,
+      matchedFields: matchedFields.map(f => ({
+        fieldType: f.fieldType,
+        fieldLabel: f.fieldLabel,
+        fieldId: f.fieldId,
+        matchedApplicationIds: f.matchedApplications.map(a => a._id)
+      })),
+      checkedAt: new Date()
+    };
+    await Application.findByIdAndUpdate(id, { duplicateInfo: updatedDuplicateInfo });
+
+    res.json({
+      success: true,
+      data: {
+        isDuplicate: matchedFields.length > 0,
+        matchedFields,
+        checkedAt: new Date()
+      }
+    });
+  } catch (error) {
+    console.error('Error checking application duplicates:', error);
+    res.status(500).json({ success: false, message: 'Failed to check duplicates' });
+  }
+};
+
+// ─── Feature: Location Edit by Area/Unit Admins ───────────────────────────────
+
+/**
+ * Update the location (district/area/unit) on an application.
+ * Allowed for: unit_admin, area_admin, district_admin, state_admin, super_admin.
+ * Unit/area admins can only assign locations within their own scope.
+ *
+ * PATCH /api/applications/:id/location
+ * Body: { district?, area, unit, reason? }
+ */
+const updateApplicationLocation = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { district, area, unit, reason } = req.body;
+
+    if (!area || !unit) {
+      return res.status(400).json({
+        success: false,
+        message: 'Area and unit are required for location update'
+      });
+    }
+
+    const application = await Application.findOne({ _id: id, ...buildFranchiseReadFilter(req) });
+    if (!application) {
+      return res.status(404).json({ success: false, message: 'Application not found' });
+    }
+
+    const effectiveUser = getEffectiveUserForFilter(req);
+
+    if (!hasAccessToApplication(effectiveUser, application)) {
+      return res.status(403).json({ success: false, message: 'Access denied' });
+    }
+
+    // unit_admin and area_admin can only assign to locations within their own scope
+    const userRole = effectiveUser.role;
+    if (userRole === 'unit_admin') {
+      const userUnitIds = effectiveUser.adminScope?.regions
+        ? effectiveUser.adminScope.regions.map(r => r.toString())
+        : effectiveUser.adminScope?.unit ? [effectiveUser.adminScope.unit.toString()] : [];
+      if (!userUnitIds.includes(unit.toString())) {
+        return res.status(403).json({
+          success: false,
+          message: 'Unit admin can only reassign to their own unit'
+        });
+      }
+    } else if (userRole === 'area_admin') {
+      const userAreaIds = effectiveUser.adminScope?.regions
+        ? effectiveUser.adminScope.regions.map(r => r.toString())
+        : effectiveUser.adminScope?.area ? [effectiveUser.adminScope.area.toString()] : [];
+      if (area && !userAreaIds.includes(area.toString())) {
+        return res.status(403).json({
+          success: false,
+          message: 'Area admin can only reassign to their own area'
+        });
+      }
+    }
+
+    // Verify Location documents exist
+    const Location = require('../models/Location');
+    const [areaDoc, unitDoc] = await Promise.all([
+      Location.findById(area),
+      Location.findById(unit)
+    ]);
+    if (!areaDoc) return res.status(400).json({ success: false, message: 'Invalid area ID' });
+    if (!unitDoc) return res.status(400).json({ success: false, message: 'Invalid unit ID' });
+
+    // Record previous values for history
+    const previousValues = {
+      previousDistrict: application.district,
+      previousArea: application.area,
+      previousUnit: application.unit,
+    };
+
+    // Apply new location
+    if (district) application.district = district;
+    application.area = area;
+    application.unit = unit;
+    application.updatedBy = req.user._id;
+
+    // Append to location change history
+    if (!application.locationChangeHistory) application.locationChangeHistory = [];
+    application.locationChangeHistory.push({
+      changedBy: req.user._id,
+      changedAt: new Date(),
+      ...previousValues,
+      newDistrict: district || application.district,
+      newArea: area,
+      newUnit: unit,
+      reason: reason || ''
+    });
+
+    // Add to stage history for admin visibility
+    if (!application.stageHistory) application.stageHistory = [];
+    application.stageHistory.push({
+      stageName: 'Location Updated',
+      status: 'completed',
+      timestamp: new Date(),
+      updatedBy: req.user._id,
+      notes: `Location updated by ${req.user.role}. ${reason ? `Reason: ${reason}` : ''}`
+    });
+
+    await application.save();
+
+    const updated = await Application.findById(id)
+      .populate('district', 'name code')
+      .populate('area', 'name code')
+      .populate('unit', 'name code');
+
+    res.json({
+      success: true,
+      message: 'Application location updated successfully',
+      data: {
+        district: updated.district,
+        area: updated.area,
+        unit: updated.unit,
+        locationChangeHistory: updated.locationChangeHistory
+      }
+    });
+  } catch (error) {
+    console.error('Error updating application location:', error);
+    res.status(500).json({ success: false, message: 'Failed to update location' });
+  }
+};
+
+// ─── Feature: Application Receipts Listing ────────────────────────────────────
+
+/**
+ * List receipts (completed payments) for admin review, with search/filter.
+ * All admin roles can access this endpoint; regional scoping applies.
+ *
+ * GET /api/applications/receipts
+ * Query params: search, scheme, startDate, endDate, page, limit
+ */
+const getApplicationReceipts = async (req, res) => {
+  try {
+    const Payment = require('../models/Payment');
+    const {
+      search = '',
+      scheme = '',
+      startDate,
+      endDate,
+      page = 1,
+      limit = 20
+    } = req.query;
+
+    // Find payments for applications that have been approved or completed with an amount
+    const approvedAppQuery = {
+      status: { $in: ['approved', 'completed', 'disbursed'] },
+      approvedAmount: { $gt: 0 },
+      ...buildFranchiseReadFilter(req)
+    };
+
+    // Apply regional access restriction using application's location
+    const effectiveUser = getEffectiveUserForFilter(req);
+    if (effectiveUser.role !== 'super_admin' && effectiveUser.role !== 'state_admin') {
+      const regionFilter = getUserRegionalFilter(effectiveUser);
+      if (Object.keys(regionFilter).length > 0) {
+        Object.assign(approvedAppQuery, regionFilter);
+      }
+    }
+
+    // Search by application number or beneficiary name/phone
+    if (search) {
+      const searchRegex = { $regex: search, $options: 'i' };
+      approvedAppQuery.$or = [
+        { applicationNumber: searchRegex }
+      ];
+    }
+
+    const eligibleApps = await Application.find(approvedAppQuery).select('_id').lean();
+    const eligibleAppIds = eligibleApps.map(a => a._id);
+
+    const filter = {
+      application: { $in: eligibleAppIds },
+      amount: { $gt: 0 },
+      ...buildFranchiseReadFilter(req)
+    };
+
+    // Date range filter on createdAt (payments may not have completedAt if still pending)
+    if (startDate || endDate) {
+      filter['createdAt'] = {};
+      if (startDate) filter['createdAt'].$gte = new Date(startDate);
+      if (endDate) {
+        const end = new Date(endDate);
+        end.setHours(23, 59, 59, 999);
+        filter['createdAt'].$lte = end;
+      }
+    }
+
+    if (scheme) filter.scheme = scheme;
+
+    // Further filter by beneficiary name/phone if search provided
+    if (search) {
+      const beneficiaries = await Beneficiary.find({
+        $or: [
+          { name: { $regex: search, $options: 'i' } },
+          { phone: { $regex: search, $options: 'i' } }
+        ]
+      }).select('_id').lean();
+
+      if (beneficiaries.length > 0) {
+        filter.$or = [
+          { application: { $in: eligibleAppIds } },
+          { beneficiary: { $in: beneficiaries.map(b => b._id) } }
+        ];
+      }
+    }
+
+    const skip = (parseInt(page) - 1) * parseInt(limit);
+    const total = await Payment.countDocuments(filter);
+
+    const payments = await Payment.find(filter)
+      .populate('application', 'applicationNumber status district area unit')
+      .populate('beneficiary', 'name phone')
+      .populate('scheme', 'name code')
+      .populate('project', 'name code')
+      .populate('initiatedBy', 'name')
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(parseInt(limit))
+      .lean();
+
+    const receipts = payments.map(p => ({
+      paymentId: p._id,
+      applicationId: p.application?._id || '',
+      applicationNumber: p.application?.applicationNumber || '',
+      beneficiaryName: p.beneficiary?.name || '',
+      schemeName: p.scheme?.name || '',
+      amount: p.amount || 0,
+      paidAt: p.timeline?.completedAt || p.timeline?.approvedAt || p.createdAt || '',
+      district: p.application?.district || '',
+      area: p.application?.area || '',
+      unit: p.application?.unit || '',
+    }));
+
+    res.json({
+      success: true,
+      data: receipts,
+      pagination: {
+        currentPage: parseInt(page),
+        totalPages: Math.ceil(total / parseInt(limit)),
+        totalCount: total,
+        limit: parseInt(limit)
+      }
+    });
+  } catch (error) {
+    console.error('Error fetching receipts:', error);
+    res.status(500).json({ success: false, message: 'Failed to fetch receipts' });
+  }
+};
+
 module.exports = {
   getApplications,
   getApplication,
@@ -2279,5 +2795,11 @@ module.exports = {
   getRenewalDueApplications,
   getRenewalHistory,
   recalculateScore,
-  syncApplicationStatus
+  syncApplicationStatus,
+  downloadApplicationPdf,
+  downloadBlankFormPdf,
+  getApplicationConsolidation,
+  getApplicationDuplicates,
+  updateApplicationLocation,
+  getApplicationReceipts
 };

@@ -34,8 +34,11 @@ export function Sidebar({ isOpen = true, onClose }: SidebarProps) {
   
   const itemPaddingClass = menuPaddingClasses[menuStyle] || menuPaddingClasses.comfortable;
   
-  // Check if user is area_admin, district_admin, or unit_admin
-  const isLimitedAdmin = user && ['area_admin', 'district_admin', 'unit_admin'].includes(user.role);
+  // Check if user is a limited admin (area/district/unit/area_president)
+  const isLimitedAdmin = user && ['area_admin', 'district_admin', 'unit_admin', 'area_president'].includes(user.role);
+
+  // unit_admin and area_president don't have subordinates → hide Admin Hierarchy
+  const hideHierarchy = user && ['unit_admin', 'area_president'].includes(user.role);
   
   // Filter menu items for limited admins
   const getFilteredMenuCategories = () => {
@@ -43,8 +46,15 @@ export function Sidebar({ isOpen = true, onClose }: SidebarProps) {
       return menuCategories;
     }
     
-    // For limited admins, show only Dashboard and limited Applications menu
-    return limitedAdminMenuCategories;
+    if (!hideHierarchy) {
+      return limitedAdminMenuCategories;
+    }
+
+    // Remove Admin Hierarchy item for unit_admin / area_president
+    return limitedAdminMenuCategories.map(cat => ({
+      ...cat,
+      items: cat.items.filter((item: any) => item.to !== '/admin-hierarchy'),
+    }));
   };
   
   const filteredMenuCategories = getFilteredMenuCategories();

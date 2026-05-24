@@ -1,7 +1,7 @@
 import { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
 import { useAuth } from './useAuth';
 
-const CROSS_FRANCHISE_ROLES = ['district_admin', 'area_admin', 'unit_admin'];
+const CROSS_FRANCHISE_ROLES = ['district_admin', 'area_admin', 'unit_admin', 'area_president'];
 const STORAGE_KEY = 'crossFranchiseFilter';
 
 export interface FranchiseOption {

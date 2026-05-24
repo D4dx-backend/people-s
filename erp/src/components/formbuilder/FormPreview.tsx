@@ -8,7 +8,7 @@ import { Switch } from "@/components/ui/switch";
 import { Checkbox } from "@/components/ui/checkbox";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Separator } from "@/components/ui/separator";
-import { CopyPlus } from "lucide-react";
+import { CopyPlus, Info } from "lucide-react";
 import { FileUploadField } from "./FileUploadField";
 
 interface Field {
@@ -36,11 +36,12 @@ interface FormPreviewProps {
   formTitle: string;
   formDescription: string;
   pages: Page[];
+  instructions?: Array<{ id: number; text: string; order: number }>;
   schemeId?: string;
   isLiveForm?: boolean;
 }
 
-export function FormPreview({ formTitle, formDescription, pages, schemeId, isLiveForm = false }: FormPreviewProps) {
+export function FormPreview({ formTitle, formDescription, pages, instructions, schemeId, isLiveForm = false }: FormPreviewProps) {
   const toDisplayText = (value: unknown, fallback: string = ""): string => {
     if (typeof value === "string") return value;
     if (typeof value === "number" || typeof value === "boolean") return String(value);
@@ -310,6 +311,25 @@ export function FormPreview({ formTitle, formDescription, pages, schemeId, isLiv
         )}
       </CardHeader>
       <CardContent className="space-y-6">
+        {/* Instructions preview */}
+        {instructions && instructions.length > 0 && (
+          <div className="rounded-lg border border-blue-200 bg-blue-50 p-4 space-y-3">
+            <div className="flex items-center gap-2 text-blue-700">
+              <Info className="h-4 w-4" />
+              <span className="font-semibold text-sm">Important Instructions</span>
+            </div>
+            <ol className="space-y-2 list-none">
+              {[...instructions]
+                .sort((a, b) => a.order - b.order)
+                .map((item, idx) => (
+                  <li key={item.id} className="flex gap-2 text-sm text-blue-900">
+                    <span className="font-medium min-w-[1.2rem]">{idx + 1}.</span>
+                    <span>{item.text}</span>
+                  </li>
+                ))}
+            </ol>
+          </div>
+        )}
         {pages.map((page, pageIdx) => (
           <div key={page.id} className="space-y-4">
             {pages.length > 1 && (

@@ -16,7 +16,8 @@ class LocationController {
                 page = 1,
                 limit = 10, // Default to 10 items per page
                 sort = 'name',
-                order = 'asc'
+                order = 'asc',
+                withPath = 'false'
             } = req.query;
 
             // Build query based on user's access level
@@ -69,9 +70,13 @@ class LocationController {
 
             const total = await Location.countDocuments(query);
 
-            // Add full path to each location
-            for (const location of locations) {
-                location._fullPath = await location.getFullPath();
+            // Add full path to each location — only when explicitly requested or for small result sets.
+            // Skipped by default for large limit queries (e.g. dropdowns with limit=2000) to avoid N+1 slowness.
+            const shouldIncludePath = withPath === 'true' || parseInt(limit) <= 50;
+            if (shouldIncludePath) {
+                for (const location of locations) {
+                    location._fullPath = await location.getFullPath();
+                }
             }
 
             res.status(200).json({

@@ -11,7 +11,7 @@ import { Input } from '../ui/input';
 import VoiceToTextButton from '../ui/VoiceToTextButton';
 import { Checkbox } from '../ui/checkbox';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
-import { applications as applicationsApi, interviews } from '../../lib/api';
+import { applications as applicationsApi, interviews, locations as locationsApi } from '../../lib/api';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
 
@@ -420,6 +420,7 @@ export const ApplicationDetailModal: React.FC<ApplicationDetailModalProps> = ({
   const [application, setApplication] = useState<any>(null);
   const [payments, setPayments] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
+  const [downloadingPdf, setDownloadingPdf] = useState(false);
   const [formConfig, setFormConfig] = useState<any>(null);
   const [processingAction, setProcessingAction] = useState(false);
   const [showAction, setShowAction] = useState<"approve" | "reject" | "revert" | null>(null);
@@ -448,6 +449,19 @@ export const ApplicationDetailModal: React.FC<ApplicationDetailModalProps> = ({
   const [numberOfPayments, setNumberOfPayments] = useState(12);
   const [amountPerPayment, setAmountPerPayment] = useState(0);
   const [recurringStartDate, setRecurringStartDate] = useState('');
+
+  // Location edit state
+  const [showLocationEdit, setShowLocationEdit] = useState(false);
+  const [locationEditArea, setLocationEditArea] = useState('');
+  const [locationEditUnit, setLocationEditUnit] = useState('');
+  const [locationEditReason, setLocationEditReason] = useState('');
+  const [locationEditAreas, setLocationEditAreas] = useState<any[]>([]);
+  const [locationEditUnits, setLocationEditUnits] = useState<any[]>([]);
+  const [loadingLocationUnits, setLoadingLocationUnits] = useState(false);
+  const [savingLocation, setSavingLocation] = useState(false);
+
+  // Duplicate check state
+  const [recheckingDuplicates, setRecheckingDuplicates] = useState(false);
 
   useEffect(() => {
     if (isOpen && applicationId) {
@@ -574,6 +588,27 @@ export const ApplicationDetailModal: React.FC<ApplicationDetailModalProps> = ({
       });
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleDownloadPdf = async () => {
+    if (!application?._id) return;
+    setDownloadingPdf(true);
+    try {
+      const { applications: applicationsApiObj } = await import('../../lib/api');
+      const blob = await applicationsApiObj.downloadPdf(application._id);
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `Application_${application.applicationNumber || application._id}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      window.URL.revokeObjectURL(url);
+    } catch {
+      toast({ title: 'Download Failed', description: 'Could not download application PDF.', variant: 'destructive' });
+    } finally {
+      setDownloadingPdf(false);
     }
   };
 
@@ -1142,6 +1177,82 @@ export const ApplicationDetailModal: React.FC<ApplicationDetailModalProps> = ({
 
   if (!isOpen) return null;
 
+  const canEditLocation = user?.role === 'unit_admin' || user?.role === 'area_admin';
+
+  const handleOpenLocationEdit = async () => {
+    const currentAreaId = application?.area?._id || application?.area || '';
+    const currentUnitId = application?.unit?._id || application?.unit || '';
+    const districtId = application?.district?._id || application?.district || '';
+    setShowLocationEdit(true);
+    setLocationEditArea(currentAreaId);
+    setLocationEditUnit(currentUnitId);
+    setLocationEditReason('');
+    setLocationEditUnits([]);
+    try {
+      const areasRes = await locationsApi.getByType('area', districtId ? { parent: districtId } : undefined) as any;
+      setLocationEditAreas(areasRes?.data?.locations || areasRes?.locations || []);
+      if (currentAreaId) {
+        setLoadingLocationUnits(true);
+        const unitsRes = await locationsApi.getByType('unit', { parent: currentAreaId }) as any;
+        setLocationEditUnits(unitsRes?.data?.locations || unitsRes?.locations || []);
+        setLoadingLocationUnits(false);
+      }
+    } catch {
+      setLoadingLocationUnits(false);
+    }
+  };
+
+  const handleLocationAreaChange = async (areaId: string) => {
+    setLocationEditArea(areaId);
+    setLocationEditUnit('');
+    setLocationEditUnits([]);
+    if (!areaId) return;
+    setLoadingLocationUnits(true);
+    try {
+      const unitsRes = await locationsApi.getByType('unit', { parent: areaId }) as any;
+      setLocationEditUnits(unitsRes?.data?.locations || unitsRes?.locations || []);
+    } catch {
+      // ignore
+    } finally {
+      setLoadingLocationUnits(false);
+    }
+  };
+
+  const handleSaveLocation = async () => {
+    if (!locationEditUnit) {
+      toast({ title: 'Unit required', description: 'Please select a unit.', variant: 'destructive' });
+      return;
+    }
+    setSavingLocation(true);
+    try {
+      await applicationsApi.updateLocation(application._id, {
+        area: locationEditArea || undefined,
+        unit: locationEditUnit,
+        reason: locationEditReason,
+      });
+      toast({ title: 'Location updated', description: 'Application location has been updated.' });
+      setShowLocationEdit(false);
+      fetchApplicationDetails();
+    } catch (err: any) {
+      toast({ title: 'Failed', description: err?.message || 'Could not update location.', variant: 'destructive' });
+    } finally {
+      setSavingLocation(false);
+    }
+  };
+
+  const handleRecheckDuplicates = async () => {
+    setRecheckingDuplicates(true);
+    try {
+      const res = await applicationsApi.getDuplicates(application._id) as any;
+      setApplication((prev: any) => ({ ...prev, duplicateInfo: res?.duplicateInfo || res }));
+      toast({ title: 'Duplicate check complete' });
+    } catch {
+      toast({ title: 'Error', description: 'Could not re-check duplicates.', variant: 'destructive' });
+    } finally {
+      setRecheckingDuplicates(false);
+    }
+  };
+
   return ReactDOM.createPortal(
     <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50">
       <div className="bg-background rounded-lg shadow-lg w-full min-w-[60vw] max-w-4xl max-h-[90vh] overflow-hidden flex flex-col">
@@ -1158,9 +1269,17 @@ export const ApplicationDetailModal: React.FC<ApplicationDetailModalProps> = ({
               )}
             </div>
           </div>
-          <Button variant="ghost" size="icon" onClick={onClose}>
-            <X className="h-5 w-5" />
-          </Button>
+          <div className="flex items-center gap-2">
+            {application && (
+              <Button variant="outline" size="sm" onClick={handleDownloadPdf} disabled={downloadingPdf}>
+                {downloadingPdf ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <Download className="h-4 w-4 mr-1" />}
+                Download Application
+              </Button>
+            )}
+            <Button variant="ghost" size="icon" onClick={onClose}>
+              <X className="h-5 w-5" />
+            </Button>
+          </div>
         </div>
 
         {/* Content */}
@@ -1435,6 +1554,42 @@ export const ApplicationDetailModal: React.FC<ApplicationDetailModalProps> = ({
               ) : (
               <div className="p-6 space-y-6">
               <>
+              {/* Duplicate Warning */}
+              {application.duplicateInfo?.isDuplicate && (
+                <div className="rounded-lg border border-orange-300 bg-orange-50 p-4 space-y-2">
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="flex items-center gap-2 text-orange-700 font-semibold">
+                      <AlertTriangle className="h-5 w-5 shrink-0" />
+                      Possible Duplicate Application
+                    </div>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="text-orange-700 border-orange-300 hover:bg-orange-100 text-xs"
+                      onClick={handleRecheckDuplicates}
+                      disabled={recheckingDuplicates}
+                    >
+                      {recheckingDuplicates ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : 'Re-check'}
+                    </Button>
+                  </div>
+                  <p className="text-sm text-orange-700">
+                    This application may be a duplicate. Matched on the following fields:
+                  </p>
+                  <ul className="space-y-1">
+                    {application.duplicateInfo.matchedFields?.map((mf: any, idx: number) => (
+                      <li key={idx} className="text-sm text-orange-800 flex gap-2">
+                        <span className="font-medium">{mf.fieldLabel || mf.fieldType}:</span>
+                        <span>
+                          {mf.matchedApplicationIds?.length} other application(s) —&nbsp;
+                          {mf.matchedApplicationIds?.slice(0, 3).join(', ')}
+                          {mf.matchedApplicationIds?.length > 3 ? ` +${mf.matchedApplicationIds.length - 3} more` : ''}
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+                  <p className="text-xs text-orange-600 mt-1">Review and manually decide whether to approve or reject.</p>
+                </div>
+              )}
               {/* Basic Information */}
               <Card>
                 <CardHeader>
@@ -1518,12 +1673,72 @@ export const ApplicationDetailModal: React.FC<ApplicationDetailModalProps> = ({
               {/* Location Information */}
               <Card>
                 <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <MapPin className="h-5 w-5" />
-                    Application Location
+                  <CardTitle className="flex items-center justify-between gap-2">
+                    <span className="flex items-center gap-2">
+                      <MapPin className="h-5 w-5" />
+                      Application Location
+                    </span>
+                    {canEditLocation && !showLocationEdit && (
+                      <Button size="sm" variant="outline" onClick={handleOpenLocationEdit}>
+                        Edit Location
+                      </Button>
+                    )}
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
+                  {showLocationEdit ? (
+                    <div className="space-y-3">
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                        {user?.role === 'area_admin' && (
+                          <div>
+                            <Label className="text-sm">Area</Label>
+                            <select
+                              className="w-full mt-1 border rounded px-2 py-1.5 text-sm bg-background"
+                              value={locationEditArea}
+                              onChange={(e) => handleLocationAreaChange(e.target.value)}
+                            >
+                              <option value="">-- Select Area --</option>
+                              {locationEditAreas.map((a: any) => (
+                                <option key={a._id} value={a._id}>{a.name}</option>
+                              ))}
+                            </select>
+                          </div>
+                        )}
+                        <div>
+                          <Label className="text-sm">Unit</Label>
+                          <select
+                            className="w-full mt-1 border rounded px-2 py-1.5 text-sm bg-background"
+                            value={locationEditUnit}
+                            onChange={(e) => setLocationEditUnit(e.target.value)}
+                            disabled={loadingLocationUnits}
+                          >
+                            <option value="">{loadingLocationUnits ? 'Loading...' : !locationEditArea ? 'Select area first' : locationEditUnits.length === 0 ? 'No units' : '-- Select Unit --'}</option>
+                            {locationEditUnits.map((u: any) => (
+                              <option key={u._id} value={u._id}>{u.name}</option>
+                            ))}
+                          </select>
+                        </div>
+                      </div>
+                      <div>
+                        <Label className="text-sm">Reason for change</Label>
+                        <Input
+                          className="mt-1 text-sm"
+                          placeholder="e.g. Beneficiary selected wrong unit"
+                          value={locationEditReason}
+                          onChange={(e) => setLocationEditReason(e.target.value)}
+                        />
+                      </div>
+                      <div className="flex gap-2">
+                        <Button size="sm" onClick={handleSaveLocation} disabled={savingLocation}>
+                          {savingLocation ? <Loader2 className="h-3.5 w-3.5 animate-spin mr-1" /> : null}
+                          Save
+                        </Button>
+                        <Button size="sm" variant="outline" onClick={() => setShowLocationEdit(false)}>
+                          Cancel
+                        </Button>
+                      </div>
+                    </div>
+                  ) : (
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                     <div>
                       <label className="text-sm font-medium text-muted-foreground">State</label>
@@ -1542,6 +1757,7 @@ export const ApplicationDetailModal: React.FC<ApplicationDetailModalProps> = ({
                       <p className="text-sm">{application.unit?.name || 'N/A'}</p>
                     </div>
                   </div>
+                  )}
                 </CardContent>
               </Card>
 

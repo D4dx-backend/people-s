@@ -5,27 +5,41 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { InputOTP, InputOTPGroup, InputOTPSlot } from "@/components/ui/input-otp";
-import { Phone, ArrowLeft, UserCircle, Shield, Loader2 } from "lucide-react";
+import { Phone, ArrowLeft, UserCircle, Shield, Loader2, Building2 } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { auth } from "@/lib/api";
-import { useAuth } from "@/hooks/useAuth";
+import { useAuth, type FranchiseOption, type RoleOption } from "@/hooks/useAuth";
 import { useConfig } from "@/contexts/ConfigContext";
 import { useOrgLogoUrl } from "@/hooks/useOrgLogoUrl";
 import defaultLogo from "@/assets/logo.png";
 
+/** Route to navigate to after a successful admin login, based on role. */
+function getAdminRoute(role: string, fallback: string): string {
+  if (role === 'area_president') return '/area-president-dashboard';
+  if (role === 'super_admin' || role === 'state_admin') return '/dashboard';
+  return fallback;
+}
+
 export default function Login() {
   const navigate = useNavigate();
   const location = useLocation();
-  const { login } = useAuth();
+  const { login, selectRole } = useAuth();
   const { org } = useConfig();
   const orgLogoUrl = useOrgLogoUrl();
-  const [step, setStep] = useState<"role" | "phone" | "otp">("role");
+  const [step, setStep] = useState<"role" | "phone" | "otp" | "franchise-select" | "role-select">("role");
   const [role, setRole] = useState<"beneficiary" | "admin">("admin");
   const [phoneNumber, setPhoneNumber] = useState("9876543210");
   const [otp, setOtp] = useState("");
   const [loading, setLoading] = useState(false);
   const [developmentOTP, setDevelopmentOTP] = useState<string | null>(null);
+
+  // Selection state for multi-franchise / multi-role flow
+  const [selectionToken, setSelectionToken] = useState<string>("");
+  const [franchiseOptions, setFranchiseOptions] = useState<FranchiseOption[]>([]);
+  const [roleOptions, setRoleOptions] = useState<RoleOption[]>([]);
+  const [selectedFranchiseId, setSelectedFranchiseId] = useState<string>("");
+  const [selectedRole, setSelectedRole] = useState<string>("");
 
   // Get the return URL from location state
   const from = location.state?.from?.pathname || "/dashboard";
@@ -148,63 +162,31 @@ export default function Login() {
         }, 500);
       } else {
         // Use admin auth for verification
-        await login(phoneNumber, otp);
-        
-        // Wait a bit longer to ensure token is stored and React state is updated
-        await new Promise(resolve => setTimeout(resolve, 300));
-        
-        // Verify token was saved
-        const savedToken = localStorage.getItem('token');
-        const savedUser = localStorage.getItem('user');
-        
-        if (!savedToken || !savedUser) {
-          toast({
-            title: "Login Error",
-            description: "Failed to save authentication data. Please try again.",
-            variant: "destructive",
-          });
+        const result = await login(phoneNumber, otp);
+
+        // ── Multi-franchise selection ──────────────────────────────────────
+        if ('requiresFranchiseSelection' in result && result.requiresFranchiseSelection) {
+          setFranchiseOptions(result.franchises);
+          setSelectionToken(result.selectionToken);
+          setSelectedFranchiseId(result.franchises[0]?.id ?? '');
+          setStep('franchise-select');
+          toast({ title: 'Select Organisation', description: result.message });
           return;
         }
-        
-        // Test the token by making a simple API call
-        try {
-          const apiUrl = import.meta.env.VITE_API_URL;
-          if (!apiUrl) {
-            throw new Error('VITE_API_URL environment variable is required');
-          }
-          const testResponse = await fetch(`${apiUrl}/auth/me`, {
-            headers: {
-              'Authorization': `Bearer ${savedToken}`,
-              'Content-Type': 'application/json',
-            },
-          });
-          
-          if (!testResponse.ok) {
-            throw new Error('Token validation failed');
-          }
-        } catch (testError) {
-          console.error('Token validation error:', testError);
-          toast({
-            title: "Authentication Error",
-            description: "Token validation failed. Please try logging in again.",
-            variant: "destructive",
-          });
+
+        // ── Multi-role selection ───────────────────────────────────────────
+        if ('requiresRoleSelection' in result && result.requiresRoleSelection) {
+          setRoleOptions(result.roles);
+          setSelectionToken(result.selectionToken);
+          setSelectedFranchiseId(result.franchiseId);
+          setSelectedRole(result.roles[0]?.role ?? '');
+          setStep('role-select');
+          toast({ title: 'Select Role', description: result.message });
           return;
         }
-        
-        toast({
-          title: "Login Successful",
-          description: "Welcome back!",
-        });
-        
-        // Global super admin gets their own dedicated panel
-        const parsedUser = JSON.parse(savedUser);
-        if (parsedUser?.isSuperAdmin) {
-          navigate('/global-admin', { replace: true });
-        } else {
-          // Navigate to the intended page or dashboard
-          navigate(from, { replace: true });
-        }
+
+        // ── Direct login ───────────────────────────────────────────────────
+        await _finaliseAdminLogin();
       }
     } catch (error: any) {
       toast({
@@ -212,6 +194,86 @@ export default function Login() {
         description: error.message || "Failed to verify OTP",
         variant: "destructive",
       });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  /** Reads localStorage after a direct/select-role login and navigates. */
+  const _finaliseAdminLogin = async () => {
+    await new Promise(resolve => setTimeout(resolve, 150));
+
+    const savedToken = localStorage.getItem('token');
+    const savedUser  = localStorage.getItem('user');
+
+    if (!savedToken || !savedUser) {
+      toast({ title: "Login Error", description: "Failed to save authentication data. Please try again.", variant: "destructive" });
+      return;
+    }
+
+    toast({ title: "Login Successful", description: "Welcome back!" });
+
+    const parsedUser = JSON.parse(savedUser);
+    if (parsedUser?.isSuperAdmin) {
+      navigate('/global-admin', { replace: true });
+    } else {
+      navigate(getAdminRoute(parsedUser?.role ?? '', from), { replace: true });
+    }
+  };
+
+  const handleFranchiseConfirm = async () => {
+    if (!selectedFranchiseId) return;
+    setLoading(true);
+    try {
+      // Call select-role without a role — the backend will either:
+      //   a) return requiresRoleSelection if the user has multiple roles in this franchise
+      //   b) complete login directly if the user has exactly one role
+      const apiUrl = import.meta.env.VITE_API_URL!;
+      const res = await fetch(`${apiUrl}/auth/select-role`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ selectionToken, franchiseId: selectedFranchiseId }),
+      });
+      const data = await res.json();
+
+      if (!res.ok) {
+        toast({ title: 'Error', description: data.message || 'Failed to select organisation', variant: 'destructive' });
+        return;
+      }
+
+      if (data.data?.requiresRoleSelection) {
+        setRoleOptions(data.data.roles);
+        setSelectedRole(data.data.roles[0]?.role ?? '');
+        setStep('role-select');
+        toast({ title: 'Select Role', description: data.data.message });
+        return;
+      }
+
+      // Single role — server returned the full JWT immediately
+      if (data.success && data.data?.user && data.data?.tokens) {
+        localStorage.setItem('token', data.data.tokens.accessToken);
+        localStorage.setItem('user', JSON.stringify(data.data.user));
+        if (data.data.tokens.refreshToken) localStorage.setItem('refreshToken', data.data.tokens.refreshToken);
+        await _finaliseAdminLogin();
+        return;
+      }
+
+      toast({ title: 'Error', description: data.message || 'Failed to select organisation', variant: 'destructive' });
+    } catch (err: any) {
+      toast({ title: 'Error', description: err.message || 'Failed to select organisation', variant: 'destructive' });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleRoleConfirm = async () => {
+    if (!selectedRole || !selectedFranchiseId) return;
+    setLoading(true);
+    try {
+      await selectRole(selectionToken, selectedFranchiseId, selectedRole);
+      await _finaliseAdminLogin();
+    } catch (err: any) {
+      toast({ title: 'Error', description: err.message || 'Failed to select role', variant: 'destructive' });
     } finally {
       setLoading(false);
     }
@@ -276,13 +338,21 @@ export default function Login() {
           </div>
           <div className="flex items-center justify-between">
             <CardTitle className="text-2xl font-bold">
-              {step === "role" ? "Select Login Type" : step === "phone" ? "Login" : "Verify OTP"}
+              {step === "role" ? "Select Login Type"
+                : step === "phone" ? "Login"
+                : step === "otp" ? "Verify OTP"
+                : step === "franchise-select" ? "Select Organisation"
+                : "Select Role"}
             </CardTitle>
             {step !== "role" && (
               <Button
                 variant="ghost"
                 size="sm"
-                onClick={() => setStep(step === "otp" ? "phone" : "role")}
+                onClick={() => {
+                  if (step === "otp") setStep("phone");
+                  else if (step === "franchise-select" || step === "role-select") setStep("otp");
+                  else setStep("role");
+                }}
               >
                 <ArrowLeft className="h-4 w-4 mr-1" />
                 Back
@@ -294,7 +364,11 @@ export default function Login() {
               ? "Choose how you want to access the system"
               : step === "phone" 
                 ? `Logging in as ${role === "admin" ? "Admin" : "Beneficiary"}`
-                : `We've sent a verification code to +91 ${phoneNumber}`
+                : step === "otp"
+                  ? `We've sent a verification code to +91 ${phoneNumber}`
+                  : step === "franchise-select"
+                    ? "Select the organisation you want to log into"
+                    : "Select the role you want to use for this session"
             }
           </CardDescription>
         </CardHeader>
@@ -375,7 +449,7 @@ export default function Login() {
                 {loading ? "Sending..." : "Send OTP"}
               </Button>
             </>
-          ) : (
+          ) : step === "otp" ? (
             <>
               <div className="space-y-2">
                 <Label htmlFor="otp">Enter OTP</Label>
@@ -431,7 +505,61 @@ export default function Login() {
                 {loading ? "Verifying..." : "Verify & Login"}
               </Button>
             </>
-          )}
+          ) : step === "franchise-select" ? (
+            <>
+              <p className="text-sm text-muted-foreground mb-2">You have access to multiple organisations. Choose one to continue.</p>
+              <RadioGroup value={selectedFranchiseId} onValueChange={setSelectedFranchiseId}>
+                <div className="space-y-2">
+                  {franchiseOptions.map((f) => (
+                    <div
+                      key={f.id}
+                      className={`flex items-center space-x-3 border rounded-lg p-3 cursor-pointer transition-all ${
+                        selectedFranchiseId === f.id ? 'border-primary bg-primary/5' : 'border-border hover:border-primary/50'
+                      }`}
+                      onClick={() => setSelectedFranchiseId(f.id)}
+                    >
+                      <RadioGroupItem value={f.id} id={`franchise-${f.id}`} />
+                      <Label htmlFor={`franchise-${f.id}`} className="flex items-center gap-3 cursor-pointer flex-1">
+                        <Building2 className="h-6 w-6 text-primary flex-shrink-0" />
+                        <span className="font-medium">{f.displayName}</span>
+                      </Label>
+                    </div>
+                  ))}
+                </div>
+              </RadioGroup>
+              <Button className="w-full bg-gradient-primary shadow-glow" onClick={handleFranchiseConfirm} disabled={loading || !selectedFranchiseId}>
+                {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                {loading ? 'Please wait…' : 'Continue'}
+              </Button>
+            </>
+          ) : step === "role-select" ? (
+            <>
+              <p className="text-sm text-muted-foreground mb-2">You hold multiple roles in this organisation. Choose the role to use for this session.</p>
+              <RadioGroup value={selectedRole} onValueChange={setSelectedRole}>
+                <div className="space-y-2">
+                  {roleOptions.map((r) => (
+                    <div
+                      key={r.role}
+                      className={`flex items-center space-x-3 border rounded-lg p-3 cursor-pointer transition-all ${
+                        selectedRole === r.role ? 'border-primary bg-primary/5' : 'border-border hover:border-primary/50'
+                      }`}
+                      onClick={() => setSelectedRole(r.role)}
+                    >
+                      <RadioGroupItem value={r.role} id={`role-${r.role}`} />
+                      <Label htmlFor={`role-${r.role}`} className="flex items-center gap-3 cursor-pointer flex-1">
+                        <Shield className="h-6 w-6 text-primary flex-shrink-0" />
+                        <span className="font-medium">{r.displayName}</span>
+                      </Label>
+                    </div>
+                  ))}
+                </div>
+              </RadioGroup>
+              <Button className="w-full bg-gradient-primary shadow-glow" onClick={handleRoleConfirm} disabled={loading || !selectedRole}>
+                {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                {loading ? 'Logging in…' : 'Login'}
+              </Button>
+            </>
+          ) : null}
         </CardContent>
       </Card>
     </div>
