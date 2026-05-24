@@ -742,6 +742,18 @@ router.get('/status', authenticate, authController.checkAuthStatus);
 router.get('/my-franchises', authenticate, authController.getMyFranchises);
 
 /**
+ * @route   POST /api/auth/select-role
+ * @desc    Exchange selection token + chosen franchise/role for a full JWT
+ * @access  Public (requires valid selectionToken from verify-otp)
+ */
+router.post('/select-role', [
+  body('selectionToken').notEmpty().withMessage('selectionToken is required'),
+  body('franchiseId').notEmpty().withMessage('franchiseId is required'),
+  body('role').optional({ nullable: true }),
+  validateRequest
+], authController.selectRole);
+
+/**
  * @route   GET /api/auth/test-sms
  * @desc    Test DXing SMS service connection (Admin only)
  * @access  Private (Super Admin, State Admin)

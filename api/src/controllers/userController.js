@@ -4,6 +4,75 @@ const notificationService = require('../services/notificationService');
 const ResponseHelper = require('../utils/responseHelper');
 const { buildFranchiseReadFilter, buildFranchiseMatchStage, getWriteFranchiseId } = require('../utils/franchiseFilterHelper');
 
+/**
+ * Enrich user objects with district/area/unit from adminScope.regions or UserFranchise.
+ * Handles legacy users created before the separate district/area/unit fields were in use,
+ * where the location was stored only in adminScope.regions[0].
+ */
+async function enrichUsersWithLocationScope(users, franchiseId) {
+  if (!users || users.length === 0) return [];
+
+  // Convert Mongoose docs to plain objects (preserving virtuals like 'id')
+  const plain = users.map(u => (u.toObject ? u.toObject({ virtuals: true }) : u));
+
+  // Step 1: Derive district/area/unit from regions[0] where role implies it
+  for (const u of plain) {
+    if (!u.adminScope) continue;
+    const r0 = u.adminScope.regions?.[0];
+    if (!r0) continue;
+    if (u.role === 'district_admin' && !u.adminScope.district) {
+      u.adminScope.district = r0;
+    } else if (u.role === 'area_admin' && !u.adminScope.area) {
+      u.adminScope.area = r0;
+    } else if (['unit_admin', 'area_president'].includes(u.role) && !u.adminScope.unit) {
+      u.adminScope.unit = r0;
+    }
+  }
+
+  // Step 2: For users still missing location info, fall back to UserFranchise records
+  const stillMissing = plain.filter(u =>
+    ['district_admin', 'area_admin', 'unit_admin', 'area_president'].includes(u.role) &&
+    !u.adminScope?.district
+  );
+
+  if (stillMissing.length > 0) {
+    const missingIds = stillMissing.map(u => u._id);
+    const ufQuery = { user: { $in: missingIds }, isActive: true };
+    if (franchiseId) ufQuery.franchise = franchiseId;
+
+    const memberships = await UserFranchise.find(ufQuery)
+      .populate('adminScope.district', 'name type code')
+      .populate('adminScope.area', 'name type code')
+      .populate('adminScope.unit', 'name type code')
+      .lean();
+
+    // Map userId -> first membership that has any location data
+    const membershipMap = {};
+    for (const m of memberships) {
+      const uid = m.user.toString();
+      if (!membershipMap[uid] && (m.adminScope?.district || m.adminScope?.area || m.adminScope?.unit || m.adminScope?.regions?.length)) {
+        membershipMap[uid] = m;
+      }
+    }
+
+    for (const u of plain) {
+      const m = membershipMap[u._id.toString()];
+      if (!m?.adminScope) continue;
+      if (!u.adminScope) u.adminScope = {};
+      if (!u.adminScope.district && m.adminScope.district) u.adminScope.district = m.adminScope.district;
+      if (!u.adminScope.area && m.adminScope.area) u.adminScope.area = m.adminScope.area;
+      if (!u.adminScope.unit && m.adminScope.unit) u.adminScope.unit = m.adminScope.unit;
+      if (!u.adminScope.regions?.length && m.adminScope.regions?.length) u.adminScope.regions = m.adminScope.regions;
+      // Last resort: try regions[0] from UserFranchise
+      if (!u.adminScope.district && m.adminScope.regions?.length > 0 && u.role === 'district_admin') {
+        u.adminScope.district = m.adminScope.regions[0];
+      }
+    }
+  }
+
+  return plain;
+}
+
 class UserController {
   /**
    * Get all users with filtering and pagination
@@ -56,7 +125,35 @@ class UserController {
       }
 
       // Apply filters
-      if (role) query.role = role;
+      // ── Role filter ─────────────────────────────────────────────────────
+      // When in franchise context, filter by UserFranchise.role so that users
+      // with multiple roles (e.g. district_admin + area_admin) appear correctly
+      // in every role they hold — not just their User.role (primary role).
+      let roleFilteredViaFranchise = false;
+      if (role && req.franchiseId) {
+        // Build a UserFranchise sub-query for role + location filters
+        const ufQuery = { franchise: req.franchiseId, role, isActive: true };
+
+        // Location filters applied to UserFranchise.adminScope instead of User.adminScope
+        if (district) ufQuery['adminScope.district'] = district;
+        if (area)     ufQuery['adminScope.area']     = area;
+        if (unit)     ufQuery['adminScope.unit']     = unit;
+
+        console.log('🔍 [getUsers] UserFranchise role query:', JSON.stringify(ufQuery));
+        const roleFilteredIds = await UserFranchise.find(ufQuery).distinct('user');
+        // Merge with any existing _id filter (e.g. from the regional scope above)
+        if (query._id) {
+          const existing = query._id.$in.map(String);
+          query._id = { $in: roleFilteredIds.filter(id => existing.includes(String(id))) };
+        } else {
+          query._id = { $in: roleFilteredIds };
+        }
+        roleFilteredViaFranchise = true;
+      } else if (role) {
+        // Non-franchise context: fall back to User.role
+        query.role = role;
+      }
+
       // Handle isActive filter - convert string to boolean
       if (isActive !== undefined && isActive !== null && isActive !== '') {
         query.isActive = isActive === 'true' || isActive === true;
@@ -74,35 +171,38 @@ class UserController {
         }
       }
 
-      // Location-specific filters (district / area / unit)
-      if (district) {
-        query.$or = [
-          { 'adminScope.district': district },
-          { 'profile.location.district': district }
-        ];
-      }
-      if (area) {
-        const areaConditions = [
-          { 'adminScope.area': area },
-          { 'profile.location.area': area }
-        ];
-        if (query.$or) {
-          query.$and = [...(query.$and || []), { $or: query.$or }, { $or: areaConditions }];
-          delete query.$or;
-        } else {
-          query.$or = areaConditions;
+      // Location-specific filters (district / area / unit) on User.adminScope
+      // Only apply if we didn't already handle them through UserFranchise above
+      if (!roleFilteredViaFranchise) {
+        if (district) {
+          query.$or = [
+            { 'adminScope.district': district },
+            { 'profile.location.district': district }
+          ];
         }
-      }
-      if (unit) {
-        const unitConditions = [
-          { 'adminScope.unit': unit },
-          { 'profile.location.unit': unit }
-        ];
-        if (query.$or) {
-          query.$and = [...(query.$and || []), { $or: query.$or }, { $or: unitConditions }];
-          delete query.$or;
-        } else {
-          query.$or = unitConditions;
+        if (area) {
+          const areaConditions = [
+            { 'adminScope.area': area },
+            { 'profile.location.area': area }
+          ];
+          if (query.$or) {
+            query.$and = [...(query.$and || []), { $or: query.$or }, { $or: areaConditions }];
+            delete query.$or;
+          } else {
+            query.$or = areaConditions;
+          }
+        }
+        if (unit) {
+          const unitConditions = [
+            { 'adminScope.unit': unit },
+            { 'profile.location.unit': unit }
+          ];
+          if (query.$or) {
+            query.$and = [...(query.$and || []), { $or: query.$or }, { $or: unitConditions }];
+            delete query.$or;
+          } else {
+            query.$or = unitConditions;
+          }
         }
       }
 
@@ -137,7 +237,13 @@ class UserController {
       const franchiseReadFilter = buildFranchiseReadFilter(req);
       if (Object.keys(franchiseReadFilter).length > 0) {
         const franchiseUserIds = await UserFranchise.find({ ...franchiseReadFilter, isActive: true }).distinct('user');
-        query._id = { $in: franchiseUserIds };
+        if (query._id) {
+          // Intersect: keep only IDs that satisfy both the role filter AND the franchise read scope
+          const existing = query._id.$in.map(String);
+          query._id = { $in: franchiseUserIds.filter(id => existing.includes(String(id))) };
+        } else {
+          query._id = { $in: franchiseUserIds };
+        }
       }
 
       const users = await User.find(query)
@@ -155,10 +261,13 @@ class UserController {
 
       const total = await User.countDocuments(query);
 
+      // Enrich users: fill in missing district/area/unit from regions or UserFranchise
+      const enrichedUsers = await enrichUsersWithLocationScope(users, req.franchiseId);
+
       res.status(200).json({
         success: true,
         data: {
-          users,
+          users: enrichedUsers,
           pagination: {
             page: parseInt(page),
             limit: parseInt(limit),
@@ -223,7 +332,7 @@ class UserController {
 
       res.status(200).json({
         success: true,
-        data: { user }
+        data: { user: (await enrichUsersWithLocationScope([user], req.franchiseId))[0] }
       });
     } catch (error) {
       console.error('❌ Get User By ID Error:', error);
@@ -245,11 +354,12 @@ class UserController {
 
       // Check if current user can create users with this role (Enhanced hierarchy)
       const roleHierarchy = {
-        super_admin: ['super_admin', 'state_admin', 'district_admin', 'area_admin', 'unit_admin', 'project_coordinator', 'scheme_coordinator', 'beneficiary'],
-        state_admin: ['district_admin', 'area_admin', 'unit_admin', 'project_coordinator', 'scheme_coordinator', 'beneficiary'],
-        district_admin: ['area_admin', 'unit_admin', 'beneficiary'],
-        area_admin: ['unit_admin', 'beneficiary'],
+        super_admin: ['super_admin', 'state_admin', 'district_admin', 'area_admin', 'unit_admin', 'area_president', 'project_coordinator', 'scheme_coordinator', 'beneficiary'],
+        state_admin: ['district_admin', 'area_admin', 'unit_admin', 'area_president', 'project_coordinator', 'scheme_coordinator', 'beneficiary'],
+        district_admin: ['area_admin', 'unit_admin', 'area_president', 'beneficiary'],
+        area_admin: ['unit_admin', 'area_president', 'beneficiary'],
         unit_admin: ['beneficiary'],
+        area_president: ['beneficiary'],
         project_coordinator: [],
         scheme_coordinator: []
       };
@@ -332,7 +442,7 @@ class UserController {
       // Create UserFranchise membership if operating within franchise context
       if (req.franchiseId && userData.role !== 'beneficiary') {
         try {
-          const existingMembership = await UserFranchise.findOne({ user: user._id, franchise: req.franchiseId });
+          const existingMembership = await UserFranchise.findOne({ user: user._id, franchise: req.franchiseId, role: userData.role });
           if (!existingMembership) {
             const membership = new UserFranchise({
               user: user._id,
@@ -455,8 +565,8 @@ class UserController {
         const roleHierarchy = {
           super_admin: ['super_admin', 'state_admin', 'project_coordinator', 'scheme_coordinator', 'district_admin', 'area_admin', 'unit_admin', 'beneficiary'],
           state_admin: ['state_admin', 'project_coordinator', 'scheme_coordinator', 'district_admin', 'area_admin', 'unit_admin', 'beneficiary'],
-          district_admin: ['area_admin', 'unit_admin', 'beneficiary'],
-          area_admin: ['unit_admin', 'beneficiary']
+          district_admin: ['area_admin', 'unit_admin', 'area_president', 'beneficiary'],
+          area_admin: ['unit_admin', 'area_president', 'beneficiary']
         };
 
         const allowedRoles = roleHierarchy[currentUser.role] || [];
@@ -547,14 +657,29 @@ class UserController {
         { new: true, runValidators: true }
       )
         .populate('adminScope.regions', 'name type')
+        .populate('adminScope.district', 'name type code')
+        .populate('adminScope.area', 'name type code')
+        .populate('adminScope.unit', 'name type code')
         .populate('adminScope.projects', 'name code')
         .populate('adminScope.schemes', 'name code')
         .select('-password -otp');
 
+      // Sync adminScope changes to UserFranchise record if operating in franchise context
+      if (req.franchiseId && updates.adminScope) {
+        try {
+          await UserFranchise.updateOne(
+            { user: id, franchise: req.franchiseId, isActive: true },
+            { $set: { adminScope: updatedUser.adminScope } }
+          );
+        } catch (ufErr) {
+          console.warn('⚠️ Failed to sync adminScope to UserFranchise:', ufErr.message);
+        }
+      }
+
       res.status(200).json({
         success: true,
         message: 'User updated successfully',
-        data: { user: updatedUser }
+        data: { user: (await enrichUsersWithLocationScope([updatedUser], req.franchiseId))[0] }
       });
     } catch (error) {
       console.error('❌ Update User Error:', error);
@@ -947,10 +1072,10 @@ class UserController {
 
       // Check permissions using enhanced role hierarchy
       const roleHierarchy = {
-        super_admin: ['super_admin', 'state_admin', 'district_admin', 'area_admin', 'unit_admin', 'project_coordinator', 'scheme_coordinator', 'beneficiary'],
-        state_admin: ['district_admin', 'area_admin', 'unit_admin', 'project_coordinator', 'scheme_coordinator', 'beneficiary'],
-        district_admin: ['area_admin', 'unit_admin', 'beneficiary'],
-        area_admin: ['unit_admin', 'beneficiary'],
+        super_admin: ['super_admin', 'state_admin', 'district_admin', 'area_admin', 'unit_admin', 'area_president', 'project_coordinator', 'scheme_coordinator', 'beneficiary'],
+        state_admin: ['district_admin', 'area_admin', 'unit_admin', 'area_president', 'project_coordinator', 'scheme_coordinator', 'beneficiary'],
+        district_admin: ['area_admin', 'unit_admin', 'area_president', 'beneficiary'],
+        area_admin: ['unit_admin', 'area_president', 'beneficiary'],
         unit_admin: ['beneficiary']
       };
 
@@ -1008,8 +1133,8 @@ class UserController {
 
     // Check role hierarchy
     const roleHierarchy = {
-      district_admin: ['area_admin', 'unit_admin', 'beneficiary'],
-      area_admin: ['unit_admin', 'beneficiary'],
+      district_admin: ['area_admin', 'unit_admin', 'area_president', 'beneficiary'],
+      area_admin: ['unit_admin', 'area_president', 'beneficiary'],
       unit_admin: ['beneficiary']
     };
 
@@ -1024,6 +1149,281 @@ class UserController {
         userRegion.toString() === regionId.toString()
       )
     );
+  }
+
+  /**
+   * GET /api/users/subordinates
+   * Returns all subordinate admin accounts visible to the caller.
+   *
+   * Hierarchy:
+   *   state_admin    → district/area/unit/area_president admins in the franchise
+   *   district_admin → area/unit/area_president admins in the caller's district
+   *   area_admin     → unit/area_president admins in the caller's area
+   *   unit_admin     → 403 (no subordinates)
+   *   area_president → 403 (no subordinates)
+   */
+  async getSubordinates(req, res) {
+    try {
+      const callerRole = req.userRole || req.user.role;
+      const callerScope = req.user.adminScope || {};
+
+      const SUBORDINATE_MAP = {
+        state_admin:    ['district_admin', 'area_admin', 'unit_admin', 'area_president'],
+        district_admin: ['area_admin', 'unit_admin', 'area_president'],
+        area_admin:     ['unit_admin', 'area_president'],
+      };
+
+      const subordinateRoles = SUBORDINATE_MAP[callerRole];
+      if (!subordinateRoles) {
+        return ResponseHelper.error(res, 'You do not have subordinate admins.', 403);
+      }
+
+      // Fetch all UserFranchise docs in this franchise with the relevant roles
+      const franchiseFilter = buildFranchiseReadFilter(req);
+      const memberships = await UserFranchise.find({
+        franchise: req.franchiseId,
+        role: { $in: subordinateRoles },
+        isActive: true,
+      })
+        .populate('user', 'name phone email profile isActive lastLogin')
+        .populate('adminScope.district', 'name type')
+        .populate('adminScope.area', 'name type')
+        .populate('adminScope.unit', 'name type');
+
+      // Scope filtering: district_admin sees only their district; area_admin sees only their area
+      // NOTE: adminScope fields are now populated objects; extract _id for comparison
+      const toId = (val) => val?._id ? String(val._id) : String(val ?? '');
+      let filtered = memberships;
+
+      if (callerRole === 'district_admin' && callerScope.district) {
+        filtered = memberships.filter(m => {
+          const s = m.adminScope;
+          return (
+            toId(s?.district) === String(callerScope.district) ||
+            (s?.regions || []).some(r => toId(r) === String(callerScope.district))
+          );
+        });
+      } else if (callerRole === 'area_admin' && callerScope.area) {
+        filtered = memberships.filter(m => {
+          const s = m.adminScope;
+          return (
+            toId(s?.area) === String(callerScope.area) ||
+            toId(s?.unit) === String(callerScope.area) ||
+            (s?.regions || []).some(r => toId(r) === String(callerScope.area))
+          );
+        });
+      }
+
+      const result = filtered.map(m => {
+        // Determine the most specific location name based on role
+        const scope = m.adminScope || {};
+        let locationName = null;
+        if (m.role === 'unit_admin') {
+          locationName = scope.unit?.name || null;
+        } else if (m.role === 'area_admin' || m.role === 'area_president') {
+          locationName = scope.area?.name || null;
+        } else if (m.role === 'district_admin') {
+          locationName = scope.district?.name || null;
+        }
+
+        return {
+          userId:       m.user?._id,
+          name:         m.user?.name,
+          phone:        m.user?.phone,
+          email:        m.user?.email,
+          role:         m.role,
+          adminScope:   m.adminScope,
+          locationName,
+          isActive:     m.user?.isActive,
+          lastLogin:    m.user?.lastLogin,
+          membershipId: m._id,
+        };
+      });
+
+      return ResponseHelper.success(res, { subordinates: result, total: result.length });
+    } catch (error) {
+      console.error('❌ getSubordinates Error:', error);
+      return ResponseHelper.error(res, 'Failed to fetch subordinates', 500);
+    }
+  }
+
+  /**
+   * GET /api/users/:id/roles
+   * List all UserFranchise memberships for a user in the current franchise.
+   */
+  async getUserRoles(req, res) {
+    try {
+      const { id } = req.params;
+      if (!req.franchiseId) {
+        return res.status(400).json({ success: false, message: 'Franchise context required' });
+      }
+      const memberships = await UserFranchise.find({ user: id, franchise: req.franchiseId, isActive: true })
+        .populate('adminScope.district', 'name code')
+        .populate('adminScope.area', 'name code')
+        .populate('adminScope.unit', 'name code')
+        .sort({ createdAt: 1 });
+      return ResponseHelper.success(res, { roles: memberships });
+    } catch (error) {
+      console.error('❌ getUserRoles Error:', error);
+      return ResponseHelper.error(res, 'Failed to fetch user roles', 500);
+    }
+  }
+
+  /**
+   * GET /api/users/:id/franchise-memberships
+   * Returns all franchises a user belongs to (active memberships), grouped by franchise.
+   * Used by the frontend to show cross-franchise scope picker when adding roles.
+   */
+  async getUserFranchiseMemberships(req, res) {
+    try {
+      const { id } = req.params;
+      const memberships = await UserFranchise.find({ user: id, isActive: true })
+        .populate('franchise', 'displayName slug logoUrl')
+        .sort({ createdAt: 1 });
+
+      // Group by franchise
+      const franchiseMap = new Map();
+      for (const m of memberships) {
+        if (!m.franchise) continue;
+        const fid = String(m.franchise._id);
+        if (!franchiseMap.has(fid)) {
+          franchiseMap.set(fid, {
+            id: fid,
+            displayName: m.franchise.displayName,
+            slug: m.franchise.slug,
+            logoUrl: m.franchise.logoUrl,
+            roles: [],
+          });
+        }
+        franchiseMap.get(fid).roles.push(m.role);
+      }
+
+      return ResponseHelper.success(res, { franchises: Array.from(franchiseMap.values()) });
+    } catch (error) {
+      console.error('❌ getUserFranchiseMemberships Error:', error);
+      return ResponseHelper.error(res, 'Failed to fetch franchise memberships', 500);
+    }
+  }
+
+  /**
+   * POST /api/users/:id/roles
+   * Add a new role (UserFranchise membership) to an existing user.
+   * Body: { role, adminScope?, franchiseIds? }
+   *   franchiseIds: optional array of franchise IDs to apply to (defaults to current franchise)
+   */
+  async addUserRole(req, res) {
+    try {
+      const { id } = req.params;
+      const { role, adminScope, franchiseIds } = req.body;
+      const currentUser = req.user;
+
+      // Role hierarchy check
+      const roleHierarchy = {
+        super_admin:    ['super_admin', 'state_admin', 'district_admin', 'area_admin', 'unit_admin', 'area_president', 'project_coordinator', 'scheme_coordinator', 'beneficiary'],
+        state_admin:    ['district_admin', 'area_admin', 'unit_admin', 'area_president', 'project_coordinator', 'scheme_coordinator', 'beneficiary'],
+        district_admin: ['area_admin', 'unit_admin', 'area_president', 'beneficiary'],
+        area_admin:     ['unit_admin', 'area_president', 'beneficiary'],
+        unit_admin:     ['beneficiary'],
+        area_president: ['beneficiary'],
+      };
+      const allowedRoles = roleHierarchy[currentUser.role] || [];
+      if (!allowedRoles.includes(role)) {
+        return res.status(403).json({ success: false, message: `Not authorized to assign role: ${role}` });
+      }
+
+      const targetUser = await User.findById(id);
+      if (!targetUser) {
+        return res.status(404).json({ success: false, message: 'User not found' });
+      }
+      if (targetUser.role === 'beneficiary') {
+        return res.status(400).json({ success: false, message: 'Cannot assign admin roles to a beneficiary' });
+      }
+
+      // Determine which franchises to apply to
+      let targetFranchiseIds = [];
+      if (franchiseIds && Array.isArray(franchiseIds) && franchiseIds.length > 0) {
+        targetFranchiseIds = franchiseIds;
+      } else if (req.franchiseId) {
+        targetFranchiseIds = [req.franchiseId];
+      } else {
+        return res.status(400).json({ success: false, message: 'Franchise context required' });
+      }
+
+      const results = [];
+      for (const fid of targetFranchiseIds) {
+        // Upsert: find existing membership (any active/inactive), update or create
+        const existing = await UserFranchise.findOne({ user: id, franchise: fid, role });
+        if (existing) {
+          existing.isActive = true;
+          existing.adminScope = adminScope || existing.adminScope || authService.getDefaultAdminScope(role);
+          existing.assignedBy = currentUser._id;
+          await existing.save();
+          results.push({ franchiseId: fid, action: 'updated', membership: existing });
+        } else {
+          const membership = await UserFranchise.create({
+            user: id,
+            franchise: fid,
+            role,
+            adminScope: adminScope || authService.getDefaultAdminScope(role),
+            assignedBy: currentUser._id,
+            isActive: true,
+          });
+          results.push({ franchiseId: fid, action: 'created', membership });
+        }
+      }
+
+      const message = targetFranchiseIds.length > 1
+        ? `Role added to ${targetFranchiseIds.length} franchises`
+        : 'Role added successfully';
+      return res.status(201).json({ success: true, message, data: { results } });
+    } catch (error) {
+      console.error('❌ addUserRole Error:', error);
+      if (error.code === 11000) {
+        // Race condition — treat as success (already exists)
+        return res.status(200).json({ success: true, message: 'Role already exists', data: {} });
+      }
+      return ResponseHelper.error(res, 'Failed to add role', 500);
+    }
+  }
+
+  /**
+   * DELETE /api/users/:id/roles/:role
+   * Deactivate a UserFranchise membership (remove a role from a user).
+   */
+  async removeUserRole(req, res) {
+    try {
+      const { id, role } = req.params;
+      const currentUser = req.user;
+
+      if (!req.franchiseId) {
+        return res.status(400).json({ success: false, message: 'Franchise context required' });
+      }
+
+      const roleHierarchy = {
+        super_admin:    ['super_admin', 'state_admin', 'district_admin', 'area_admin', 'unit_admin', 'area_president', 'project_coordinator', 'scheme_coordinator', 'beneficiary'],
+        state_admin:    ['district_admin', 'area_admin', 'unit_admin', 'area_president', 'project_coordinator', 'scheme_coordinator', 'beneficiary'],
+        district_admin: ['area_admin', 'unit_admin', 'area_president', 'beneficiary'],
+        area_admin:     ['unit_admin', 'area_president', 'beneficiary'],
+        unit_admin:     ['beneficiary'],
+        area_president: ['beneficiary'],
+      };
+      if (!(roleHierarchy[currentUser.role] || []).includes(role)) {
+        return res.status(403).json({ success: false, message: `Not authorized to remove role: ${role}` });
+      }
+
+      const membership = await UserFranchise.findOne({ user: id, franchise: req.franchiseId, role, isActive: true });
+      if (!membership) {
+        return res.status(404).json({ success: false, message: 'Active role not found for this user' });
+      }
+
+      membership.isActive = false;
+      await membership.save();
+
+      return ResponseHelper.success(res, {}, 'Role removed successfully');
+    } catch (error) {
+      console.error('❌ removeUserRole Error:', error);
+      return ResponseHelper.error(res, 'Failed to remove role', 500);
+    }
   }
 }
 

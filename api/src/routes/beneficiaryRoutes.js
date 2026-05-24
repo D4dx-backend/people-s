@@ -104,6 +104,14 @@ router.get('/schemes/:id',
   beneficiaryApplicationController.getSchemeDetails
 );
 
+// Download blank application form as PDF (for beneficiaries before filling)
+router.get('/schemes/:id/form-pdf/blank',
+  authenticate, crossFranchiseResolver,
+  authorize('beneficiary'),
+  [param('id').isMongoId().withMessage('Invalid scheme ID'), validateRequest],
+  require('../controllers/applicationController').downloadBlankFormPdf
+);
+
 // Renewal routes (must come before generic /applications/:id)
 router.get('/applications/renewal-due',
   authenticate, crossFranchiseResolver,
@@ -229,6 +237,14 @@ router.get('/applications/:id',
   beneficiaryApplicationController.getApplicationDetails
 );
 
+// Download filled application as PDF (beneficiary can download their own)
+router.get('/applications/:id/pdf',
+  authenticate, crossFranchiseResolver,
+  authorize('beneficiary'),
+  [param('id').isMongoId().withMessage('Invalid application ID'), validateRequest],
+  require('../controllers/applicationController').downloadApplicationPdf
+);
+
 router.put('/applications/:id/cancel', 
   authenticate, crossFranchiseResolver, 
   authorize('beneficiary'),
@@ -266,7 +282,7 @@ router.get('/stats',
 // Create beneficiary (admin route)
 router.post('/', 
   authenticate, crossFranchiseResolver,
-  authorize('super_admin', 'state_admin', 'district_admin', 'area_admin', 'unit_admin'),
+  authorize('super_admin', 'state_admin', 'district_admin', 'area_admin', 'unit_admin', 'area_president'),
   [
     body('name')
       .notEmpty()
@@ -308,7 +324,7 @@ router.post('/',
 // Export beneficiaries as CSV or JSON (admin route)
 router.get('/export',
   authenticate, crossFranchiseResolver,
-  authorize('super_admin', 'state_admin', 'district_admin', 'area_admin', 'unit_admin', 'project_coordinator', 'scheme_coordinator'),
+  authorize('super_admin', 'state_admin', 'district_admin', 'area_admin', 'unit_admin', 'area_president', 'project_coordinator', 'scheme_coordinator'),
   createExportHandler(Beneficiary, exportConfigs.beneficiary)
 );
 
@@ -366,7 +382,7 @@ router.patch('/:id/verify',
 // Delete beneficiary (admin route)
 router.delete('/:id',
   authenticate, crossFranchiseResolver,
-  authorize('super_admin', 'state_admin', 'district_admin', 'area_admin', 'unit_admin'),
+  authorize('super_admin', 'state_admin', 'district_admin', 'area_admin', 'unit_admin', 'area_president'),
   [
     param('id').isMongoId().withMessage('Invalid beneficiary ID'),
     validateRequest

@@ -298,7 +298,7 @@ router.put('/:id',
  *         description: Authentication required
  */
 router.put('/:id/progress', 
-  authorize('super_admin', 'state_admin', 'district_admin', 'project_coordinator', 'area_admin', 'unit_admin'),
+  authorize('super_admin', 'state_admin', 'district_admin', 'project_coordinator', 'area_admin', 'unit_admin', 'area_president'),
   projectController.updateProgress
 );
 
@@ -356,7 +356,7 @@ router.put('/:id/progress',
  *         description: Authentication required
  */
 router.post('/:id/status-update', 
-  authorize('super_admin', 'state_admin', 'district_admin', 'area_admin', 'unit_admin', 'project_coordinator', 'scheme_coordinator'),
+  authorize('super_admin', 'state_admin', 'district_admin', 'area_admin', 'unit_admin', 'area_president', 'project_coordinator', 'scheme_coordinator'),
   projectController.addStatusUpdate
 );
 
@@ -410,7 +410,7 @@ router.post('/:id/status-update',
  *         description: Authentication required
  */
 router.put('/:id/status-update/:updateId', 
-  authorize('super_admin', 'state_admin', 'district_admin', 'area_admin', 'unit_admin', 'project_coordinator', 'scheme_coordinator'),
+  authorize('super_admin', 'state_admin', 'district_admin', 'area_admin', 'unit_admin', 'area_president', 'project_coordinator', 'scheme_coordinator'),
   projectController.updateStatusUpdate
 );
 
@@ -442,7 +442,7 @@ router.put('/:id/status-update/:updateId',
  *         description: Authentication required
  */
 router.delete('/:id/status-update/:updateId', 
-  authorize('super_admin', 'state_admin', 'district_admin', 'area_admin', 'unit_admin', 'project_coordinator', 'scheme_coordinator'),
+  authorize('super_admin', 'state_admin', 'district_admin', 'area_admin', 'unit_admin', 'area_president', 'project_coordinator', 'scheme_coordinator'),
   projectController.deleteStatusUpdate
 );
 

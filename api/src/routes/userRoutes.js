@@ -293,6 +293,62 @@ router.patch('/bulk-update',
   userController.bulkUpdateUsers
 );
 
+// ── Static named routes that must come BEFORE /:id ──────────────────────────
+
+/**
+ * @route   GET /api/users/subordinates
+ * @desc    Get subordinate admins visible to the current caller
+ * @access  Private
+ */
+router.get('/subordinates',
+  authenticate,
+  crossFranchiseResolver,
+  authorize('state_admin', 'district_admin', 'area_admin'),
+  userController.getSubordinates
+);
+
+/**
+ * @route   GET /api/users/:id/roles
+ * @desc    List all active franchise roles for a user in the current franchise
+ * @access  Private
+ */
+router.get('/:id/roles',
+  authenticate, crossFranchiseResolver,
+  userController.getUserRoles
+);
+
+/**
+ * @route   GET /api/users/:id/franchise-memberships
+ * @desc    All franchises a user belongs to (grouped)
+ * @access  Private
+ */
+router.get('/:id/franchise-memberships',
+  authenticate, crossFranchiseResolver,
+  userController.getUserFranchiseMemberships
+);
+
+/**
+ * @route   POST /api/users/:id/roles
+ * @desc    Add a role to a user (optionally across multiple franchises)
+ * @access  Private — admins only
+ */
+router.post('/:id/roles',
+  authenticate, crossFranchiseResolver,
+  authorize('super_admin', 'state_admin', 'district_admin', 'area_admin'),
+  userController.addUserRole
+);
+
+/**
+ * @route   DELETE /api/users/:id/roles/:role
+ * @desc    Remove (soft-delete) a role from a user
+ * @access  Private — admins only
+ */
+router.delete('/:id/roles/:role',
+  authenticate, crossFranchiseResolver,
+  authorize('super_admin', 'state_admin', 'district_admin', 'area_admin'),
+  userController.removeUserRole
+);
+
 /**
  * @swagger
  * /api/users/{id}:

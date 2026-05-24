@@ -83,7 +83,7 @@ const smsSchemas = {
  */
 router.post('/send',
   authenticate,
-  authorize('state_admin', 'district_admin', 'area_admin', 'unit_admin'),
+  authorize('state_admin', 'district_admin', 'area_admin', 'unit_admin', 'area_president'),
   validate(smsSchemas.sendSMS),
   smsController.sendSMS
 );

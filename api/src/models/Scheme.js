@@ -233,7 +233,7 @@ const schemeSchema = new mongoose.Schema({
     },
     allowedRoles: [{
       type: String,
-      enum: ['super_admin', 'state_admin', 'district_admin', 'area_admin', 'unit_admin', 'project_coordinator', 'scheme_coordinator']
+      enum: ['super_admin', 'state_admin', 'district_admin', 'area_admin', 'unit_admin', 'area_president', 'project_coordinator', 'scheme_coordinator']
     }],
     autoTransition: {
       type: Boolean,
@@ -246,6 +246,10 @@ const schemeSchema = new mongoose.Schema({
     // Per-role comment configuration
     commentConfig: {
       unitAdmin: {
+        enabled: { type: Boolean, default: false },
+        required: { type: Boolean, default: false }
+      },
+      areaPresident: {
         enabled: { type: Boolean, default: false },
         required: { type: Boolean, default: false }
       },
@@ -427,7 +431,7 @@ schemeSchema.methods.canUserAccess = function(user) {
 
   // If scheme has no target regions (applicable to all), allow access based on user role
   if (!this.targetRegions || this.targetRegions.length === 0) {
-    return ['district_admin', 'area_admin', 'unit_admin'].includes(user.role);
+    return ['district_admin', 'area_admin', 'unit_admin', 'area_president'].includes(user.role);
   }
   
   // Helper function to get ID from populated reference or direct ID
@@ -448,7 +452,7 @@ schemeSchema.methods.canUserAccess = function(user) {
   
   // Check if user has access via direct district/area/unit properties (Format 2)
   // Unit admins can access schemes if their unit is in targetRegions
-  if (user.role === 'unit_admin' && user.adminScope?.unit) {
+  if (['unit_admin', 'area_president'].includes(user.role) && user.adminScope?.unit) {
     const userUnitId = getId(user.adminScope.unit);
     const hasAccess = this.targetRegions.some(regionId => 
       getId(regionId) === userUnitId

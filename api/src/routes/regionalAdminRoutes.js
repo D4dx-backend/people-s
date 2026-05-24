@@ -36,7 +36,7 @@ router.post('/auth/verify-otp', [
 // ============ PROFILE ROUTES (Protected) ============
 router.get('/auth/profile',
   authenticate, crossFranchiseResolver,
-  authorize('unit_admin', 'area_admin', 'district_admin'),
+  authorize('unit_admin', 'area_president', 'area_admin', 'district_admin'),
   regionalAdminController.getProfile
 );
 
@@ -45,7 +45,7 @@ router.get('/auth/profile',
 // Get applications list (READ ONLY for unit_admin and district_admin)
 router.get('/applications',
   authenticate, crossFranchiseResolver,
-  authorize('unit_admin', 'area_admin', 'district_admin'),
+  authorize('unit_admin', 'area_president', 'area_admin', 'district_admin'),
   [
     query('page').optional().isInt({ min: 1 }).withMessage('Page must be a positive integer'),
     query('limit').optional().isInt({ min: 1, max: 100 }).withMessage('Limit must be between 1 and 100'),
@@ -60,7 +60,7 @@ router.get('/applications',
 // Get single application details
 router.get('/applications/:id',
   authenticate, crossFranchiseResolver,
-  authorize('unit_admin', 'area_admin', 'district_admin'),
+  authorize('unit_admin', 'area_president', 'area_admin', 'district_admin'),
   [
     param('id').isMongoId().withMessage('Invalid application ID'),
     validateRequest
@@ -98,7 +98,7 @@ router.put('/applications/:id/status',
 // Get dashboard statistics
 router.get('/dashboard/stats',
   authenticate, crossFranchiseResolver,
-  authorize('unit_admin', 'area_admin', 'district_admin'),
+  authorize('unit_admin', 'area_president', 'area_admin', 'district_admin'),
   regionalAdminController.getDashboardStats
 );
 

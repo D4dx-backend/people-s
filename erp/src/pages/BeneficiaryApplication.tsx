@@ -8,7 +8,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
-import { ArrowLeft, Upload, FileText, AlertCircle, CheckCircle, Loader2, RefreshCw, Save, Clock, CopyPlus, Trash2 } from "lucide-react";
+import { ArrowLeft, Upload, FileText, AlertCircle, CheckCircle, Loader2, RefreshCw, Save, Clock, CopyPlus, Trash2, Download } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { beneficiaryApi } from "@/services/beneficiaryApi";
@@ -88,6 +88,7 @@ interface Scheme {
     description: string;
     pages: FormPage[];
     confirmationMessage: string;
+    instructions?: Array<{ id: number; text: string; order: number }>;
   };
 }
 
@@ -163,6 +164,7 @@ export default function BeneficiaryApplication() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [agreedToTerms, setAgreedToTerms] = useState(false);
+  const [instructionsAccepted, setInstructionsAccepted] = useState(false);
   
   // Renewal mode
   const searchParams = new URLSearchParams(location.search);
@@ -201,7 +203,23 @@ export default function BeneficiaryApplication() {
 
       let response;
       if (draftId) {
-        response = await beneficiaryApi.updateDraft(draftId, draftData);
+        try {
+          response = await beneficiaryApi.updateDraft(draftId, draftData);
+        } catch (updateError: unknown) {
+          // If the draft no longer exists (404), clear the ID and create a new one
+          const status = (updateError as { status?: number; response?: { status?: number } })?.status
+            || (updateError as { response?: { status?: number } })?.response?.status;
+          if (status === 404) {
+            setDraftId(null);
+            response = await beneficiaryApi.saveDraft({
+              schemeId: scheme._id,
+              ...draftData
+            });
+            setDraftId(response.draft._id);
+          } else {
+            throw updateError;
+          }
+        }
       } else {
         response = await beneficiaryApi.saveDraft({
           schemeId: scheme._id,
@@ -1320,6 +1338,89 @@ export default function BeneficiaryApplication() {
   const currentPageData = scheme.formConfig.pages[currentSection];
   const progress = ((currentSection + 1) / scheme.formConfig.pages.length) * 100;
 
+  // Show instructions screen if instructions exist and haven't been accepted yet
+  const formInstructions = scheme.formConfig.instructions || [];
+
+  const handleDownloadBlankForm = async () => {
+    if (!scheme) return;
+    try {
+      const blob = await beneficiaryApi.downloadBlankFormPdf(scheme._id);
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${scheme.name.replace(/\s+/g, '_')}_Application_Form.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      window.URL.revokeObjectURL(url);
+    } catch {
+      toast({ title: 'Download Failed', description: 'Could not download blank form.', variant: 'destructive' });
+    }
+  };
+
+  if (formInstructions.length > 0 && !instructionsAccepted) {
+    return (
+      <div className="min-h-screen bg-background">
+        <header className="border-b bg-card sticky top-0 z-50 shadow-sm">
+          <div className="container mx-auto px-3 py-3 flex items-center gap-2">
+            <Button variant="ghost" size="sm" onClick={() => navigate("/beneficiary/schemes")}>
+              <ArrowLeft className="h-4 w-4 mr-1" />
+              Back
+            </Button>
+            <img src={orgLogoUrl} alt="Logo" className="h-8 w-8 rounded-full" onError={(e) => { (e.target as HTMLImageElement).src = defaultLogo; }} />
+            <div>
+              <h1 className="text-lg font-bold">Before You Begin</h1>
+              <p className="text-xs text-muted-foreground hidden sm:block">{scheme.name}</p>
+            </div>
+          </div>
+        </header>
+        <div className="container mx-auto px-3 py-6 sm:px-4 max-w-2xl">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-blue-700">
+                <AlertCircle className="h-5 w-5" />
+                Important Instructions
+              </CardTitle>
+              <CardDescription>
+                Please read the following instructions carefully before filling the application form.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <ul className="space-y-3">
+                {[...formInstructions]
+                  .sort((a, b) => a.order - b.order)
+                  .map((instruction, idx) => (
+                    <li key={instruction.id} className="flex items-start gap-3">
+                      <span className="flex-shrink-0 w-6 h-6 rounded-full bg-blue-100 text-blue-700 flex items-center justify-center text-xs font-bold mt-0.5">
+                        {idx + 1}
+                      </span>
+                      <span className="text-sm text-foreground leading-relaxed">{instruction.text}</span>
+                    </li>
+                  ))}
+              </ul>
+            </CardContent>
+            <CardContent className="pt-0">
+              <Button
+                className="w-full bg-gradient-primary mt-2"
+                onClick={() => setInstructionsAccepted(true)}
+              >
+                I Understand — Continue to Form
+              </Button>
+              <Button
+                variant="outline"
+                className="w-full mt-2"
+                onClick={handleDownloadBlankForm}
+              >
+                <Download className="h-4 w-4 mr-2" />
+                Download Blank Form (PDF)
+              </Button>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-background">
       {/* Header */}
@@ -1342,6 +1443,10 @@ export default function BeneficiaryApplication() {
               <p className="text-xs text-muted-foreground hidden sm:block">+91 {phoneNumber}</p>
             </div>
           </div>
+          <Button variant="outline" size="sm" onClick={handleDownloadBlankForm} className="hidden sm:flex">
+            <Download className="h-4 w-4 mr-1" />
+            Blank Form
+          </Button>
         </div>
       </header>
 

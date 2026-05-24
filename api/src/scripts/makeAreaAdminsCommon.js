@@ -80,16 +80,17 @@ async function run() {
 
       // Assign to every active franchise
       for (const franchise of activeFranchises) {
+        // Query by role too — avoids mutating docs of a different role
         const existing = await UserFranchise.findOne({
           user: user._id,
           franchise: franchise._id,
+          role: 'area_admin',
         });
 
         if (existing) {
-          // Reactivate and ensure role/scope is up to date
-          if (!existing.isActive || existing.role !== 'area_admin') {
+          // Reactivate and refresh scope if needed
+          if (!existing.isActive) {
             existing.isActive = true;
-            existing.role = 'area_admin';
             existing.adminScope = user.adminScope || {};
             await existing.save();
             membershipsUpdated++;

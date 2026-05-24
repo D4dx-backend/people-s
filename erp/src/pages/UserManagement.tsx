@@ -13,6 +13,7 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { UserModal } from "@/components/modals/UserModal";
 import { DeleteUserModal } from "@/components/modals/DeleteUserModal";
 import { UserDetailsModal } from "@/components/modals/UserDetailsModal";
+import { ManageRolesModal } from "@/components/modals/ManageRolesModal";
 import { users as usersApi, type User, type Location } from "@/lib/api";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "@/hooks/use-toast";
@@ -28,6 +29,7 @@ export const roleColors: Record<string, string> = {
   district_admin: "bg-blue-100 text-blue-800 border-blue-200",
   area_admin: "bg-green-100 text-green-800 border-green-200",
   unit_admin: "bg-yellow-100 text-yellow-800 border-yellow-200",
+  area_president: "bg-orange-100 text-orange-800 border-orange-200",
   project_coordinator: "bg-orange-100 text-orange-800 border-orange-200",
   scheme_coordinator: "bg-pink-100 text-pink-800 border-pink-200",
   beneficiary: "bg-gray-100 text-gray-800 border-gray-200",
@@ -40,6 +42,7 @@ export const roleNames: Record<string, string> = {
   district_admin: "District Admin",
   area_admin: "Area Admin",
   unit_admin: "Unit Admin",
+  area_president: "Area President",
   project_coordinator: "Project Coordinator",
   scheme_coordinator: "Scheme Coordinator",
   beneficiary: "Beneficiary",
@@ -79,6 +82,7 @@ export default function UserManagement() {
   const [showUserModal, setShowUserModal] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [showDetailsModal, setShowDetailsModal] = useState(false);
+  const [showManageRolesModal, setShowManageRolesModal] = useState(false);
   const [selectedUser, setSelectedUser] = useState<User | undefined>(undefined);
   const [modalMode, setModalMode] = useState<"create" | "edit">("create");
 
@@ -146,9 +150,9 @@ export default function UserManagement() {
   const locId = (loc: any): string => String(loc.id || loc._id);
 
   // Determine which location filters to show based on selected role
-  const showDistrictFilter = ['district_admin', 'area_admin', 'unit_admin', 'project_coordinator', 'scheme_coordinator', 'beneficiary'].includes(selectedRole);
-  const showAreaFilter = ['area_admin', 'unit_admin', 'beneficiary'].includes(selectedRole);
-  const showUnitFilter = ['unit_admin', 'beneficiary'].includes(selectedRole);
+  const showDistrictFilter = ['district_admin', 'area_admin', 'unit_admin', 'area_president', 'project_coordinator', 'scheme_coordinator', 'beneficiary'].includes(selectedRole);
+  const showAreaFilter = ['area_admin', 'unit_admin', 'area_president', 'beneficiary'].includes(selectedRole);
+  const showUnitFilter = ['unit_admin', 'area_president', 'beneficiary'].includes(selectedRole);
 
   const { exportCSV, exportPDF, printData, exporting } = useExport({
     apiCall: (params) => usersApi.export(params),
@@ -315,6 +319,11 @@ export default function UserManagement() {
     setShowDeleteModal(true);
   };
 
+  const handleManageRoles = (user: User) => {
+    setSelectedUser(user);
+    setShowManageRolesModal(true);
+  };
+
   const handleViewDetails = (user: User) => {
     setSelectedUser(user);
     setShowDetailsModal(true);
@@ -336,8 +345,8 @@ export default function UserManagement() {
     
     // Role hierarchy check
     const roleHierarchy: Record<string, string[]> = {
-      district_admin: ['area_admin', 'unit_admin', 'beneficiary'],
-      area_admin: ['unit_admin', 'beneficiary'],
+      district_admin: ['area_admin', 'unit_admin', 'area_president', 'beneficiary'],
+      area_admin: ['unit_admin', 'area_president', 'beneficiary'],
       unit_admin: ['beneficiary']
     };
     
@@ -381,17 +390,37 @@ export default function UserManagement() {
     return null;
   };
 
-  // Helper function to get district/area/unit from user (checks both adminScope and profile.location)
+  // Helper function to get district/area/unit from user.
+  // Primary: explicit adminScope.district/area/unit fields (populated objects or IDs).
+  // Fallback: adminScope.regions[0] for legacy users where the location was stored there.
   const getUserDistrict = (user: User) => {
-    return user.adminScope?.district || user.profile?.location?.district;
+    if (user.adminScope?.district) return user.adminScope.district;
+    if ((user as any).profile?.location?.district) return (user as any).profile.location.district;
+    // Legacy fallback: district_admin users had district in regions[0]
+    if (user.role === 'district_admin' && (user.adminScope?.regions as any[])?.length > 0) {
+      return (user.adminScope!.regions as any[])[0];
+    }
+    return null;
   };
 
   const getUserArea = (user: User) => {
-    return user.adminScope?.area || user.profile?.location?.area;
+    if (user.adminScope?.area) return user.adminScope.area;
+    if ((user as any).profile?.location?.area) return (user as any).profile.location.area;
+    // Legacy fallback: area_admin users had area in regions[0]
+    if (user.role === 'area_admin' && (user.adminScope?.regions as any[])?.length > 0) {
+      return (user.adminScope!.regions as any[])[0];
+    }
+    return null;
   };
 
   const getUserUnit = (user: User) => {
-    return user.adminScope?.unit || user.profile?.location?.unit;
+    if (user.adminScope?.unit) return user.adminScope.unit;
+    if ((user as any).profile?.location?.unit) return (user as any).profile.location.unit;
+    // Legacy fallback: unit_admin / area_president users had unit in regions[0]
+    if (['unit_admin', 'area_president'].includes(user.role) && (user.adminScope?.regions as any[])?.length > 0) {
+      return (user.adminScope!.regions as any[])[0];
+    }
+    return null;
   };
 
   return (
@@ -416,6 +445,13 @@ export default function UserManagement() {
         open={showDetailsModal}
         onOpenChange={setShowDetailsModal}
         user={selectedUser}
+      />
+
+      <ManageRolesModal
+        open={showManageRolesModal}
+        onOpenChange={setShowManageRolesModal}
+        user={selectedUser}
+        onSave={handleModalSave}
       />
       {/* Header */}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -505,6 +541,7 @@ export default function UserManagement() {
             <SelectItem value="district_admin">District Admin</SelectItem>
             <SelectItem value="area_admin">Area Admin</SelectItem>
             <SelectItem value="unit_admin">Unit Admin</SelectItem>
+                            <SelectItem value="area_president">Area President</SelectItem>
             <SelectItem value="project_coordinator">Project Coordinator</SelectItem>
             <SelectItem value="scheme_coordinator">Scheme Coordinator</SelectItem>
             <SelectItem value="beneficiary">Beneficiary</SelectItem>
@@ -703,6 +740,12 @@ export default function UserManagement() {
                                   <Edit className="mr-2 h-4 w-4" />
                                   Edit User
                                 </DropdownMenuItem>
+                                {user.role !== 'beneficiary' && (
+                                  <DropdownMenuItem onClick={() => handleManageRoles(user)}>
+                                    <Shield className="mr-2 h-4 w-4" />
+                                    Manage Roles
+                                  </DropdownMenuItem>
+                                )}
                                 <DropdownMenuSeparator />
                                 <DropdownMenuItem 
                                   onClick={() => handleDeleteUser(user)}

@@ -17,7 +17,12 @@ const {
   getRenewalDueApplications,
   getRenewalHistory,
   recalculateScore,
-  syncApplicationStatus
+  syncApplicationStatus,
+  downloadApplicationPdf,
+  getApplicationConsolidation,
+  getApplicationDuplicates,
+  updateApplicationLocation,
+  getApplicationReceipts
 } = require('../controllers/applicationController');
 const { authenticate, crossFranchiseResolver, authorize } = require('../middleware/auth');
 const { syncApplicationStages } = require('../middleware/syncStages');
@@ -94,45 +99,81 @@ const approveApplicationValidation = [
 // Export applications as CSV or JSON
 router.get('/export',
   authenticate, crossFranchiseResolver,
-  authorize('super_admin', 'state_admin', 'district_admin', 'area_admin', 'unit_admin', 'project_coordinator', 'scheme_coordinator'),
+  authorize('super_admin', 'state_admin', 'district_admin', 'area_admin', 'unit_admin', 'area_president', 'project_coordinator', 'scheme_coordinator'),
   createExportHandler(Application, exportConfigs.application)
 );
+// Consolidation stats (must come before /:id routes)
+router.get('/consolidation',
+  authenticate, crossFranchiseResolver,
+  authorize('super_admin', 'state_admin', 'district_admin', 'area_admin', 'unit_admin'),
+  getApplicationConsolidation
+);
 
+// Receipts listing — completed payments for all admin roles (must be before /:id)
+router.get('/receipts',
+  authenticate, crossFranchiseResolver,
+  authorize('super_admin', 'state_admin', 'district_admin', 'area_admin', 'unit_admin', 'area_president', 'project_coordinator', 'scheme_coordinator'),
+  getApplicationReceipts
+);
 // Renewal management routes (must come before /:id routes)
 router.get('/renewal-due',
   authenticate, crossFranchiseResolver,
-  authorize('super_admin', 'state_admin', 'district_admin', 'area_admin', 'unit_admin', 'project_coordinator', 'scheme_coordinator'),
+  authorize('super_admin', 'state_admin', 'district_admin', 'area_admin', 'unit_admin', 'area_president', 'project_coordinator', 'scheme_coordinator'),
   getRenewalDueApplications
 );
 
 router.get('/:id/renewal-history',
   authenticate, crossFranchiseResolver,
-  authorize('super_admin', 'state_admin', 'district_admin', 'area_admin', 'unit_admin', 'project_coordinator', 'scheme_coordinator'),
+  authorize('super_admin', 'state_admin', 'district_admin', 'area_admin', 'unit_admin', 'area_president', 'project_coordinator', 'scheme_coordinator'),
   getRenewalHistory
 );
 
 // Get available roles to revert application to (must be before /:id route)
 router.get('/:id/available-revert-roles',
   authenticate, crossFranchiseResolver,
-  authorize('super_admin', 'state_admin', 'district_admin', 'area_admin', 'unit_admin', 'project_coordinator', 'scheme_coordinator'),
+  authorize('super_admin', 'state_admin', 'district_admin', 'area_admin', 'unit_admin', 'area_president', 'project_coordinator', 'scheme_coordinator'),
   getAvailableRevertRoles
 );
 
 router.get('/',
   authenticate, crossFranchiseResolver,
-  authorize('super_admin', 'state_admin', 'district_admin', 'area_admin', 'unit_admin', 'project_coordinator', 'scheme_coordinator'),
+  authorize('super_admin', 'state_admin', 'district_admin', 'area_admin', 'unit_admin', 'area_president', 'project_coordinator', 'scheme_coordinator'),
   getApplications
 );
 
 router.get('/:id',
   authenticate, crossFranchiseResolver,
-  authorize('super_admin', 'state_admin', 'district_admin', 'area_admin', 'unit_admin', 'project_coordinator', 'scheme_coordinator'),
+  authorize('super_admin', 'state_admin', 'district_admin', 'area_admin', 'unit_admin', 'area_president', 'project_coordinator', 'scheme_coordinator'),
   getApplication
 );
 
+// Get duplicate applications for a specific application (admin check)
+router.get('/:id/duplicates',
+  authenticate, crossFranchiseResolver,
+  authorize('super_admin', 'state_admin', 'district_admin', 'area_admin', 'unit_admin', 'area_president', 'project_coordinator', 'scheme_coordinator'),
+  getApplicationDuplicates
+);
+
+// Update location (district/area/unit) — for area_admin and unit_admin corrections
+router.patch('/:id/location',
+  authenticate, crossFranchiseResolver,
+  authorize('super_admin', 'state_admin', 'district_admin', 'area_admin', 'unit_admin', 'area_president'),
+  [
+    body('area').notEmpty().isMongoId().withMessage('Valid area ID is required'),
+    body('unit').notEmpty().isMongoId().withMessage('Valid unit ID is required'),
+    body('reason').optional().trim().isLength({ max: 500 }).withMessage('Reason must be less than 500 characters')
+  ],
+  updateApplicationLocation
+);
+// Download filled application as PDF
+router.get('/:id/pdf',
+  authenticate, crossFranchiseResolver,
+  authorize('super_admin', 'state_admin', 'district_admin', 'area_admin', 'unit_admin', 'project_coordinator', 'scheme_coordinator'),
+  downloadApplicationPdf
+);
 router.post('/', 
   authenticate, crossFranchiseResolver, 
-  authorize('super_admin', 'state_admin', 'district_admin', 'area_admin', 'unit_admin'), 
+  authorize('super_admin', 'state_admin', 'district_admin', 'area_admin', 'unit_admin', 'area_president'), 
   applicationValidation,
   syncApplicationStages, // Automatically sync stages from scheme
   createApplication
@@ -202,21 +243,21 @@ router.delete('/:id',
 // Update application stage status (all admin roles + coordinators can update stages)
 router.patch('/:id/stages/:stageId', 
   authenticate, crossFranchiseResolver, 
-  authorize('super_admin', 'state_admin', 'district_admin', 'area_admin', 'unit_admin', 'project_coordinator', 'scheme_coordinator'), 
+  authorize('super_admin', 'state_admin', 'district_admin', 'area_admin', 'unit_admin', 'area_president', 'project_coordinator', 'scheme_coordinator'), 
   updateApplicationStage
 );
 
 // Add comment to a stage
 router.patch('/:id/stages/:stageId/comment', 
   authenticate, crossFranchiseResolver, 
-  authorize('super_admin', 'state_admin', 'district_admin', 'area_admin', 'unit_admin', 'project_coordinator', 'scheme_coordinator'), 
+  authorize('super_admin', 'state_admin', 'district_admin', 'area_admin', 'unit_admin', 'area_president', 'project_coordinator', 'scheme_coordinator'), 
   addStageComment
 );
 
 // Upload document for a stage
 router.post('/:id/stages/:stageId/documents/:docIndex', 
   authenticate, crossFranchiseResolver, 
-  authorize('super_admin', 'state_admin', 'district_admin', 'area_admin', 'unit_admin', 'project_coordinator', 'scheme_coordinator'), 
+  authorize('super_admin', 'state_admin', 'district_admin', 'area_admin', 'unit_admin', 'area_president', 'project_coordinator', 'scheme_coordinator'), 
   uploadSingle('document'),
   uploadStageDocument
 );
@@ -224,7 +265,7 @@ router.post('/:id/stages/:stageId/documents/:docIndex',
 // Recalculate eligibility score for an application
 router.post('/:id/recalculate-score',
   authenticate, crossFranchiseResolver,
-  authorize('super_admin', 'state_admin', 'district_admin', 'area_admin', 'unit_admin', 'project_coordinator', 'scheme_coordinator'),
+  authorize('super_admin', 'state_admin', 'district_admin', 'area_admin', 'unit_admin', 'area_president', 'project_coordinator', 'scheme_coordinator'),
   recalculateScore
 );
 
@@ -232,14 +273,14 @@ router.post('/:id/recalculate-score',
 // Useful to fix applications stuck in 'pending' when stages are already completed
 router.post('/:id/sync-status',
   authenticate, crossFranchiseResolver,
-  authorize('super_admin', 'state_admin', 'district_admin', 'area_admin', 'unit_admin'),
+  authorize('super_admin', 'state_admin', 'district_admin', 'area_admin', 'unit_admin', 'area_president'),
   syncApplicationStatus
 );
 
 // Revert application to a previous stage
 router.patch('/:id/revert',
   authenticate, crossFranchiseResolver, 
-  authorize('super_admin', 'state_admin', 'district_admin', 'area_admin', 'unit_admin', 'project_coordinator', 'scheme_coordinator'), 
+  authorize('super_admin', 'state_admin', 'district_admin', 'area_admin', 'unit_admin', 'area_president', 'project_coordinator', 'scheme_coordinator'), 
   revertApplicationStage
 );
 

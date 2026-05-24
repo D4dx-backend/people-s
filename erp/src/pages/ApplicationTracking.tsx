@@ -3,7 +3,7 @@ import { useNavigate, useParams } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { ArrowLeft, CheckCircle, Clock, XCircle, FileText, Loader2, IndianRupee, Calendar, User, Phone } from "lucide-react";
+import { ArrowLeft, CheckCircle, Clock, XCircle, FileText, Loader2, IndianRupee, Calendar, User, Phone, Download } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { beneficiaryApi } from "@/services/beneficiaryApi";
 import { useOrgLogoUrl } from "@/hooks/useOrgLogoUrl";
@@ -225,6 +225,22 @@ export default function ApplicationTracking() {
 
   const timeline = generateTimeline(application);
 
+  const handleDownloadApplicationPdf = async () => {
+    try {
+      const blob = await beneficiaryApi.downloadApplicationPdf(application._id);
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `Application_${application.applicationId || application._id}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      window.URL.revokeObjectURL(url);
+    } catch {
+      toast({ title: 'Download Failed', description: 'Could not download application PDF.', variant: 'destructive' });
+    }
+  };
+
   return (
     <div className="min-h-screen bg-background">
       {/* Header */}
@@ -245,6 +261,10 @@ export default function ApplicationTracking() {
               <p className="text-xs text-muted-foreground hidden sm:block">+91 {phoneNumber}</p>
             </div>
           </div>
+          <Button variant="outline" size="sm" onClick={handleDownloadApplicationPdf} className="hidden sm:flex">
+            <Download className="h-4 w-4 mr-1" />
+            Download PDF
+          </Button>
         </div>
       </header>
 

@@ -54,6 +54,7 @@ const stagesSchema = z.object({
     allowedRoles: z.array(z.string()).min(1, "At least one role must be selected"),
     commentConfig: z.object({
       unitAdmin: commentRoleSchema.default({ enabled: false, required: false }),
+      areaPresident: commentRoleSchema.default({ enabled: false, required: false }),
       areaAdmin: commentRoleSchema.default({ enabled: false, required: false }),
       districtAdmin: commentRoleSchema.default({ enabled: false, required: false })
     }).default({}),
@@ -76,6 +77,7 @@ const roleOptions = [
   { value: 'district_admin', label: 'District Admin' },
   { value: 'area_admin', label: 'Area Admin' },
   { value: 'unit_admin', label: 'Unit Admin' },
+  { value: 'area_president', label: 'Area President' },
   { value: 'project_coordinator', label: 'Project Coordinator' },
   { value: 'scheme_coordinator', label: 'Scheme Coordinator' }
 ];
@@ -92,9 +94,10 @@ export function StagesConfigModal({ open, onOpenChange, scheme, onSuccess }: Sta
           description: "Initial application submission and registration",
           order: 1,
           isRequired: true,
-          allowedRoles: ['super_admin', 'state_admin', 'district_admin', 'area_admin', 'unit_admin'],
+          allowedRoles: ['super_admin', 'state_admin', 'district_admin', 'area_admin', 'unit_admin', 'area_president'],
           commentConfig: {
             unitAdmin: { enabled: false, required: false },
+            areaPresident: { enabled: false, required: false },
             areaAdmin: { enabled: false, required: false },
             districtAdmin: { enabled: false, required: false }
           },
@@ -124,6 +127,10 @@ export function StagesConfigModal({ open, onOpenChange, scheme, onSuccess }: Sta
               enabled: stage.commentConfig?.unitAdmin?.enabled || false,
               required: stage.commentConfig?.unitAdmin?.required || false
             },
+            areaPresident: {
+              enabled: stage.commentConfig?.areaPresident?.enabled || false,
+              required: stage.commentConfig?.areaPresident?.required || false
+            },
             areaAdmin: {
               enabled: stage.commentConfig?.areaAdmin?.enabled || false,
               required: stage.commentConfig?.areaAdmin?.required || false
@@ -149,21 +156,21 @@ export function StagesConfigModal({ open, onOpenChange, scheme, onSuccess }: Sta
             description: "Tick when application is submitted and registered in the system",
             order: 1,
             isRequired: true,
-            allowedRoles: ['super_admin', 'state_admin', 'district_admin', 'area_admin', 'unit_admin']
+            allowedRoles: ['super_admin', 'state_admin', 'district_admin', 'area_admin', 'unit_admin', 'area_president']
           },
           {
             name: "Document Verification",
             description: "Tick after verifying all submitted documents and checking eligibility criteria",
             order: 2,
             isRequired: true,
-            allowedRoles: ['super_admin', 'state_admin', 'district_admin', 'area_admin', 'unit_admin']
+            allowedRoles: ['super_admin', 'state_admin', 'district_admin', 'area_admin', 'unit_admin', 'area_president']
           },
           {
             name: "Field Verification",
             description: "Tick after completing physical verification and field assessment (if required)",
             order: 3,
             isRequired: false,
-            allowedRoles: ['super_admin', 'state_admin', 'district_admin', 'area_admin', 'unit_admin']
+            allowedRoles: ['super_admin', 'state_admin', 'district_admin', 'area_admin', 'unit_admin', 'area_president']
           },
           {
             name: "Interview Process",
@@ -273,6 +280,7 @@ export function StagesConfigModal({ open, onOpenChange, scheme, onSuccess }: Sta
       allowedRoles: ['super_admin'],
       commentConfig: {
         unitAdmin: { enabled: false, required: false },
+        areaPresident: { enabled: false, required: false },
         areaAdmin: { enabled: false, required: false },
         districtAdmin: { enabled: false, required: false }
       },
@@ -560,6 +568,34 @@ export function StagesConfigModal({ open, onOpenChange, scheme, onSuccess }: Sta
                                     <Switch
                                       checked={form.watch(`statusStages.${index}.commentConfig.areaAdmin.required`)}
                                       onCheckedChange={(val) => form.setValue(`statusStages.${index}.commentConfig.areaAdmin.required`, val)}
+                                    />
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+
+                            {/* Area President Comment */}
+                            <div className="flex flex-row items-center justify-between rounded-md border p-3 bg-muted/10">
+                              <div className="space-y-0.5">
+                                <p className="text-sm font-medium">Area President Comment</p>
+                              </div>
+                              <div className="flex items-center gap-4">
+                                <div className="flex items-center gap-2">
+                                  <span className="text-xs text-muted-foreground">Enable</span>
+                                  <Switch
+                                    checked={form.watch(`statusStages.${index}.commentConfig.areaPresident.enabled`)}
+                                    onCheckedChange={(val) => {
+                                      form.setValue(`statusStages.${index}.commentConfig.areaPresident.enabled`, val);
+                                      if (!val) form.setValue(`statusStages.${index}.commentConfig.areaPresident.required`, false);
+                                    }}
+                                  />
+                                </div>
+                                {form.watch(`statusStages.${index}.commentConfig.areaPresident.enabled`) && (
+                                  <div className="flex items-center gap-2">
+                                    <span className="text-xs text-muted-foreground">Required</span>
+                                    <Switch
+                                      checked={form.watch(`statusStages.${index}.commentConfig.areaPresident.required`)}
+                                      onCheckedChange={(val) => form.setValue(`statusStages.${index}.commentConfig.areaPresident.required`, val)}
                                     />
                                   </div>
                                 )}

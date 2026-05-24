@@ -147,37 +147,53 @@ export function ApplicationViewModal({
     ));
   };
 
-  const handleDownload = () => {
-    const content = `
-APPLICATION DETAILS
-===================
-Application ID: ${application?.applicationNumber || 'N/A'}
-Applied Date: ${application?.createdAt ? new Date(application.createdAt).toLocaleDateString('en-IN') : 'N/A'}
-
-APPLICANT INFORMATION
----------------------
-Name: ${application?.beneficiary?.name || 'N/A'}
-Contact: ${application?.beneficiary?.phone || 'N/A'}
-Email: ${application?.beneficiary?.email || (application?.beneficiary?.name ? `${application.beneficiary.name.toLowerCase().replace(/\s+/g, '.')}@email.com` : 'N/A')}
-Location: ${[application?.area?.name, application?.district?.name, application?.state?.name].filter(Boolean).join(', ') || 'N/A'}
-
-SCHEME DETAILS
---------------
-Scheme: ${application?.scheme?.name || 'N/A'}
-Project: ${application?.project?.name || 'N/A'}
-Requested Amount: ₹${application?.requestedAmount?.toLocaleString('en-IN') || '0'}
-Status: ${application?.status || 'N/A'}
-    `.trim();
-
-    const blob = new Blob([content], { type: 'text/plain' });
-    const url = window.URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `Application_${application?.applicationNumber || 'unknown'}.txt`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    window.URL.revokeObjectURL(url);
+  const handleDownload = async () => {
+    if (!application?._id) return;
+    try {
+      const token = localStorage.getItem('token');
+      const response = await fetch(`/api/applications/${application._id}/pdf`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      if (!response.ok) throw new Error('Download failed');
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `Application_${application.applicationNumber || application._id}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      window.URL.revokeObjectURL(url);
+    } catch {
+      // fallback: text download
+      const content = [
+        `APPLICATION DETAILS`,
+        `===================`,
+        `Application ID: ${application?.applicationNumber || 'N/A'}`,
+        `Applied Date: ${application?.createdAt ? new Date(application.createdAt).toLocaleDateString('en-IN') : 'N/A'}`,
+        ``,
+        `APPLICANT INFORMATION`,
+        `---------------------`,
+        `Name: ${application?.beneficiary?.name || 'N/A'}`,
+        `Contact: ${application?.beneficiary?.phone || 'N/A'}`,
+        ``,
+        `SCHEME DETAILS`,
+        `--------------`,
+        `Scheme: ${application?.scheme?.name || 'N/A'}`,
+        `Project: ${application?.project?.name || 'N/A'}`,
+        `Requested Amount: ₹${application?.requestedAmount?.toLocaleString('en-IN') || '0'}`,
+        `Status: ${application?.status || 'N/A'}`,
+      ].join('\n');
+      const blob = new Blob([content], { type: 'text/plain' });
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `Application_${application?.applicationNumber || 'unknown'}.txt`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      window.URL.revokeObjectURL(url);
+    }
   };
 
   if (!application) {

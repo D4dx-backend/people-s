@@ -158,12 +158,24 @@ export function UserModal({ open, onOpenChange, user, mode, onSave }: UserModalP
       };
       
       const stateId = getIdFromField(userData.adminScope?.state);
-      const districtId = getIdFromField(userData.adminScope?.district);
-      const areaId = getIdFromField(userData.adminScope?.area);
-      const unitId = getIdFromField(userData.adminScope?.unit);
-      const selectedRegionId = userData.adminScope?.regions?.[0]
-        ? getIdFromField(userData.adminScope.regions[0])
-        : unitId || areaId || districtId || stateId || '';
+      let districtId = getIdFromField(userData.adminScope?.district);
+      let areaId = getIdFromField(userData.adminScope?.area);
+      let unitId = getIdFromField(userData.adminScope?.unit);
+
+      // Legacy fallback: for old users where location was stored only in regions[0]
+      const regions = (userData.adminScope?.regions || []) as any[];
+      if (!districtId && userData.role === 'district_admin' && regions.length > 0) {
+        districtId = getIdFromField(regions[0]);
+      }
+      if (!areaId && userData.role === 'area_admin' && regions.length > 0) {
+        areaId = getIdFromField(regions[0]);
+      }
+      if (!unitId && ['unit_admin', 'area_president'].includes(userData.role) && regions.length > 0) {
+        unitId = getIdFromField(regions[0]);
+      }
+
+      const selectedRegionId = unitId || areaId || districtId || stateId ||
+        (regions.length > 0 ? getIdFromField(regions[0]) : '');
       
       // Load cascading data based on role
       if (userData.role === 'area_admin' && districtId) {

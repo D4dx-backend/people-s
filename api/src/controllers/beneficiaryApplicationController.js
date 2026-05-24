@@ -250,7 +250,7 @@ class BeneficiaryApplicationController {
         scheme: scheme._id,
         ...buildFranchiseReadFilter(req),
         enabled: true
-      }).select('title description pages submissionSettings isPublished scoringConfig');
+      }).select('title description pages submissionSettings isPublished scoringConfig instructions');
 
       console.log('📋 Form config found:', !!formConfig);
       if (formConfig) {
@@ -270,6 +270,7 @@ class BeneficiaryApplicationController {
         title: formConfig.title,
         description: formConfig.description,
         pages: formConfig.pages,
+        instructions: formConfig.instructions || [],
         confirmationMessage: formConfig.submissionSettings?.confirmationMessage || "Thank you for your application."
       };
 
@@ -512,6 +513,45 @@ class BeneficiaryApplicationController {
 
           await existingApplication.save();
 
+          // Duplicate check for converted-from-draft path (fire-and-forget)
+          (async () => {
+            try {
+              const formCfg = await FormConfiguration.findOne({
+                scheme: schemeId, franchise: req.franchiseId, enabled: true
+              }).lean();
+              if (formCfg && formCfg.duplicateDetection && formCfg.duplicateDetection.length > 0) {
+                const enabledChecks = formCfg.duplicateDetection.filter(d => d.enabled);
+                const matchedFields = [];
+                for (const check of enabledChecks) {
+                  const fieldKey = `field_${check.fieldId}`;
+                  const fieldValue = formData[fieldKey];
+                  if (!fieldValue || String(fieldValue).trim() === '') continue;
+                  const dupApps = await Application.find({
+                    _id: { $ne: existingApplication._id },
+                    scheme: schemeId,
+                    franchise: req.franchiseId,
+                    [`formData.${fieldKey}`]: String(fieldValue).trim()
+                  }).select('_id').lean();
+                  if (dupApps.length > 0) {
+                    matchedFields.push({
+                      fieldType: check.fieldType,
+                      fieldLabel: check.fieldLabel,
+                      fieldId: check.fieldId,
+                      matchedApplicationIds: dupApps.map(a => a._id)
+                    });
+                  }
+                }
+                await Application.findByIdAndUpdate(existingApplication._id, {
+                  'duplicateInfo.isDuplicate': matchedFields.length > 0,
+                  'duplicateInfo.matchedFields': matchedFields,
+                  'duplicateInfo.checkedAt': new Date()
+                });
+              }
+            } catch (dupErr) {
+              console.error('⚠️ Duplicate check failed (non-blocking):', dupErr.message);
+            }
+          })();
+
           await existingApplication.populate([
             { path: 'scheme', select: 'name category benefits' },
             { path: 'beneficiary', select: 'name phone' }
@@ -642,6 +682,63 @@ class BeneficiaryApplicationController {
       }
 
       await application.save();
+
+      // Check for duplicate applications (phone, aadhaar, ration card) — fire-and-forget
+      // Never blocks submission; just stores a flag for admin awareness.
+      (async () => {
+        try {
+          const formConfig = await FormConfiguration.findOne({
+            scheme: schemeId,
+            franchise: req.franchiseId,
+            enabled: true
+          }).lean();
+
+          if (formConfig && formConfig.duplicateDetection && formConfig.duplicateDetection.length > 0) {
+            const enabledChecks = formConfig.duplicateDetection.filter(d => d.enabled);
+            const matchedFields = [];
+
+            for (const check of enabledChecks) {
+              const fieldKey = `field_${check.fieldId}`;
+              const fieldValue = formData[fieldKey];
+              if (!fieldValue || String(fieldValue).trim() === '') continue;
+
+              // Find other applications for the same scheme that share this field value
+              const duplicateApps = await Application.find({
+                _id: { $ne: application._id },
+                scheme: schemeId,
+                franchise: req.franchiseId,
+                [`formData.${fieldKey}`]: String(fieldValue).trim()
+              }).select('_id').lean();
+
+              if (duplicateApps.length > 0) {
+                matchedFields.push({
+                  fieldType: check.fieldType,
+                  fieldLabel: check.fieldLabel,
+                  fieldId: check.fieldId,
+                  matchedApplicationIds: duplicateApps.map(a => a._id)
+                });
+              }
+            }
+
+            if (matchedFields.length > 0) {
+              await Application.findByIdAndUpdate(application._id, {
+                'duplicateInfo.isDuplicate': true,
+                'duplicateInfo.matchedFields': matchedFields,
+                'duplicateInfo.checkedAt': new Date()
+              });
+              console.log(`⚠️ Duplicate detected for application ${application.applicationNumber}:`, matchedFields.map(f => f.fieldType));
+            } else {
+              await Application.findByIdAndUpdate(application._id, {
+                'duplicateInfo.isDuplicate': false,
+                'duplicateInfo.matchedFields': [],
+                'duplicateInfo.checkedAt': new Date()
+              });
+            }
+          }
+        } catch (dupErr) {
+          console.error('⚠️ Duplicate check failed (non-blocking):', dupErr.message);
+        }
+      })();
 
       // Add application to beneficiary's applications array
       beneficiary.applications.push(application._id);

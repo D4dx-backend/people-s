@@ -454,11 +454,42 @@ class AuthController {
   }
 
   /**
+   * Exchange a selection token + chosen franchise/role for a full JWT.
+   * POST /api/auth/select-role
+   */
+  async selectRole(req, res) {
+    try {
+      const { selectionToken, franchiseId, role } = req.body;
+
+      if (!selectionToken || !franchiseId) {
+        return ResponseHelper.error(res, 'selectionToken and franchiseId are required', 400);
+      }
+
+      const result = await authService.selectRole(selectionToken, franchiseId, role || null);
+
+      await LoginLogService.logLoginEvent({
+        userId: result.user?.id || null,
+        userType: 'admin',
+        action: 'login_success',
+        status: 'success',
+        phone: result.user?.phone || 'unknown',
+        req,
+        otpDetails: { verifiedAt: new Date(), purpose: 'role_selection' }
+      });
+
+      return ResponseHelper.success(res, result, result.message);
+    } catch (error) {
+      console.error('❌ Select Role Error:', error);
+      return ResponseHelper.error(res, error.message, 400);
+    }
+  }
+
+  /**
    * Get franchises the current user has access to.
    * GET /api/auth/my-franchises
    *
-   * For cross-franchise eligible roles (district_admin, area_admin, unit_admin)
-   * this returns all active franchises the user is a member of.
+   * For cross-franchise eligible roles (district_admin, area_admin, unit_admin, area_president)
+   * this returns all active franchises the user is a member of, with all roles per franchise.
    * For other roles it returns only the current franchise (if any).
    */
   async getMyFranchises(req, res) {
@@ -471,15 +502,25 @@ class AuthController {
           isActive: true
         }).populate('franchise', 'slug displayName logoUrl isActive');
 
-        const franchises = memberships
-          .filter(m => m.franchise && m.franchise.isActive)
-          .map(m => ({
-            id: m.franchise._id,
-            slug: m.franchise.slug,
-            displayName: m.franchise.displayName,
-            logoUrl: m.franchise.logoUrl,
-            role: m.role
-          }));
+        // Group memberships by franchise, collecting all roles per franchise
+        const franchiseMap = new Map();
+        for (const m of memberships) {
+          if (!m.franchise || !m.franchise.isActive) continue;
+          const fid = String(m.franchise._id);
+          if (!franchiseMap.has(fid)) {
+            franchiseMap.set(fid, {
+              id: m.franchise._id,
+              slug: m.franchise.slug,
+              displayName: m.franchise.displayName,
+              logoUrl: m.franchise.logoUrl,
+              roles: [],
+              role: m.role // backward-compat: primary role
+            });
+          }
+          franchiseMap.get(fid).roles.push(m.role);
+        }
+
+        const franchises = Array.from(franchiseMap.values());
 
         return ResponseHelper.success(res, {
           franchises,
@@ -495,7 +536,8 @@ class AuthController {
             slug: req.franchise.slug,
             displayName: req.franchise.displayName,
             logoUrl: req.franchise.logoUrl,
-            role: effectiveRole
+            role: effectiveRole,
+            roles: [effectiveRole]
           }]
         : [];
 

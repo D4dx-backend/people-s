@@ -342,7 +342,7 @@ class GlobalAdminController {
 
       const VALID_ROLES = [
         'super_admin', 'state_admin', 'district_admin',
-        'area_admin', 'unit_admin', 'project_coordinator', 'scheme_coordinator',
+        'area_admin', 'unit_admin', 'area_president', 'project_coordinator', 'scheme_coordinator',
       ];
 
       const ROLE_SCOPE = {
@@ -351,6 +351,7 @@ class GlobalAdminController {
         district_admin:      { level: 'district', permissions: { canCreateUsers: true,  canManageProjects: false, canManageSchemes: false, canApproveApplications: true,  canViewReports: true,  canManageFinances: false } },
         area_admin:          { level: 'area',     permissions: { canCreateUsers: true,  canManageProjects: false, canManageSchemes: false, canApproveApplications: true,  canViewReports: true,  canManageFinances: false } },
         unit_admin:          { level: 'unit',     permissions: { canCreateUsers: false, canManageProjects: false, canManageSchemes: false, canApproveApplications: true,  canViewReports: true,  canManageFinances: false } },
+        area_president:      { level: 'unit',     permissions: { canCreateUsers: false, canManageProjects: false, canManageSchemes: false, canApproveApplications: true,  canViewReports: true,  canManageFinances: false } },
         project_coordinator: { level: 'project',  permissions: { canCreateUsers: false, canManageProjects: true,  canManageSchemes: false, canApproveApplications: false, canViewReports: true,  canManageFinances: false } },
         scheme_coordinator:  { level: 'scheme',   permissions: { canCreateUsers: false, canManageProjects: false, canManageSchemes: true,  canApproveApplications: false, canViewReports: true,  canManageFinances: false } },
       };

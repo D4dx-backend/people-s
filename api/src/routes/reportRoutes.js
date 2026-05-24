@@ -174,7 +174,7 @@ router.post('/application/:applicationId',
       
       // If no permission, check if user can access the application
       // This allows unit_admin/area_admin/district_admin to create reports for applications they can access
-      if (!hasPermission && ['unit_admin', 'area_admin', 'district_admin'].includes(req.user.role)) {
+      if (!hasPermission && ['unit_admin', 'area_president', 'area_admin', 'district_admin'].includes(req.user.role)) {
         console.log('🔍 [REPORTS] Fallback: Checking application access');
         
         // Find the application
@@ -208,7 +208,7 @@ router.post('/application/:applicationId',
               const appAreaId = getId(application.area);
               const appDistrictId = getId(application.district);
               
-              if (req.user.role === 'unit_admin' && appUnitId && userRegions.includes(appUnitId)) {
+              if (['unit_admin', 'area_president'].includes(req.user.role) && appUnitId && userRegions.includes(appUnitId)) {
                 canAccess = true;
               } else if (req.user.role === 'area_admin' && appAreaId && userRegions.includes(appAreaId)) {
                 canAccess = true;
@@ -227,7 +227,7 @@ router.post('/application/:applicationId',
               const appAreaId = getId(application.area);
               const appDistrictId = getId(application.district);
               
-              if (req.user.role === 'unit_admin' && userUnitId && appUnitId === userUnitId) {
+              if (['unit_admin', 'area_president'].includes(req.user.role) && userUnitId && appUnitId === userUnitId) {
                 canAccess = true;
               } else if (req.user.role === 'area_admin' && userAreaId && appAreaId === userAreaId) {
                 canAccess = true;
@@ -512,7 +512,7 @@ router.put('/:reportId',
       console.log('🔍 [REPORTS-UPDATE] Permission check result:', hasPermission);
       
       // If no permission, check if user can access the application
-      if (!hasPermission && ['unit_admin', 'area_admin', 'district_admin'].includes(req.user.role)) {
+      if (!hasPermission && ['unit_admin', 'area_president', 'area_admin', 'district_admin'].includes(req.user.role)) {
         console.log('🔍 [REPORTS-UPDATE] Fallback: Checking application access');
         
         // Get the application from the report
@@ -545,7 +545,7 @@ router.put('/:reportId',
               const appAreaId = getId(application.area);
               const appDistrictId = getId(application.district);
               
-              if (req.user.role === 'unit_admin' && appUnitId && userRegions.includes(appUnitId)) {
+              if (['unit_admin', 'area_president'].includes(req.user.role) && appUnitId && userRegions.includes(appUnitId)) {
                 canAccess = true;
               } else if (req.user.role === 'area_admin' && appAreaId && userRegions.includes(appAreaId)) {
                 canAccess = true;
@@ -564,7 +564,7 @@ router.put('/:reportId',
               const appAreaId = getId(application.area);
               const appDistrictId = getId(application.district);
               
-              if (req.user.role === 'unit_admin' && userUnitId && appUnitId === userUnitId) {
+              if (['unit_admin', 'area_president'].includes(req.user.role) && userUnitId && appUnitId === userUnitId) {
                 canAccess = true;
               } else if (req.user.role === 'area_admin' && userAreaId && appAreaId === userAreaId) {
                 canAccess = true;
@@ -728,7 +728,7 @@ router.delete('/:reportId',
       console.log('🔍 [REPORTS-DELETE] Permission check result:', hasPermission);
       
       // If no permission, check if user can access the application
-      if (!hasPermission && ['unit_admin', 'area_admin', 'district_admin'].includes(req.user.role)) {
+      if (!hasPermission && ['unit_admin', 'area_president', 'area_admin', 'district_admin'].includes(req.user.role)) {
         console.log('🔍 [REPORTS-DELETE] Fallback: Checking application access');
         
         // Get the application from the report
@@ -761,7 +761,7 @@ router.delete('/:reportId',
               const appAreaId = getId(application.area);
               const appDistrictId = getId(application.district);
               
-              if (req.user.role === 'unit_admin' && appUnitId && userRegions.includes(appUnitId)) {
+              if (['unit_admin', 'area_president'].includes(req.user.role) && appUnitId && userRegions.includes(appUnitId)) {
                 canAccess = true;
               } else if (req.user.role === 'area_admin' && appAreaId && userRegions.includes(appAreaId)) {
                 canAccess = true;
@@ -780,7 +780,7 @@ router.delete('/:reportId',
               const appAreaId = getId(application.area);
               const appDistrictId = getId(application.district);
               
-              if (req.user.role === 'unit_admin' && userUnitId && appUnitId === userUnitId) {
+              if (['unit_admin', 'area_president'].includes(req.user.role) && userUnitId && appUnitId === userUnitId) {
                 canAccess = true;
               } else if (req.user.role === 'area_admin' && userAreaId && appAreaId === userAreaId) {
                 canAccess = true;

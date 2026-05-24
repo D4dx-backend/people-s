@@ -522,6 +522,22 @@ class BeneficiaryApiService {
     });
     return this.handleResponse<{ application: any }>(response);
   }
+
+  async downloadBlankFormPdf(schemeId: string): Promise<Blob> {
+    const response = await fetch(`${API_BASE_URL}/beneficiary/schemes/${schemeId}/form-pdf/blank`, {
+      headers: this.getAuthHeaders()
+    });
+    if (!response.ok) throw new Error('Failed to download form PDF');
+    return response.blob();
+  }
+
+  async downloadApplicationPdf(applicationId: string): Promise<Blob> {
+    const response = await fetch(`${API_BASE_URL}/beneficiary/applications/${applicationId}/pdf`, {
+      headers: this.getAuthHeaders()
+    });
+    if (!response.ok) throw new Error('Failed to download application PDF');
+    return response.blob();
+  }
 }
 
 export const beneficiaryApi = new BeneficiaryApiService();

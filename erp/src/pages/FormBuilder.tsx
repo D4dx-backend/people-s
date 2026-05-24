@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Eye, Code, Save, Copy, Download, Settings2, ArrowLeft, Loader2, MoreVertical, FileText, Target, RefreshCw } from "lucide-react";
+import { Eye, Code, Save, Copy, Download, Settings2, ArrowLeft, Loader2, MoreVertical, FileText, Target, RefreshCw, Info } from "lucide-react";
 import { useSearchParams, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -21,6 +21,7 @@ import { useConfig } from "@/contexts/ConfigContext";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { type FormScoringConfig, isScorableType, NON_SCORABLE_TYPES } from "@/types/formBuilder";
+import { InstructionsModal, type FormInstruction } from "@/components/formbuilder/InstructionsModal";
 
 interface Field {
   id: number;
@@ -87,6 +88,8 @@ export default function FormBuilder() {
     showScoreToAdmin: true
   });
   const [showScoringOverview, setShowScoringOverview] = useState(false);
+  const [showInstructionsModal, setShowInstructionsModal] = useState(false);
+  const [formInstructions, setFormInstructions] = useState<FormInstruction[]>([]);
 
   const schemes = [
     { id: 1, value: "scholarship", label: "Student Scholarship Program" },
@@ -145,6 +148,7 @@ export default function FormBuilder() {
           setIsPublished(config.isPublished || false);
           setFormVersion(config.version || 1);
           setIsDefaultTemplate(false);
+          setFormInstructions(config.instructions || []);
 
           toast({
             title: "Form configuration loaded",
@@ -296,7 +300,8 @@ export default function FormBuilder() {
         enabled: formEnabled,
         emailNotifications,
         pages,
-        scoringConfig
+        scoringConfig,
+        instructions: formInstructions
       };
 
       if (isRenewalForm) {
@@ -474,6 +479,16 @@ export default function FormBuilder() {
           <Button
             variant="outline"
             size="sm"
+            onClick={() => setShowInstructionsModal(true)}
+            className={`hidden sm:flex ${formInstructions.length > 0 ? 'border-blue-400 text-blue-700 bg-blue-50' : ''}`}
+          >
+            <Info className="h-4 w-4 sm:mr-2" />
+            <span className="hidden sm:inline">Instructions{formInstructions.length > 0 ? ` (${formInstructions.length})` : ''}</span>
+          </Button>
+
+          <Button
+            variant="outline"
+            size="sm"
             onClick={() => setShowScoringOverview(true)}
             disabled={pages.length === 0}
             className={`hidden sm:flex ${scoringConfig.enabled ? 'border-green-500 text-green-700 bg-green-50' : ''}`}
@@ -508,6 +523,10 @@ export default function FormBuilder() {
               <DropdownMenuItem onClick={() => setShowSettings(true)}>
                 <Settings2 className="mr-2 h-4 w-4" />
                 Settings
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => setShowInstructionsModal(true)}>
+                <Info className="mr-2 h-4 w-4" />
+                Instructions{formInstructions.length > 0 ? ` (${formInstructions.length})` : ''}
               </DropdownMenuItem>
               <DropdownMenuItem 
                 onClick={() => setShowScoringOverview(true)}
@@ -897,6 +916,7 @@ export default function FormBuilder() {
                 formTitle={formTitle}
                 formDescription={formDescription}
                 pages={pages}
+                instructions={formInstructions}
               />
             </TabsContent>
             <TabsContent value="mobile" className="mt-4">
@@ -905,6 +925,7 @@ export default function FormBuilder() {
                   formTitle={formTitle}
                   formDescription={formDescription}
                   pages={pages}
+                  instructions={formInstructions}
                 />
               </div>
             </TabsContent>
@@ -1006,6 +1027,17 @@ export default function FormBuilder() {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Instructions Modal */}
+      <InstructionsModal
+        open={showInstructionsModal}
+        onOpenChange={setShowInstructionsModal}
+        instructions={formInstructions}
+        onSave={(updated) => {
+          setFormInstructions(updated);
+          setHasUnsavedChanges(true);
+        }}
+      />
     </div>
   );
 }

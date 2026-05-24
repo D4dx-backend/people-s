@@ -332,6 +332,12 @@ router.get('/:id/form-config',
   schemeController.getFormConfiguration
 );
 
+// Download blank application form as PDF
+router.get('/:id/form-pdf/blank',
+  authorize('super_admin', 'state_admin', 'district_admin', 'area_admin', 'unit_admin'),
+  require('../controllers/applicationController').downloadBlankFormPdf
+);
+
 /**
  * @swagger
  * /api/schemes/{id}/form-config:

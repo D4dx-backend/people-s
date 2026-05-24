@@ -80,7 +80,10 @@ const authenticate = async (req, res, next) => {
       if (user.role !== 'beneficiary') {
         try {
           const UserFranchise = require('../models/UserFranchise');
-          const membership = await UserFranchise.getMembership(user._id, req.franchiseId);
+          // Use the role from the token to find the correct membership when
+          // the user holds multiple roles within the same franchise.
+          const tokenRole = decoded.role;
+          const membership = await UserFranchise.getMembership(user._id, req.franchiseId, tokenRole || null);
 
           if (!membership) {
             return res.status(403).json({

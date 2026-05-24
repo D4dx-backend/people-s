@@ -17,7 +17,7 @@ const UserFranchise = require('../models/UserFranchise');
  * no-op — existing behaviour is completely unchanged.
  */
 
-const CROSS_FRANCHISE_ROLES = ['district_admin', 'area_admin', 'unit_admin'];
+const CROSS_FRANCHISE_ROLES = ['district_admin', 'area_admin', 'unit_admin', 'area_president'];
 
 async function crossFranchiseResolver(req, res, next) {
   try {

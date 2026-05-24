@@ -271,6 +271,8 @@ export const useRoleNavigation = () => {
       case 'area_admin':
       case 'unit_admin':
         return '/admin/regional-dashboard';
+      case 'area_president':
+        return '/area-president-dashboard';
       case 'project_coordinator':
         return '/projects/dashboard';
       case 'scheme_coordinator':

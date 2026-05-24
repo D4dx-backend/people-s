@@ -5,8 +5,8 @@ const { uploadMultipleMemory } = require('../middleware/upload');
 const ctrl = require('../controllers/programReportController');
 
 const SUPER = ['super_admin'];
-const ALL_ADMINS = ['super_admin', 'state_admin', 'district_admin', 'area_admin', 'unit_admin'];
-const FIELD_ADMINS = ['district_admin', 'area_admin', 'unit_admin'];
+const ALL_ADMINS = ['super_admin', 'state_admin', 'district_admin', 'area_admin', 'unit_admin', 'area_president'];
+const FIELD_ADMINS = ['district_admin', 'area_admin', 'unit_admin', 'area_president'];
 
 // ── Report CRUD ───────────────────────────────────────────────────────────────
 router.get('/', authenticate, authorize(...ALL_ADMINS), ctrl.getProgramReports);
