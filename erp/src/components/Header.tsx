@@ -1,4 +1,4 @@
-import { Bell, User, Menu, LogOut, Search, Clock, KeyRound, CheckCheck, FileText, AlertTriangle, X } from "lucide-react";
+import { Bell, User, Menu, LogOut, Search, Clock, KeyRound, CheckCheck, FileText, AlertTriangle, X, RefreshCw, Loader2 } from "lucide-react";
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { useNotifications } from "@/hooks/useNotifications";
@@ -11,13 +11,23 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import {
   Tooltip,
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { useAuth } from "@/hooks/useAuth";
+import { useAuth, type RoleInfo } from "@/hooks/useAuth";
 import { useRBAC } from "@/hooks/useRBAC";
 import { useNavigate } from "react-router-dom";
 import { toast } from "@/hooks/use-toast";
@@ -147,6 +157,129 @@ function NotificationBell() {
   );
 }
 
+/** Map role key → human-readable label */
+function roleLabel(role: string): string {
+  const labels: Record<string, string> = {
+    super_admin: 'Super Admin',
+    state_admin: 'State Admin',
+    district_admin: 'District Admin',
+    area_admin: 'Area Admin',
+    unit_admin: 'Unit Admin',
+    area_president: 'Area President',
+    project_coordinator: 'Project Coordinator',
+    scheme_coordinator: 'Scheme Coordinator',
+  };
+  return labels[role] || role.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+}
+
+/** Navigate to the correct dashboard after a role switch */
+function getRouteForRole(role: string): string {
+  if (role === 'area_president') return '/area-president-dashboard';
+  if (role === 'super_admin' || role === 'state_admin') return '/dashboard';
+  return '/dashboard';
+}
+
+/** Modal that lets a logged-in user switch their active role */
+function SwitchRoleModal({
+  open,
+  onOpenChange,
+  currentRole,
+}: {
+  open: boolean;
+  onOpenChange: (v: boolean) => void;
+  currentRole: string;
+}) {
+  const { user, switchRole, getMyRoles } = useAuth();
+  const navigate = useNavigate();
+  const [roles, setRoles] = useState<RoleInfo[]>([]);
+  const [selected, setSelected] = useState<string>(currentRole);
+  const [loading, setLoading] = useState(false);
+  const [fetching, setFetching] = useState(false);
+
+  // Fetch roles whenever the modal opens
+  useEffect(() => {
+    if (!open) return;
+    setFetching(true);
+    getMyRoles()
+      .then(r => {
+        setRoles(r);
+        setSelected(currentRole);
+      })
+      .finally(() => setFetching(false));
+  }, [open]);
+
+  const handleSwitch = async () => {
+    if (!selected || selected === currentRole || !user?.franchiseId) return;
+    setLoading(true);
+    try {
+      await switchRole(user.franchiseId, selected);
+      toast({ title: 'Role Switched', description: `Now using: ${roleLabel(selected)}` });
+      onOpenChange(false);
+      navigate(getRouteForRole(selected), { replace: true });
+    } catch (err: any) {
+      toast({ title: 'Error', description: err.message || 'Failed to switch role', variant: 'destructive' });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="sm:max-w-sm">
+        <DialogHeader>
+          <DialogTitle>Switch Role</DialogTitle>
+          <DialogDescription>
+            Select the role you want to use for this session.
+          </DialogDescription>
+        </DialogHeader>
+
+        {fetching ? (
+          <div className="flex items-center justify-center py-8">
+            <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+          </div>
+        ) : roles.length <= 1 ? (
+          <p className="text-sm text-muted-foreground py-4 text-center">
+            You only have one role in this organisation.
+          </p>
+        ) : (
+          <RadioGroup value={selected} onValueChange={setSelected} className="space-y-2 py-2">
+            {roles.map(r => (
+              <div
+                key={r.role}
+                className={`flex items-center gap-3 rounded-lg border px-4 py-3 cursor-pointer transition-colors ${
+                  selected === r.role ? 'border-primary bg-primary/5' : 'border-border hover:border-primary/40'
+                }`}
+                onClick={() => setSelected(r.role)}
+              >
+                <RadioGroupItem value={r.role} id={`role-${r.role}`} />
+                <Label htmlFor={`role-${r.role}`} className="cursor-pointer flex-1">
+                  {r.displayName}
+                  {r.role === currentRole && (
+                    <span className="ml-2 text-xs text-muted-foreground">(current)</span>
+                  )}
+                </Label>
+              </div>
+            ))}
+          </RadioGroup>
+        )}
+
+        <DialogFooter>
+          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={loading}>
+            Cancel
+          </Button>
+          <Button
+            onClick={handleSwitch}
+            disabled={loading || fetching || roles.length <= 1 || selected === currentRole}
+          >
+            {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+            Switch
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 export function Header({ onMenuClick }: HeaderProps) {
   const { user, logout } = useAuth();
   const { hasPermission } = useRBAC();
@@ -155,6 +288,7 @@ export function Header({ onMenuClick }: HeaderProps) {
   const orgLogoUrl = useOrgLogoUrl();
   const [lastLogin, setLastLogin] = useState<string | null>(null);
   const [lastLoginDevice, setLastLoginDevice] = useState<string | null>(null);
+  const [switchRoleOpen, setSwitchRoleOpen] = useState(false);
 
   // Fetch last login for current user — only if user has login_logs.read permission
   useEffect(() => {
@@ -218,6 +352,7 @@ export function Header({ onMenuClick }: HeaderProps) {
   };
 
   return (
+    <>
     <header className="sticky top-0 z-50 w-full border-b border-border/40 bg-background/80 backdrop-blur-xl supports-[backdrop-filter]:bg-background/60">
       <div className="relative flex h-16 items-center justify-between px-4 md:px-6">
         <div className="flex items-center gap-4">
@@ -313,6 +448,10 @@ export function Header({ onMenuClick }: HeaderProps) {
                 <KeyRound className="mr-2 h-4 w-4" />
                 Settings
               </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => setSwitchRoleOpen(true)}>
+                <RefreshCw className="mr-2 h-4 w-4" />
+                Switch Role
+              </DropdownMenuItem>
               <DropdownMenuSeparator />
               <DropdownMenuItem className="text-destructive" onClick={handleLogout}>
                 <LogOut className="mr-2 h-4 w-4" />
@@ -324,5 +463,12 @@ export function Header({ onMenuClick }: HeaderProps) {
         <div className="pointer-events-none absolute inset-x-0 bottom-0 h-px bg-gradient-primary opacity-40" />
       </div>
     </header>
+
+    <SwitchRoleModal
+      open={switchRoleOpen}
+      onOpenChange={setSwitchRoleOpen}
+      currentRole={user?.role ?? ''}
+    />
+    </>
   );
 }

@@ -774,39 +774,53 @@ router.patch('/:id/complete',
           if (interviewReport) {
             application.interviewReport = interviewReport;
           }
-          
-          // Note: When forwarding to committee, we don't set isRecurring or recurringConfig
-          // The committee will configure these during their approval process
-          if (isRecurring) {
-            console.log('🔄 Application marked for recurring payments - will be configured by committee');
-          }
-          
           console.log('📋 Application forwarded to committee approval');
         } else {
-          application.status = 'approved'; // Move to approved status if interview passed
-          
-          // Handle recurring payments for direct approvals
-          if (isRecurring && recurringConfig) {
-            application.isRecurring = true;
-            application.recurringConfig = {
-              ...recurringConfig,
-              status: 'active'
-            };
-            
-            // Calculate total recurring amount
-            if (recurringConfig.hasDistributionTimeline && recurringConfig.distributionTimeline) {
-              const timelineTotal = recurringConfig.distributionTimeline.reduce((sum, phase) => sum + (phase.amount || 0), 0);
-              application.recurringConfig.totalRecurringAmount = timelineTotal * recurringConfig.numberOfPayments;
-              application.approvedAmount = timelineTotal;
-            } else {
-              application.recurringConfig.totalRecurringAmount = recurringConfig.amountPerPayment * recurringConfig.numberOfPayments;
-              application.approvedAmount = recurringConfig.amountPerPayment * recurringConfig.numberOfPayments;
-            }
-            console.log('🔄 Recurring payment configured:', application.recurringConfig);
-          }
+          // Interview passed → move to interview_completed so admin can do Final Review + Approval
+          // (Actual approval with payment config happens via the /approve endpoint)
+          application.status = 'interview_completed';
+          console.log('✅ Interview passed → status set to interview_completed for final review');
         }
       } else {
-        application.status = 'rejected'; // Move to rejected status if interview failed
+        application.status = 'rejected'; // Failed interview → rejected
+      }
+
+      // ── Mark the Interview Process applicationStage as completed ──────────────
+      // Find by name (case-insensitive match for "interview")
+      const interviewStageIdx = (application.applicationStages || []).findIndex(
+        s => (s.name || '').toLowerCase().includes('interview')
+      );
+      if (interviewStageIdx !== -1) {
+        const iStage = application.applicationStages[interviewStageIdx];
+        if (!['completed', 'skipped'].includes(iStage.status)) {
+          application.applicationStages[interviewStageIdx].status = 'completed';
+          application.applicationStages[interviewStageIdx].completedAt = new Date();
+          application.applicationStages[interviewStageIdx].completedBy = req.user._id;
+          application.applicationStages[interviewStageIdx].notes =
+            notes || `Interview result: ${result}`;
+
+          // Advance currentStage to the next pending stage
+          const nextPending = [...application.applicationStages]
+            .filter(s => s.status === 'pending')
+            .sort((a, b) => a.order - b.order)[0];
+          if (nextPending) {
+            application.currentStage = nextPending.name;
+          }
+
+          // Record in stageHistory
+          if (!application.stageHistory) application.stageHistory = [];
+          application.stageHistory.push({
+            stageName: iStage.name,
+            status: 'completed',
+            timestamp: new Date(),
+            updatedBy: req.user._id,
+            notes: notes || `Interview result: ${result}`
+          });
+          application.markModified('applicationStages');
+          application.markModified('currentStage');
+          application.markModified('stageHistory');
+          console.log(`✅ Stage "${iStage.name}" marked as completed`);
+        }
       }
       
       if (!application.interview) {
@@ -820,10 +834,11 @@ router.patch('/:id/complete',
         application.interview.notes = notes;
       }
 
-      // Save distribution timeline if provided (for approved applications)
-      if (result === 'passed' && req.body.distributionTimeline && Array.isArray(req.body.distributionTimeline)) {
+      // Save distribution timeline only when forwarding to committee
+      // (For normal passed interviews, payment config is done in the /approve step)
+      if (forwardToCommittee && req.body.distributionTimeline && Array.isArray(req.body.distributionTimeline)) {
         application.distributionTimeline = req.body.distributionTimeline;
-        console.log('💰 Distribution timeline saved:', req.body.distributionTimeline.length, 'phases');
+        console.log('💰 Distribution timeline saved for committee review:', req.body.distributionTimeline.length, 'phases');
       }
 
       console.log('💾 Saving application with status:', application.status);
@@ -837,18 +852,9 @@ router.patch('/:id/complete',
         const savedApp = await application.save();
         console.log('✅ Application updated successfully, new status:', savedApp.status);
         
-        // Generate recurring payment schedule if approved with recurring payments
+        // Recurring payment generation is now handled in the /approve endpoint
         if (result === 'passed' && !forwardToCommittee && isRecurring && recurringConfig) {
-          try {
-            console.log('🔄 Generating recurring payment schedule for application:', savedApp._id);
-            const RecurringPaymentService = require('../services/recurringPaymentService');
-            const service = new RecurringPaymentService();
-            const generatedPayments = await service.generatePaymentSchedule(savedApp._id);
-            console.log(`✅ Generated ${generatedPayments.length} recurring payment records`);
-          } catch (recurringError) {
-            console.error('❌ Failed to generate recurring payment schedule:', recurringError);
-            // Don't fail the whole request, just log the error
-          }
+          console.log('🔄 Recurring payment config will be applied at approval step');
         }
       } catch (saveError) {
         console.error('❌ Error saving application:', saveError);

@@ -47,6 +47,11 @@ export interface RoleSelectionRequired {
 
 export type LoginResponse = LoginResult | FranchiseSelectionRequired | RoleSelectionRequired;
 
+export interface RoleInfo {
+  role: string;
+  displayName: string;
+}
+
 interface AuthContextType {
   user: User | null;
   token: string | null;
@@ -54,6 +59,10 @@ interface AuthContextType {
   isLoading: boolean;
   login: (phone: string, otp: string) => Promise<LoginResponse>;
   selectRole: (selectionToken: string, franchiseId: string, role: string) => Promise<void>;
+  /** Switch the active role without re-authentication. */
+  switchRole: (franchiseId: string, role: string) => Promise<void>;
+  /** Fetch all roles the current user holds in their current franchise. */
+  getMyRoles: () => Promise<RoleInfo[]>;
   /** Persist a user+tokens pair into both localStorage and React state. */
   storeSession: (user: User, tokens: { accessToken: string; refreshToken?: string }) => void;
   logout: () => void;
@@ -183,6 +192,65 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     }
   };
 
+  const switchRole = async (franchiseId: string, role: string): Promise<void> => {
+    try {
+      setIsLoading(true);
+
+      const API_BASE_URL = import.meta.env.VITE_API_URL;
+      if (!API_BASE_URL) throw new Error('VITE_API_URL environment variable is required');
+
+      const currentToken = localStorage.getItem('token');
+      if (!currentToken) throw new Error('Not authenticated');
+
+      const response = await fetch(`${API_BASE_URL}/auth/switch-role`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${currentToken}`,
+        },
+        body: JSON.stringify({ franchiseId, role }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Role switch failed');
+      }
+
+      const data = await response.json();
+      if (!data.success || !data.data?.user || !data.data?.tokens) {
+        throw new Error(data.message || 'Invalid response format');
+      }
+
+      _storeSession(data.data.user, data.data.tokens);
+    } catch (error) {
+      console.error('switchRole error:', error);
+      throw error;
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const getMyRoles = async (): Promise<RoleInfo[]> => {
+    try {
+      const API_BASE_URL = import.meta.env.VITE_API_URL;
+      if (!API_BASE_URL) throw new Error('VITE_API_URL environment variable is required');
+
+      const currentToken = localStorage.getItem('token');
+      if (!currentToken) return [];
+
+      const response = await fetch(`${API_BASE_URL}/auth/my-roles`, {
+        headers: { 'Authorization': `Bearer ${currentToken}` },
+      });
+
+      if (!response.ok) return [];
+
+      const data = await response.json();
+      return data.data?.roles ?? [];
+    } catch {
+      return [];
+    }
+  };
+
   const _storeSession = (userData: User, tokens: { accessToken: string; refreshToken?: string }) => {
     setUser(userData);
     setToken(tokens.accessToken);
@@ -274,6 +342,8 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     isLoading,
     login,
     selectRole,
+    switchRole,
+    getMyRoles,
     logout,
     refreshToken,
     updateUser,

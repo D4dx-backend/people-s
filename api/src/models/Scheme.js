@@ -146,6 +146,10 @@ const schemeSchema = new mongoose.Schema({
       type: Boolean,
       default: false
     },
+    interviewSchedulerRoles: [{
+      type: String,
+      enum: ['super_admin', 'state_admin', 'district_admin', 'area_admin', 'unit_admin', 'scheme_coordinator', 'project_coordinator']
+    }],
     allowMultipleApplications: {
       type: Boolean,
       default: false

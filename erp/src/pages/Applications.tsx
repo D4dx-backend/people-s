@@ -185,8 +185,8 @@ export default function Applications() {
   
   // Only state_admin and super_admin can review/approve applications
   const canReviewApplications = user && ['super_admin', 'state_admin'].includes(user.role);
-  // Only state_admin and super_admin can schedule/reschedule interviews
-  const canScheduleInterviews = user && ['super_admin', 'state_admin'].includes(user.role);
+  // state_admin, super_admin, district_admin, and scheme_coordinator can schedule/reschedule interviews
+  const canScheduleInterviews = user && ['super_admin', 'state_admin', 'district_admin', 'scheme_coordinator'].includes(user.role);
 
   // Check if user has admin permissions
   const hasAdminAccess = user && ['super_admin', 'state_admin', 'district_admin', 'area_admin', 'unit_admin'].includes(user.role);
@@ -443,13 +443,25 @@ export default function Applications() {
     }
 
     const hasInterviewScheduled = app.interview?.scheduledDate != null;
+    // Only show interview scheduling for schemes that require an interview
+    const requiresInterview =
+      (app as any).scheme?.applicationSettings?.requiresInterview ||
+      (app as any).scheme?.requiresInterview ||
+      false;
+
+    // Use scheme-specific scheduler roles if configured, otherwise fall back to default list
+    const schedulerRoles: string[] = (app as any).scheme?.applicationSettings?.interviewSchedulerRoles || [];
+    const canScheduleThisInterview = schedulerRoles.length > 0
+      ? user != null && schedulerRoles.includes(user.role)
+      : canScheduleInterviews;
 
     switch (app.status) {
       case 'pending':
       case 'under_review':
       case 'field_verification':
       case 'on_hold':
-        if (!canScheduleInterviews) return null;
+        if (!canScheduleThisInterview) return null;
+        if (!requiresInterview) return null;
         if (hasInterviewScheduled) {
           return (
             <Button variant="outline" size="sm" onClick={() => {
@@ -472,7 +484,7 @@ export default function Applications() {
         );
 
       case 'interview_scheduled':
-        if (!canScheduleInterviews) return null;
+        if (!canScheduleThisInterview || !requiresInterview) return null;
         return (
           <Button variant="outline" size="sm" onClick={() => {
             setSelectedApp(app);
@@ -859,6 +871,15 @@ export default function Applications() {
                               Expired
                             </Badge>
                           )}
+                          {/* Forwarded Back indicator: shows when a stage was reverted to the current stage */}
+                          {Array.isArray((app as any).stageHistory) &&
+                            (app as any).stageHistory.some(
+                              (h: any) => h.status === 'reverted' && h.revertedTo === (app as any).currentStage
+                            ) && (
+                            <Badge variant="outline" className="text-xs bg-orange-50 text-orange-700 border-orange-300">
+                              ↩ Forwarded Back
+                            </Badge>
+                          )}
                           <div className="text-sm text-muted-foreground">
                             <span className="font-medium">Amount:</span> ₹{app.requestedAmount.toLocaleString()}
                           </div>
@@ -888,6 +909,11 @@ export default function Applications() {
                           <div>
                             <span className="font-medium">Phone:</span> {display.beneficiaryPhone}
                           </div>
+                          {(app as any).currentStage && (
+                            <div>
+                              <span className="font-medium">Stage:</span> {(app as any).currentStage}
+                            </div>
+                          )}
                         </div>
                       </div>
 

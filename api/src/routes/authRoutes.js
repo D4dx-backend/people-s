@@ -742,6 +742,25 @@ router.get('/status', authenticate, authController.checkAuthStatus);
 router.get('/my-franchises', authenticate, authController.getMyFranchises);
 
 /**
+ * @route   GET /api/auth/my-roles
+ * @desc    Get all roles the current user holds in their current franchise
+ * @access  Private
+ */
+router.get('/my-roles', authenticate, authController.getMyRoles);
+
+/**
+ * @route   POST /api/auth/switch-role
+ * @desc    Switch the active role for the authenticated user (no re-authentication needed)
+ * @access  Private
+ */
+router.post('/switch-role', [
+  authenticate,
+  body('franchiseId').notEmpty().withMessage('franchiseId is required'),
+  body('role').notEmpty().withMessage('role is required'),
+  validateRequest
+], authController.switchRole);
+
+/**
  * @route   POST /api/auth/select-role
  * @desc    Exchange selection token + chosen franchise/role for a full JWT
  * @access  Public (requires valid selectionToken from verify-otp)

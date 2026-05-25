@@ -454,6 +454,48 @@ class AuthController {
   }
 
   /**
+   * GET /api/auth/my-roles
+   * Return all roles the current authenticated user holds in their current franchise.
+   */
+  async getMyRoles(req, res) {
+    try {
+      const franchiseId = req.franchiseId;
+      if (!franchiseId) {
+        return ResponseHelper.success(res, { roles: [] }, 'No franchise context');
+      }
+
+      const roles = await authService.getMyRoles(req.user, franchiseId);
+      return ResponseHelper.success(res, { roles }, 'Roles fetched successfully');
+    } catch (error) {
+      console.error('❌ Get My Roles Error:', error);
+      return ResponseHelper.error(res, 'Failed to fetch roles', 500);
+    }
+  }
+
+  /**
+   * POST /api/auth/switch-role
+   * Switch the active role for the currently authenticated user.
+   * Body: { franchiseId, role }
+   */
+  async switchRole(req, res) {
+    try {
+      const { franchiseId, role } = req.body;
+
+      if (!franchiseId || !role) {
+        return ResponseHelper.error(res, 'franchiseId and role are required', 400);
+      }
+
+      // Security: the franchiseId in the request must match the one on the token
+      // (or the user must be a cross-franchise user that has access to it)
+      const result = await authService.switchRole(req.user, franchiseId, role);
+      return ResponseHelper.success(res, result, result.message);
+    } catch (error) {
+      console.error('❌ Switch Role Error:', error);
+      return ResponseHelper.error(res, error.message, 400);
+    }
+  }
+
+  /**
    * Exchange a selection token + chosen franchise/role for a full JWT.
    * POST /api/auth/select-role
    */

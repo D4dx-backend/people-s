@@ -234,7 +234,7 @@ export default function Dashboard() {
               <div className="space-y-4">
                 {recentApplications.map((app) => (
                   <div
-                    key={app.id}
+                    key={app._id || app.id}
                     className="flex items-center justify-between rounded-2xl border border-border/40 bg-muted/30 px-4 py-3 transition-colors hover:bg-muted/50"
                   >
                     <div className="space-y-1">

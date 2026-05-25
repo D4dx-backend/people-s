@@ -9,6 +9,7 @@ import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
+import { Checkbox } from "@/components/ui/checkbox";
 import { CalendarIcon, Loader2, ChevronLeft, ChevronRight, Check } from "lucide-react";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
@@ -44,6 +45,7 @@ export function SchemeModal({ open, onOpenChange, scheme, mode, onSuccess }: Sch
     maxBeneficiaries: "",
     requireFieldVerification: false,
     requiresInterview: false,
+    interviewSchedulerRoles: [] as string[],
     allowMultipleApplications: false,
     // Eligibility
     minAge: "",
@@ -90,6 +92,7 @@ export function SchemeModal({ open, onOpenChange, scheme, mode, onSuccess }: Sch
         maxBeneficiaries: scheme.applicationSettings?.maxBeneficiaries?.toString() || "",
         requireFieldVerification: scheme.applicationSettings?.requireFieldVerification || false,
         requiresInterview: scheme.applicationSettings?.requiresInterview || false,
+        interviewSchedulerRoles: scheme.applicationSettings?.interviewSchedulerRoles || [],
         allowMultipleApplications: scheme.applicationSettings?.allowMultipleApplications || false,
         minAge: scheme.eligibility?.ageRange?.min?.toString() || "",
         maxAge: scheme.eligibility?.ageRange?.max?.toString() || "",
@@ -130,6 +133,7 @@ export function SchemeModal({ open, onOpenChange, scheme, mode, onSuccess }: Sch
         maxBeneficiaries: "",
         requireFieldVerification: false,
         requiresInterview: false,
+        interviewSchedulerRoles: [] as string[],
         allowMultipleApplications: false,
         minAge: "",
         maxAge: "",
@@ -212,6 +216,7 @@ export function SchemeModal({ open, onOpenChange, scheme, mode, onSuccess }: Sch
           maxBeneficiaries: formData.maxBeneficiaries ? parseInt(formData.maxBeneficiaries) : undefined,
           requireFieldVerification: formData.requireFieldVerification,
           requiresInterview: formData.requiresInterview,
+          interviewSchedulerRoles: formData.interviewSchedulerRoles,
           allowMultipleApplications: formData.allowMultipleApplications
         },
         eligibility: {
@@ -615,12 +620,48 @@ export function SchemeModal({ open, onOpenChange, scheme, mode, onSuccess }: Sch
                 />
               </div>
               
-              <div className="flex items-center justify-between">
-                <Label>Requires Interview</Label>
-                <Switch 
-                  checked={formData.requiresInterview} 
-                  onCheckedChange={(checked) => handleInputChange("requiresInterview", checked)}
-                />
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <Label>Requires Interview</Label>
+                  <Switch 
+                    checked={formData.requiresInterview} 
+                    onCheckedChange={(checked) => {
+                      handleInputChange("requiresInterview", checked);
+                      if (!checked) handleInputChange("interviewSchedulerRoles", []);
+                    }}
+                  />
+                </div>
+                {formData.requiresInterview && (
+                  <div className="ml-2 p-3 rounded-md border bg-muted/40 space-y-2">
+                    <p className="text-xs font-medium text-muted-foreground">Who can schedule interviews?</p>
+                    {([
+                      { value: 'super_admin', label: 'Super Admin' },
+                      { value: 'state_admin', label: 'State Admin' },
+                      { value: 'district_admin', label: 'District Admin' },
+                      { value: 'area_admin', label: 'Area Admin' },
+                      { value: 'unit_admin', label: 'Unit Admin' },
+                      { value: 'scheme_coordinator', label: 'Scheme Coordinator' },
+                      { value: 'project_coordinator', label: 'Project Coordinator' },
+                    ] as const).map(role => (
+                      <div key={role.value} className="flex items-center gap-2">
+                        <Checkbox
+                          id={`interview-role-${role.value}`}
+                          checked={formData.interviewSchedulerRoles.includes(role.value)}
+                          onCheckedChange={(checked) => {
+                            const current = formData.interviewSchedulerRoles;
+                            handleInputChange(
+                              "interviewSchedulerRoles",
+                              checked
+                                ? [...current, role.value]
+                                : current.filter(r => r !== role.value)
+                            );
+                          }}
+                        />
+                        <label htmlFor={`interview-role-${role.value}`} className="text-sm cursor-pointer">{role.label}</label>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
               
               <div className="flex items-center justify-between">
