@@ -36,11 +36,12 @@ async function backfillPayments() {
     const Application = require('../models/Application');
     const Payment = require('../models/Payment');
 
-    // Find all approved/completed/disbursed applications
-    const applications = await Application.find({
-      status: { $in: statusesToProcess },
-      approvedAmount: { $gt: 0 }
-    })
+    // Find all approved/completed/disbursed applications (bypass franchise plugin for admin script)
+    const applications = await Application.find(
+      { status: { $in: statusesToProcess }, approvedAmount: { $gt: 0 } },
+      null,
+      { bypassFranchise: true }
+    )
       .populate('beneficiary', 'name phone')
       .populate('scheme', 'name code')
       .populate('project', 'name code');
@@ -53,7 +54,7 @@ async function backfillPayments() {
 
     for (const app of applications) {
       // Check if payments already exist for this application
-      const existingPayments = await Payment.countDocuments({ application: app._id });
+      const existingPayments = await Payment.countDocuments({ application: app._id }, { bypassFranchise: true });
 
       if (existingPayments > 0) {
         console.log(`⏭️  SKIP: ${app.applicationNumber} — already has ${existingPayments} payment(s)`);
@@ -80,7 +81,7 @@ async function backfillPayments() {
           }
 
           try {
-            const paymentCount = await Payment.countDocuments();
+            const paymentCount = await Payment.countDocuments({}, { bypassFranchise: true });
             const year = new Date().getFullYear();
             const paymentNumber = `PAY${year}${String(paymentCount + 1).padStart(6, '0')}`;
 
@@ -116,6 +117,7 @@ async function backfillPayments() {
                 notes: `Backfilled payment. Original approval: ${app.approvedAt?.toISOString() || 'N/A'}`
               },
               initiatedBy: app.approvedBy || app.updatedBy || app.createdBy,
+              franchiseId: app.franchiseId,
               location: {
                 state: app.location?.state,
                 district: app.location?.district,
@@ -140,7 +142,7 @@ async function backfillPayments() {
         }
 
         try {
-          const paymentCount = await Payment.countDocuments();
+          const paymentCount = await Payment.countDocuments({}, { bypassFranchise: true });
           const year = new Date().getFullYear();
           const paymentNumber = `PAY${year}${String(paymentCount + 1).padStart(6, '0')}`;
 
@@ -169,6 +171,7 @@ async function backfillPayments() {
               notes: `Backfilled payment. Original approval: ${app.approvedAt?.toISOString() || 'N/A'}`
             },
             initiatedBy: app.approvedBy || app.updatedBy || app.createdBy,
+            franchiseId: app.franchiseId,
             location: {
               state: app.location?.state,
               district: app.location?.district,

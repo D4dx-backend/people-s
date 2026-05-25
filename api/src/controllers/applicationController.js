@@ -121,10 +121,33 @@ const getApplications = async (req, res) => {
 
     const total = await Application.countDocuments(filter);
 
+    // Apply the same hierarchical stage visibility filter to each application
+    const listUserRole = req.user.role;
+    const listStageVisibilityRoles = {
+      'super_admin':    null,
+      'state_admin':    null,
+      'district_admin': ['district_admin', 'area_admin', 'unit_admin'],
+      'area_admin':     ['area_admin', 'unit_admin'],
+      'unit_admin':     ['unit_admin'],
+    };
+    const listVisibleRoles = listStageVisibilityRoles[listUserRole];
+
+    const filteredApplications = applications.map(app => {
+      const appObj = app.toObject ? app.toObject() : app;
+      if (listVisibleRoles) {
+        appObj.applicationStages = (appObj.applicationStages || []).filter(stage => {
+          const allowed = stage.allowedRoles || [];
+          if (allowed.length === 0) return true;
+          return allowed.some(r => listVisibleRoles.includes(r));
+        });
+      }
+      return appObj;
+    });
+
     res.json({
       success: true,
       data: {
-        applications,
+        applications: filteredApplications,
         pagination: {
           current: parseInt(page),
           pages: Math.ceil(total / parseInt(limit)),
@@ -214,11 +237,40 @@ const getApplication = async (req, res) => {
       .sort({ 'installment.number': 1 })
       .lean();
 
+    // ======================================================
+    // HIERARCHICAL STAGE VISIBILITY FILTER
+    // Higher-level admins can see all stages below them.
+    // Lower-level admins only see stages relevant to their level.
+    //   super_admin / state_admin  → all stages
+    //   district_admin             → district + area + unit stages
+    //   area_admin                 → area + unit stages
+    //   unit_admin                 → unit stages only
+    // ======================================================
+    const userRole = req.user.role;
+    const stageVisibilityRoles = {
+      'super_admin':    null, // null = no filter (see all)
+      'state_admin':    null,
+      'district_admin': ['district_admin', 'area_admin', 'unit_admin'],
+      'area_admin':     ['area_admin', 'unit_admin'],
+      'unit_admin':     ['unit_admin'],
+    };
+    const visibleRoles = stageVisibilityRoles[userRole];
+
+    const applicationObj = application.toObject();
+    if (visibleRoles) {
+      applicationObj.applicationStages = (applicationObj.applicationStages || []).filter(stage => {
+        const allowed = stage.allowedRoles || [];
+        // If stage has no allowedRoles configured, always show it (legacy stages)
+        if (allowed.length === 0) return true;
+        return allowed.some(r => visibleRoles.includes(r));
+      });
+    }
+
     res.json({
       success: true,
       message: 'Application retrieved successfully',
       data: {
-        application,
+        application: applicationObj,
         payments
       },
       timestamp: new Date().toISOString()
@@ -591,6 +643,7 @@ const approveApplication = async (req, res) => {
               notes: `Direct approval. ${comments || ''}`.trim()
             },
             initiatedBy: req.user.id,
+            franchiseId: req.franchiseId || application.franchiseId,
             location: {
               state: application.location?.state,
               district: application.location?.district,
@@ -633,6 +686,7 @@ const approveApplication = async (req, res) => {
             notes: `Direct approval. ${comments || ''}`.trim()
           },
           initiatedBy: req.user.id,
+          franchiseId: req.franchiseId || application.franchiseId,
           location: {
             state: application.location?.state,
             district: application.location?.district,
@@ -1262,22 +1316,48 @@ const updateApplicationsDistributionTimeline = async (schemeId, newDistributionT
 // ==============================
 const getUsersByRoleAndScope = async (role, application) => {
   try {
-    const query = { role, isActive: true };
-    
-    // Add geographic scope filtering based on role
+    const UserFranchise = require('../models/UserFranchise');
+
+    const baseQuery = {
+      role,
+      isActive: true,
+      franchise: application.franchise,
+    };
+
+    // Try scoped query first (matching exact geographic scope)
+    const scopedQuery = { ...baseQuery };
     if (role === 'unit_admin' && application.unit) {
-      query['adminScope.unit'] = application.unit;
-    } else if (role === 'area_admin' && application.area) {
-      query['adminScope.area'] = application.area;
+      scopedQuery['adminScope.unit'] = application.unit;
+    } else if ((role === 'area_admin' || role === 'area_president') && application.area) {
+      scopedQuery['adminScope.area'] = application.area;
     } else if (role === 'district_admin' && application.district) {
-      query['adminScope.district'] = application.district;
+      scopedQuery['adminScope.district'] = application.district;
     }
-    
-    const users = await User.find(query)
-      .select('_id name phone email role adminScope')
+
+    let memberships = await UserFranchise.find(scopedQuery)
+      .select('_id user role adminScope')
+      .populate('user', '_id name phone email')
       .lean();
-    
-    return users;
+
+    // If scoped search returns nothing, fall back to all users of that role in the franchise
+    if (memberships.length === 0 && scopedQuery !== baseQuery) {
+      memberships = await UserFranchise.find(baseQuery)
+        .select('_id user role adminScope')
+        .populate('user', '_id name phone email')
+        .lean();
+    }
+
+    // Flatten to user-shaped objects so callers can use .phone, ._id etc. directly
+    return memberships
+      .filter(m => m.user)
+      .map(m => ({
+        _id: m.user._id,
+        name: m.user.name,
+        phone: m.user.phone,
+        email: m.user.email,
+        role: m.role,
+        adminScope: m.adminScope
+      }));
   } catch (error) {
     console.error(`Error fetching users for role ${role}:`, error);
     return [];
@@ -1307,8 +1387,8 @@ const getAvailableRevertRoles = async (req, res) => {
     // Get all stages before current
     const previousStages = sortedStages.slice(0, effectiveCurrentIndex);
 
-    // Extract unique roles from previous stages (only admin roles)
-    const adminRoles = ['unit_admin', 'area_admin', 'district_admin'];
+    // Extract unique roles from previous stages (all admin roles)
+    const adminRoles = ['unit_admin', 'area_admin', 'area_president', 'district_admin', 'state_admin', 'scheme_coordinator', 'project_coordinator'];
     const rolesSet = new Set();
     
     previousStages.forEach(stage => {
@@ -1327,10 +1407,14 @@ const getAvailableRevertRoles = async (req, res) => {
       rolesSet.add('unit_admin');
     }
 
-    const roles = Array.from(rolesSet);
+    // Sort roles by hierarchy: unit_admin < area_admin < district_admin < state_admin
+    const roleHierarchy = { unit_admin: 1, area_president: 2, area_admin: 2, district_admin: 3, scheme_coordinator: 3, project_coordinator: 3, state_admin: 4, super_admin: 5 };
 
-    // Sort roles by hierarchy: unit_admin < area_admin < district_admin
-    const roleHierarchy = { unit_admin: 1, area_president: 1, area_admin: 2, district_admin: 3 };
+    // Filter roles to only those LOWER in hierarchy than the current user's role.
+    // e.g. state_admin sees [district_admin, area_admin, unit_admin]; district_admin sees [area_admin, unit_admin].
+    const currentUserRole = req.userRole || req.user?.role;
+    const currentUserLevel = roleHierarchy[currentUserRole] ?? 99;
+    const roles = Array.from(rolesSet).filter(role => (roleHierarchy[role] ?? 99) < currentUserLevel);
     roles.sort((a, b) => roleHierarchy[a] - roleHierarchy[b]);
 
     // Get user counts for each role
@@ -2668,7 +2752,7 @@ const getApplicationReceipts = async (req, res) => {
       limit = 20
     } = req.query;
 
-    // Find payments for applications that have been approved or completed with an amount
+    // Find approved/completed/disbursed applications with an approved amount
     const approvedAppQuery = {
       status: { $in: ['approved', 'completed', 'disbursed'] },
       approvedAmount: { $gt: 0 },
@@ -2684,68 +2768,69 @@ const getApplicationReceipts = async (req, res) => {
       }
     }
 
-    // Search by application number or beneficiary name/phone
+    // Search by application number
     if (search) {
-      const searchRegex = { $regex: search, $options: 'i' };
       approvedAppQuery.$or = [
-        { applicationNumber: searchRegex }
+        { applicationNumber: { $regex: search, $options: 'i' } }
       ];
     }
 
-    const eligibleApps = await Application.find(approvedAppQuery).select('_id').lean();
+    // Fetch eligible applications with populated fields for fallback receipt entries
+    const eligibleApps = await Application.find(approvedAppQuery)
+      .populate('beneficiary', 'name phone')
+      .populate('scheme', 'name code')
+      .populate('project', 'name code')
+      .lean();
     const eligibleAppIds = eligibleApps.map(a => a._id);
 
-    const filter = {
-      application: { $in: eligibleAppIds },
-      amount: { $gt: 0 },
-      ...buildFranchiseReadFilter(req)
-    };
-
-    // Date range filter on createdAt (payments may not have completedAt if still pending)
-    if (startDate || endDate) {
-      filter['createdAt'] = {};
-      if (startDate) filter['createdAt'].$gte = new Date(startDate);
-      if (endDate) {
-        const end = new Date(endDate);
-        end.setHours(23, 59, 59, 999);
-        filter['createdAt'].$lte = end;
-      }
-    }
-
-    if (scheme) filter.scheme = scheme;
-
-    // Further filter by beneficiary name/phone if search provided
+    // Also filter by beneficiary name/phone when searching
+    let searchBeneficiaryIds = [];
     if (search) {
-      const beneficiaries = await Beneficiary.find({
+      const matchedBeneficiaries = await Beneficiary.find({
         $or: [
           { name: { $regex: search, $options: 'i' } },
           { phone: { $regex: search, $options: 'i' } }
         ]
       }).select('_id').lean();
+      searchBeneficiaryIds = matchedBeneficiaries.map(b => b._id);
+    }
 
-      if (beneficiaries.length > 0) {
-        filter.$or = [
-          { application: { $in: eligibleAppIds } },
-          { beneficiary: { $in: beneficiaries.map(b => b._id) } }
-        ];
+    const paymentFilter = {
+      application: { $in: eligibleAppIds },
+      amount: { $gt: 0 }
+      // No additional franchise filter — applications are already franchise-scoped above
+    };
+
+    if (startDate || endDate) {
+      paymentFilter['createdAt'] = {};
+      if (startDate) paymentFilter['createdAt'].$gte = new Date(startDate);
+      if (endDate) {
+        const end = new Date(endDate);
+        end.setHours(23, 59, 59, 999);
+        paymentFilter['createdAt'].$lte = end;
       }
     }
 
-    const skip = (parseInt(page) - 1) * parseInt(limit);
-    const total = await Payment.countDocuments(filter);
+    if (scheme) paymentFilter.scheme = scheme;
 
-    const payments = await Payment.find(filter)
-      .populate('application', 'applicationNumber status district area unit')
+    if (search && searchBeneficiaryIds.length > 0) {
+      paymentFilter.$or = [
+        { application: { $in: eligibleAppIds } },
+        { beneficiary: { $in: searchBeneficiaryIds } }
+      ];
+    }
+
+    const payments = await Payment.find(paymentFilter)
+      .populate('application', 'applicationNumber status location district area unit')
       .populate('beneficiary', 'name phone')
       .populate('scheme', 'name code')
       .populate('project', 'name code')
       .populate('initiatedBy', 'name')
       .sort({ createdAt: -1 })
-      .skip(skip)
-      .limit(parseInt(limit))
       .lean();
 
-    const receipts = payments.map(p => ({
+    // Build payment-based receipt entries
+    const paymentReceipts = payments.map(p => ({
       paymentId: p._id,
       applicationId: p.application?._id || '',
       applicationNumber: p.application?.applicationNumber || '',
@@ -2753,17 +2838,43 @@ const getApplicationReceipts = async (req, res) => {
       schemeName: p.scheme?.name || '',
       amount: p.amount || 0,
       paidAt: p.timeline?.completedAt || p.timeline?.approvedAt || p.createdAt || '',
-      district: p.application?.district || '',
-      area: p.application?.area || '',
-      unit: p.application?.unit || '',
+      district: p.location?.district || p.application?.location?.district || p.application?.district || '',
+      area: p.location?.area || p.application?.location?.area || p.application?.area || '',
+      unit: p.location?.unit || p.application?.location?.unit || p.application?.unit || '',
     }));
+
+    // For applications with NO payment records, create fallback receipt entries from application data
+    const appsWithPayments = new Set(payments.map(p => (p.application?._id || p.application)?.toString()));
+    const appsWithoutPayments = eligibleApps.filter(a => !appsWithPayments.has(a._id.toString()));
+
+    const appFallbackReceipts = appsWithoutPayments.map(a => ({
+      paymentId: null,
+      applicationId: a._id,
+      applicationNumber: a.applicationNumber || '',
+      beneficiaryName: a.beneficiary?.name || '',
+      schemeName: a.scheme?.name || '',
+      amount: a.approvedAmount || 0,
+      paidAt: a.approvedAt || a.updatedAt || '',
+      district: a.location?.district || a.district || '',
+      area: a.location?.area || a.area || '',
+      unit: a.location?.unit || a.unit || '',
+    }));
+
+    // Merge: payment-based entries first, then fallback entries; sort by date descending
+    const allReceipts = [...paymentReceipts, ...appFallbackReceipts].sort(
+      (a, b) => new Date(b.paidAt || 0) - new Date(a.paidAt || 0)
+    );
+
+    const total = allReceipts.length;
+    const skip = (parseInt(page) - 1) * parseInt(limit);
+    const receipts = allReceipts.slice(skip, skip + parseInt(limit));
 
     res.json({
       success: true,
       data: receipts,
       pagination: {
         currentPage: parseInt(page),
-        totalPages: Math.ceil(total / parseInt(limit)),
+        totalPages: Math.ceil(total / parseInt(limit)) || 1,
         totalCount: total,
         limit: parseInt(limit)
       }

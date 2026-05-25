@@ -2127,16 +2127,60 @@ export const ApplicationDetailModal: React.FC<ApplicationDetailModalProps> = ({
                   </CardHeader>
                   <CardContent className="pt-0">
                     <div className="space-y-2">
-                      {application.applicationStages
-                        .sort((a: any, b: any) => a.order - b.order)
-                        .map((stage: any, index: number) => {
+                      {(() => {
+                        // ── Hierarchical stage visibility (frontend guard) ──────────────────
+                        // Backend already filters, but apply here too for safety.
+                        const roleVisibility: Record<string, string[] | null> = {
+                          super_admin:    null,
+                          state_admin:    null,
+                          district_admin: ['district_admin', 'area_admin', 'unit_admin'],
+                          area_admin:     ['area_admin', 'unit_admin'],
+                          unit_admin:     ['unit_admin'],
+                        };
+                        const visibleRoles = user?.role ? roleVisibility[user.role] : null;
+
+                        const filteredStages = (application.applicationStages as any[]).filter((stage: any) => {
+                          if (!visibleRoles) return true; // super/state admin see all
+                          const allowed: string[] = stage.allowedRoles || [];
+                          if (allowed.length === 0) return true; // legacy: no restriction
+                          return allowed.some((r: string) => visibleRoles.includes(r));
+                        });
+
+                        // ── Sort: current stage first, then rest by order ──────────────────
+                        const currentStageName = application.currentStage;
+                        const sorted = [...filteredStages].sort((a: any, b: any) => {
+                          const aIsCurrent = a.name === currentStageName;
+                          const bIsCurrent = b.name === currentStageName;
+                          if (aIsCurrent && !bIsCurrent) return -1;
+                          if (!aIsCurrent && bIsCurrent) return 1;
+                          return a.order - b.order;
+                        });
+
+                        return sorted.map((stage: any, index: number) => {
+                          const isCurrentStage = stage.name === currentStageName;
                           // Get all history entries for this stage
                           const stageHistoryEntries = application.stageHistory?.filter(
                             (h: any) => h.stageName === stage.name
                           ) || [];
                           
                           return (
-                            <div key={stage._id || index} className="border rounded p-3 bg-card">
+                            <div
+                              key={stage._id || index}
+                              className={`border rounded p-3 bg-card ${
+                                isCurrentStage
+                                  ? 'border-blue-500 ring-2 ring-blue-500/20 bg-blue-50/30'
+                                  : ''
+                              }`}
+                            >
+                              {/* Current stage label */}
+                              {isCurrentStage && (
+                                <div className="flex items-center gap-1.5 mb-2">
+                                  <span className="inline-flex items-center gap-1 text-xs font-semibold text-blue-700 bg-blue-100 border border-blue-300 rounded-full px-2 py-0.5">
+                                    <span className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse inline-block" />
+                                    Current Stage
+                                  </span>
+                                </div>
+                              )}
                               <StageItem
                                 stage={stage}
                                 applicationId={application._id}
@@ -2180,7 +2224,8 @@ export const ApplicationDetailModal: React.FC<ApplicationDetailModalProps> = ({
                               )}
                             </div>
                           );
-                        })}
+                        });
+                      })()}
                     </div>
                   </CardContent>
                 </Card>
@@ -2387,14 +2432,20 @@ export const ApplicationDetailModal: React.FC<ApplicationDetailModalProps> = ({
                 <XCircle className="mr-2 h-4 w-4" />
                 Reject Application
               </Button>
-              <Button 
-                className="bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white border-0"
-                onClick={() => setShowAction("revert")}
-              >
-                <RotateCcw className="mr-2 h-4 w-4" />
-                Forward Back
-              </Button>
             </div>
+          )}
+
+          {/* Forward Back — shown independently for any non-terminal, non-first-stage application */}
+          {application && !showAction && canApprove &&
+            !['approved', 'rejected', 'completed', 'disbursed', 'cancelled'].includes(application.status) &&
+            (application.applicationStages?.filter((s: any) => s.status === 'completed').length ?? 0) > 0 && (
+            <Button 
+              className="bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white border-0"
+              onClick={() => setShowAction("revert")}
+            >
+              <RotateCcw className="mr-2 h-4 w-4" />
+              Forward Back
+            </Button>
           )}
 
           {/* Revert Form */}

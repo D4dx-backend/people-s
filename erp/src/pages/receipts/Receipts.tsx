@@ -10,7 +10,7 @@ import { toast } from "@/hooks/use-toast";
 import { applications } from "@/lib/api";
 
 interface ReceiptItem {
-  paymentId: string;
+  paymentId: string | null;
   applicationId: string;
   applicationNumber: string;
   beneficiaryName: string;
@@ -92,15 +92,16 @@ export default function Receipts() {
     setSearch(searchInput);
   };
 
-  const handleDownload = async (paymentId: string) => {
+  const handleDownload = async (paymentId: string | null) => {
+    if (!paymentId) return;
     setDownloadingId(paymentId);
     try {
       const baseUrl = import.meta.env.VITE_API_URL || "/api";
-      const token = localStorage.getItem("authToken") || sessionStorage.getItem("authToken");
-      const tenant = localStorage.getItem("tenantId") || sessionStorage.getItem("tenantId");
+      const token = localStorage.getItem("token");
+      const franchiseSlug = localStorage.getItem("activeFranchiseSlug") || (import.meta.env.VITE_FRANCHISE_SLUG as string | undefined);
       const headers: Record<string, string> = {};
       if (token) headers["Authorization"] = `Bearer ${token}`;
-      if (tenant) headers["x-tenant-id"] = tenant;
+      if (franchiseSlug) headers["X-Franchise-Slug"] = franchiseSlug;
 
       const response = await fetch(`${baseUrl}/payments/${paymentId}/receipt`, { headers });
       if (!response.ok) throw new Error("Failed to download receipt");
@@ -234,8 +235,8 @@ export default function Receipts() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {receipts.map((item) => (
-                      <TableRow key={item.paymentId}>
+                    {receipts.map((item, idx) => (
+                      <TableRow key={item.paymentId ? item.paymentId.toString() : `app-${item.applicationId}-${idx}`}>
                         <TableCell>
                           <span className="font-mono text-sm font-medium">
                             {item.applicationNumber}
@@ -264,11 +265,11 @@ export default function Receipts() {
                           <Button
                             size="sm"
                             variant="outline"
-                            onClick={() => handleDownload(item.paymentId)}
-                            disabled={downloadingId === item.paymentId}
+                            onClick={() => item.paymentId && handleDownload(item.paymentId)}
+                            disabled={!item.paymentId || downloadingId === item.paymentId}
                             className="gap-1.5"
                           >
-                            {downloadingId === item.paymentId ? (
+                            {(downloadingId !== null && downloadingId === item.paymentId) ? (
                               <Loader2 className="h-3.5 w-3.5 animate-spin" />
                             ) : (
                               <Download className="h-3.5 w-3.5" />

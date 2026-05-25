@@ -3,12 +3,28 @@ const fs = require('fs');
 const path = require('path');
 const orgConfig = require('../config/orgConfig');
 
+// Page constants (A4 in points)
+const PAGE_W = 595;
+const MARGIN = 40;
+const CONTENT_W = PAGE_W - MARGIN * 2; // 515
+const BOX_X = MARGIN;
+const BOX_W = CONTENT_W;
+const INNER_X = MARGIN + 10;        // left inner padding
+const ROW_H = 18;                    // row height within tables
+const SEC_GAP = 8;                   // gap between sections
+const LABEL_W = 100;                 // label column width
+const L_VAL_X = MARGIN + 112;       // left value column start
+const L_VAL_W = 140;                 // left value column width
+const R_COL_X = MARGIN + 270;       // right label column start
+const R_LABEL_W = 90;
+const R_VAL_X = MARGIN + 365;       // right value column start
+const R_VAL_W = 150;                 // right value column width (fits to right margin)
+
 class PDFReceiptService {
   constructor() {
     this.logoPath = orgConfig.logoPath;
     this.outputDir = path.join(__dirname, '../../receipts');
     
-    // Organization details — driven by ORG_NAME env var via orgConfig
     this.org = {
       name: orgConfig.displayName.toUpperCase(),
       regNumber: orgConfig.regNumber,
@@ -18,26 +34,20 @@ class PDFReceiptService {
       website: orgConfig.website
     };
     
-    // Ensure output directory exists
     if (!fs.existsSync(this.outputDir)) {
       fs.mkdirSync(this.outputDir, { recursive: true });
     }
   }
 
-  /**
-   * Generate PDF receipt for payment
-   * @param {Object} paymentData - Payment data with populated references
-   * @returns {Promise<string>} - Path to generated PDF file
-   */
   async generatePaymentReceipt(paymentData) {
     try {
       const fileName = `receipt-${paymentData.paymentNumber}.pdf`;
       const filePath = path.join(this.outputDir, fileName);
       
-      // Create PDF document
       const doc = new PDFDocument({
         size: 'A4',
-        margin: 50,
+        margin: MARGIN,
+        autoFirstPage: true,
         info: {
           Title: `Payment Receipt - ${paymentData.paymentNumber}`,
           Author: orgConfig.erpTitle,
@@ -46,20 +56,17 @@ class PDFReceiptService {
         }
       });
 
-      // Create write stream
       const stream = fs.createWriteStream(filePath);
       doc.pipe(stream);
 
-      // Add content to PDF
-      this.addHeader(doc);
-      this.addReceiptTitle(doc);
-      this.addPaymentDetails(doc, paymentData);
-      this.addBeneficiaryDetails(doc, paymentData);
-      this.addFinancialBreakdown(doc, paymentData);
-      this.addBankDetails(doc, paymentData);
-      this.addFooter(doc);
+      this._addHeader(doc);
+      this._addReceiptTitle(doc);
+      this._addPaymentDetails(doc, paymentData);
+      this._addBeneficiaryDetails(doc, paymentData);
+      this._addFinancialBreakdown(doc, paymentData);
+      this._addBankDetails(doc, paymentData);
+      this._addFooter(doc);
 
-      // Finalize PDF
       doc.end();
 
       return new Promise((resolve, reject) => {
@@ -74,309 +81,204 @@ class PDFReceiptService {
     }
   }
 
-  /**
-   * Add header with logo and organization details
-   */
-  addHeader(doc) {
-    // Add logo if exists (skip if not found to avoid errors)
-    try {
-      if (fs.existsSync(this.logoPath)) {
-        doc.image(this.logoPath, 50, 50, { width: 80 });
-      }
-    } catch (error) {
-      console.log('Logo not found, continuing without logo');
+  // ─── private helpers ────────────────────────────────────────────────────────
+
+  /** Render a label + value pair at exact coordinates, clamped to column widths */
+  _field(doc, labelX, labelW, valueX, valueW, y, label, value) {
+    const safeValue = String(value || 'N/A');
+    doc.fontSize(9).font('Helvetica')
+       .text(label, labelX, y, { width: labelW, lineBreak: false });
+    doc.fontSize(9).font('Helvetica-Bold')
+       .text(safeValue, valueX, y, { width: valueW, lineBreak: false, ellipsis: true });
+  }
+
+  /** Draw a plain stroked rectangle */
+  _box(doc, y, h) {
+    doc.rect(BOX_X, y, BOX_W, h).stroke();
+  }
+
+  /** Draw a section heading inside a box */
+  _heading(doc, y, title) {
+    doc.fontSize(11).font('Helvetica-Bold')
+       .text(title, INNER_X, y + 8, { lineBreak: false });
+  }
+
+  // ─── sections ───────────────────────────────────────────────────────────────
+
+  _addHeader(doc) {
+    const hasLogo = (() => {
+      try { return this.logoPath && fs.existsSync(this.logoPath); }
+      catch { return false; }
+    })();
+
+    if (hasLogo) {
+      doc.image(this.logoPath, MARGIN, 40, { width: 55, height: 55 });
     }
 
-    // Organization details (configurable)
-    doc.fontSize(20)
-       .font('Helvetica-Bold')
-       .text(this.org.name, 150, 60);
-    
-    doc.fontSize(12)
-       .font('Helvetica')
-       .text(`Registered NGO | Reg. No: ${this.org.regNumber}`, 150, 85)
-       .text(`Address: ${this.org.address}`, 150, 100)
-       .text(`Phone: ${this.org.phone} | Email: ${this.org.email}`, 150, 115)
-       .text(this.org.website, 150, 130);
+    const textX = hasLogo ? MARGIN + 65 : MARGIN;
+    const textW  = hasLogo ? CONTENT_W - 65 : CONTENT_W;
 
-    // Add horizontal line
-    doc.moveTo(50, 160)
-       .lineTo(545, 160)
-       .stroke();
+    doc.fontSize(15).font('Helvetica-Bold')
+       .text(this.org.name, textX, 42, { width: textW, lineBreak: false });
+    doc.fontSize(8.5).font('Helvetica')
+       .text(`Registered NGO | Reg. No: ${this.org.regNumber}`, textX, 62, { width: textW, lineBreak: false })
+       .text(`Address: ${this.org.address}`,                    textX, 74, { width: textW, lineBreak: false })
+       .text(`Phone: ${this.org.phone} | Email: ${this.org.email}`, textX, 86, { width: textW, lineBreak: false })
+       .text(this.org.website,                                   textX, 98, { width: textW, lineBreak: false });
 
-    doc.y = 180;
+    doc.moveTo(MARGIN, 115).lineTo(PAGE_W - MARGIN, 115).stroke();
+    doc.y = 123;
   }
 
-  /**
-   * Add receipt title and number
-   */
-  addReceiptTitle(doc) {
-    doc.fontSize(18)
-       .font('Helvetica-Bold')
-       .text('PAYMENT RECEIPT', 50, doc.y, { align: 'center' });
-    
-    doc.y += 30;
+  _addReceiptTitle(doc) {
+    doc.fontSize(14).font('Helvetica-Bold')
+       .text('PAYMENT RECEIPT', MARGIN, doc.y, { align: 'center', width: CONTENT_W, lineBreak: false });
+    doc.y += 18;
   }
 
-  /**
-   * Add payment details section
-   */
-  addPaymentDetails(doc, paymentData) {
+  _addPaymentDetails(doc, paymentData) {
+    const BOX_H = 28 + 3 * ROW_H + 6; // header + 3 rows + bottom pad
     const startY = doc.y;
-    
-    // Receipt details box
-    doc.rect(50, startY, 495, 120)
-       .stroke();
+    this._box(doc, startY, BOX_H);
+    this._heading(doc, startY, 'PAYMENT INFORMATION');
 
-    doc.fontSize(14)
-       .font('Helvetica-Bold')
-       .text('PAYMENT INFORMATION', 60, startY + 10);
+    let y = startY + 28;
+    this._field(doc, INNER_X,  LABEL_W, L_VAL_X, L_VAL_W, y, 'Receipt Number:',  paymentData.paymentNumber);
+    this._field(doc, R_COL_X, R_LABEL_W, R_VAL_X, R_VAL_W, y, 'Application No:', paymentData.application?.applicationNumber);
 
-    doc.fontSize(11)
-       .font('Helvetica');
+    y += ROW_H;
+    this._field(doc, INNER_X,  LABEL_W, L_VAL_X, L_VAL_W, y, 'Payment Date:',   this.formatDate(paymentData.timeline?.completedAt || paymentData.createdAt));
+    this._field(doc, R_COL_X, R_LABEL_W, R_VAL_X, R_VAL_W, y, 'Scheme:',         paymentData.scheme?.name);
 
-    const leftCol = 60;
-    const rightCol = 300;
-    let currentY = startY + 35;
+    y += ROW_H;
+    this._field(doc, INNER_X,  LABEL_W, L_VAL_X, L_VAL_W, y, 'Payment Method:', this.formatPaymentMethod(paymentData.method));
+    this._field(doc, R_COL_X, R_LABEL_W, R_VAL_X, R_VAL_W, y, 'Project:',        paymentData.project?.name);
 
-    // Left column
-    doc.text('Receipt Number:', leftCol, currentY)
-       .font('Helvetica-Bold')
-       .text(paymentData.paymentNumber, leftCol + 100, currentY);
-    
-    currentY += 20;
-    doc.font('Helvetica')
-       .text('Payment Date:', leftCol, currentY)
-       .font('Helvetica-Bold')
-       .text(this.formatDate(paymentData.timeline?.completedAt || paymentData.createdAt), leftCol + 100, currentY);
-
-    currentY += 20;
-    doc.font('Helvetica')
-       .text('Payment Method:', leftCol, currentY)
-       .font('Helvetica-Bold')
-       .text(this.formatPaymentMethod(paymentData.method), leftCol + 100, currentY);
-
-    // Right column
-    currentY = startY + 35;
-    doc.font('Helvetica')
-       .text('Application No:', rightCol, currentY)
-       .font('Helvetica-Bold')
-       .text(paymentData.application?.applicationNumber || 'N/A', rightCol + 100, currentY);
-
-    currentY += 20;
-    doc.font('Helvetica')
-       .text('Scheme:', rightCol, currentY)
-       .font('Helvetica-Bold')
-       .text(paymentData.scheme?.name || 'N/A', rightCol + 100, currentY);
-
-    currentY += 20;
-    doc.font('Helvetica')
-       .text('Project:', rightCol, currentY)
-       .font('Helvetica-Bold')
-       .text(paymentData.project?.name || 'N/A', rightCol + 100, currentY);
-
-    doc.y = startY + 140;
+    doc.y = startY + BOX_H + SEC_GAP;
   }
 
-  /**
-   * Add beneficiary details section
-   */
-  addBeneficiaryDetails(doc, paymentData) {
-    const startY = doc.y;
-    
-    // Beneficiary details box
-    doc.rect(50, startY, 495, 100)
-       .stroke();
-
-    doc.fontSize(14)
-       .font('Helvetica-Bold')
-       .text('BENEFICIARY DETAILS', 60, startY + 10);
-
-    doc.fontSize(11)
-       .font('Helvetica');
-
-    const leftCol = 60;
-    const rightCol = 300;
-    let currentY = startY + 35;
-
-    // Left column
-    doc.text('Name:', leftCol, currentY)
-       .font('Helvetica-Bold')
-       .text(paymentData.beneficiary?.name || 'N/A', leftCol + 80, currentY);
-    
-    currentY += 20;
-    doc.font('Helvetica')
-       .text('Phone:', leftCol, currentY)
-       .font('Helvetica-Bold')
-       .text(paymentData.beneficiary?.phone || 'N/A', leftCol + 80, currentY);
-
-    // Right column
-    currentY = startY + 35;
+  _addBeneficiaryDetails(doc, paymentData) {
     const bankAccount = paymentData.beneficiary?.financial?.bankAccount;
-    if (bankAccount) {
-      doc.font('Helvetica')
-         .text('Account No:', rightCol, currentY)
-         .font('Helvetica-Bold')
-         .text(`****${bankAccount.accountNumber?.slice(-4) || 'XXXX'}`, rightCol + 80, currentY);
+    const rows = bankAccount ? 2 : 2;
+    const BOX_H = 28 + rows * ROW_H + 6;
+    const startY = doc.y;
+    this._box(doc, startY, BOX_H);
+    this._heading(doc, startY, 'BENEFICIARY DETAILS');
 
-      currentY += 20;
-      doc.font('Helvetica')
-         .text('Bank:', rightCol, currentY)
-         .font('Helvetica-Bold')
-         .text(bankAccount.bankName || 'N/A', rightCol + 80, currentY);
+    let y = startY + 28;
+    this._field(doc, INNER_X, LABEL_W, L_VAL_X, L_VAL_W, y, 'Name:',  paymentData.beneficiary?.name);
+    if (bankAccount) {
+      this._field(doc, R_COL_X, R_LABEL_W, R_VAL_X, R_VAL_W, y, 'Account No:', `****${bankAccount.accountNumber?.slice(-4) || 'XXXX'}`);
     }
 
-    doc.y = startY + 120;
+    y += ROW_H;
+    this._field(doc, INNER_X, LABEL_W, L_VAL_X, L_VAL_W, y, 'Phone:', paymentData.beneficiary?.phone);
+    if (bankAccount) {
+      this._field(doc, R_COL_X, R_LABEL_W, R_VAL_X, R_VAL_W, y, 'Bank:', bankAccount.bankName);
+    }
+
+    doc.y = startY + BOX_H + SEC_GAP;
   }
 
-  /**
-   * Add financial breakdown section
-   */
-  addFinancialBreakdown(doc, paymentData) {
-    const startY = doc.y;
-    
-    // Financial breakdown box
-    doc.rect(50, startY, 495, 160)
-       .stroke();
-
-    doc.fontSize(14)
-       .font('Helvetica-Bold')
-       .text('FINANCIAL BREAKDOWN', 60, startY + 10);
-
-    doc.fontSize(11);
-    let currentY = startY + 40;
-
-    // Amount details
+  _addFinancialBreakdown(doc, paymentData) {
     const amounts = [
-      { label: 'Gross Amount:', value: paymentData.amount, bold: false },
-      { label: 'Processing Fee:', value: paymentData.financial?.processingFee || 0, bold: false },
-      { label: 'Bank Charges:', value: paymentData.financial?.bankCharges || 0, bold: false }
+      { label: 'Gross Amount:',    value: paymentData.amount,                          bold: false },
+      { label: 'Processing Fee:',  value: paymentData.financial?.processingFee || 0,   bold: false },
+      { label: 'Bank Charges:',    value: paymentData.financial?.bankCharges || 0,      bold: false },
     ];
 
-    // Add TDS if applicable
     if (paymentData.financial?.taxes?.tds?.applicable) {
-      amounts.push({
-        label: `TDS (${paymentData.financial.taxes.tds.rate}%):`,
-        value: paymentData.financial.taxes.tds.amount || 0,
-        bold: false
-      });
+      amounts.push({ label: `TDS (${paymentData.financial.taxes.tds.rate}%):`, value: paymentData.financial.taxes.tds.amount || 0, bold: false });
     }
-
-    // Add GST if applicable
     if (paymentData.financial?.taxes?.gst?.applicable) {
-      amounts.push({
-        label: `GST (${paymentData.financial.taxes.gst.rate}%):`,
-        value: paymentData.financial.taxes.gst.amount || 0,
-        bold: false
-      });
+      amounts.push({ label: `GST (${paymentData.financial.taxes.gst.rate}%):`, value: paymentData.financial.taxes.gst.amount || 0, bold: false });
     }
+    amounts.push({ label: 'Net Amount Paid:', value: paymentData.financial?.netAmount || paymentData.amount, bold: true });
 
-    // Add net amount
-    amounts.push({
-      label: 'Net Amount Paid:',
-      value: paymentData.financial?.netAmount || paymentData.amount,
-      bold: true
-    });
+    // words line can wrap to 2 lines for large amounts
+    const WORDS_H = 30;
+    const BOX_H = 28 + amounts.length * ROW_H + 8 + WORDS_H + 4;
+    const startY = doc.y;
+    this._box(doc, startY, BOX_H);
+    this._heading(doc, startY, 'FINANCIAL BREAKDOWN');
 
-    // Render amounts
+    let y = startY + 28;
+    const AMT_LABEL_W = 180;
+    const AMT_VAL_X = MARGIN + 380;
+    const AMT_VAL_W = CONTENT_W - 380; // right-align in this space
+
     amounts.forEach((item, index) => {
       const isLast = index === amounts.length - 1;
-      
       if (isLast) {
-        // Add separator line before net amount
-        doc.moveTo(60, currentY - 5)
-           .lineTo(535, currentY - 5)
-           .stroke();
-        currentY += 10;
+        doc.moveTo(INNER_X, y - 3).lineTo(PAGE_W - MARGIN - 10, y - 3).stroke();
+        y += 4;
       }
-
-      doc.font(item.bold ? 'Helvetica-Bold' : 'Helvetica')
-         .text(item.label, 60, currentY)
-         .text(`₹ ${this.formatAmount(item.value)}`, 450, currentY, { align: 'right' });
-      
-      currentY += 20;
+      doc.fontSize(9).font(item.bold ? 'Helvetica-Bold' : 'Helvetica')
+         .text(item.label, INNER_X, y, { width: AMT_LABEL_W, lineBreak: false });
+      doc.fontSize(9).font(item.bold ? 'Helvetica-Bold' : 'Helvetica')
+         .text(`Rs. ${this.formatAmount(item.value)}`, AMT_VAL_X, y, { width: AMT_VAL_W, align: 'right', lineBreak: false });
+      y += ROW_H;
     });
 
-    // Amount in words
-    currentY += 10;
-    doc.font('Helvetica')
-       .text('Amount in Words:', 60, currentY)
-       .font('Helvetica-Bold')
-       .text(this.numberToWords(paymentData.financial?.netAmount || paymentData.amount), 60, currentY + 15, {
-         width: 475,
-         align: 'left'
+    y += 5;
+    doc.fontSize(8.5).font('Helvetica')
+       .text('Amount in Words:', INNER_X, y, { lineBreak: false });
+    y += 12;
+    doc.fontSize(8.5).font('Helvetica-Bold')
+       .text(this.numberToWords(paymentData.financial?.netAmount || paymentData.amount), INNER_X, y, {
+         width: CONTENT_W - 20,
+         lineBreak: true
        });
 
-    doc.y = startY + 180;
+    doc.y = startY + BOX_H + SEC_GAP;
   }
 
-  /**
-   * Add bank transaction details
-   */
-  addBankDetails(doc, paymentData) {
-    if (paymentData.method === 'bank_transfer' && paymentData.bankTransfer) {
-      const startY = doc.y;
-      
-      // Bank details box
-      doc.rect(50, startY, 495, 80)
-         .stroke();
+  _addBankDetails(doc, paymentData) {
+    if (paymentData.method !== 'bank_transfer' || !paymentData.bankTransfer) return;
+    const { transactionId, utrNumber } = paymentData.bankTransfer;
+    if (!transactionId && !utrNumber) return;
 
-      doc.fontSize(14)
-         .font('Helvetica-Bold')
-         .text('TRANSACTION DETAILS', 60, startY + 10);
+    const rows = [transactionId, utrNumber].filter(Boolean).length;
+    const BOX_H = 28 + rows * ROW_H + 6;
+    const startY = doc.y;
+    this._box(doc, startY, BOX_H);
+    this._heading(doc, startY, 'TRANSACTION DETAILS');
 
-      doc.fontSize(11)
-         .font('Helvetica');
-
-      let currentY = startY + 35;
-
-      if (paymentData.bankTransfer.transactionId) {
-        doc.text('Transaction ID:', 60, currentY)
-           .font('Helvetica-Bold')
-           .text(paymentData.bankTransfer.transactionId, 160, currentY);
-        currentY += 20;
-      }
-
-      if (paymentData.bankTransfer.utrNumber) {
-        doc.font('Helvetica')
-           .text('UTR Number:', 60, currentY)
-           .font('Helvetica-Bold')
-           .text(paymentData.bankTransfer.utrNumber, 160, currentY);
-      }
-
-      doc.y = startY + 100;
+    let y = startY + 28;
+    if (transactionId) {
+      this._field(doc, INNER_X, 110, INNER_X + 115, CONTENT_W - 125, y, 'Transaction ID:', transactionId);
+      y += ROW_H;
     }
+    if (utrNumber) {
+      this._field(doc, INNER_X, 110, INNER_X + 115, CONTENT_W - 125, y, 'UTR Number:', utrNumber);
+    }
+
+    doc.y = startY + BOX_H + SEC_GAP;
   }
 
-  /**
-   * Add footer with signatures and terms
-   */
-  addFooter(doc) {
-    const startY = doc.y + 20;
-    
-    // Signature section
-    doc.fontSize(11)
-       .font('Helvetica');
+  _addFooter(doc) {
+    const startY = doc.y + 10;
 
-    // Authorized signature
-    doc.text('Authorized Signature:', 350, startY)
-       .moveTo(350, startY + 40)
-       .lineTo(500, startY + 40)
-       .stroke();
+    // Left: terms & conditions
+    doc.fontSize(8).font('Helvetica')
+       .text('Terms & Conditions:', MARGIN, startY)
+       .text('• This is a computer-generated receipt and does not require a physical signature.', MARGIN, startY + 13, { width: 290, lineBreak: false })
+       .text('• For queries, please contact our finance department.',                             MARGIN, startY + 25, { width: 290, lineBreak: false })
+       .text('• This receipt is valid for all official purposes.',                               MARGIN, startY + 37, { width: 290, lineBreak: false });
 
-    // Terms and conditions
-    doc.fontSize(9)
-       .font('Helvetica')
-       .text('Terms & Conditions:', 50, startY + 60)
-       .text('• This is a computer-generated receipt and does not require a physical signature.', 50, startY + 75)
-       .text('• For any queries regarding this payment, please contact our finance department.', 50, startY + 90)
-       .text('• This receipt is valid for all official purposes.', 50, startY + 105);
+    // Right: authorized signature
+    doc.fontSize(9).font('Helvetica')
+       .text('Authorized Signature:', R_COL_X, startY, { lineBreak: false });
+    doc.moveTo(R_COL_X, startY + 38).lineTo(PAGE_W - MARGIN, startY + 38).stroke();
 
-    // Footer
-    doc.fontSize(8)
-       .font('Helvetica')
-       .text(`Generated on: ${this.formatDate(new Date())} | System: ${orgConfig.erpTitle}`, 50, 750, {
-         align: 'center'
+    // Bottom separator + generated-on line
+    const bottomY = startY + 60;
+    doc.moveTo(MARGIN, bottomY).lineTo(PAGE_W - MARGIN, bottomY).stroke();
+    doc.fontSize(7.5).font('Helvetica')
+       .text(`Generated on: ${this.formatDate(new Date())} | ${orgConfig.erpTitle}`, MARGIN, bottomY + 4, {
+         align: 'center',
+         width: CONTENT_W,
+         lineBreak: false
        });
   }
 

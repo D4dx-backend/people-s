@@ -518,6 +518,72 @@ class AuthService {
     }
   }
 
+  /**
+   * Switch the active role for an already-authenticated user.
+   * The user must hold the requested role in their franchise.
+   *
+   * @param {Object} user          - Mongoose User document (from authenticate middleware)
+   * @param {string} franchiseId   - Current franchise ObjectId
+   * @param {string} role          - Desired role to switch to
+   * @returns {Promise<Object>}    - { user, tokens }
+   */
+  async switchRole(user, franchiseId, role) {
+    try {
+      const UserFranchise = require('../models/UserFranchise');
+
+      const membership = await UserFranchise.getMembership(user._id, franchiseId, role);
+      if (!membership) {
+        throw new Error('You do not have that role in this organisation.');
+      }
+
+      const tokens = this.generateTokens(user, franchiseId, membership);
+
+      return {
+        success: true,
+        message: 'Role switched successfully',
+        user: {
+          id: user._id,
+          name: user.name,
+          email: user.email,
+          phone: user.phone,
+          role: membership.role,
+          adminScope: membership.adminScope,
+          franchiseId,
+          profile: user.profile,
+          isVerified: user.isVerified,
+          isActive: user.isActive,
+          lastLogin: user.lastLogin,
+          isSuperAdmin: false,
+        },
+        tokens,
+      };
+    } catch (error) {
+      console.error('❌ switchRole Error:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Return all roles the authenticated user holds in their current franchise.
+   *
+   * @param {Object} user        - Mongoose User document
+   * @param {string} franchiseId - Current franchise ObjectId
+   * @returns {Promise<Array>}   - Array of { role, displayName }
+   */
+  async getMyRoles(user, franchiseId) {
+    try {
+      const UserFranchise = require('../models/UserFranchise');
+      const memberships = await UserFranchise.getMemberships(user._id, franchiseId);
+      return (memberships || []).map(m => ({
+        role: m.role,
+        displayName: this._roleDisplayName(m.role),
+      }));
+    } catch (error) {
+      console.error('❌ getMyRoles Error:', error);
+      throw error;
+    }
+  }
+
   /** Human-readable label for a role key */
   _roleDisplayName(role) {
     const labels = {

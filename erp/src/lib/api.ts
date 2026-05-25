@@ -183,6 +183,7 @@ export interface Scheme {
     maxBeneficiaries?: number;
     autoApproval: boolean;
     requiresInterview: boolean;
+    interviewSchedulerRoles?: string[];
     allowMultipleApplications: boolean;
   };
   renewalSettings?: {

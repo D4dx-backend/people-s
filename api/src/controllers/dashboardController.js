@@ -10,13 +10,17 @@ class DashboardController {
   async getOverview(req, res) {
     try {
       const user = req.user;
-      
-      // Build location-based filter for area/district admins
+      const effectiveScope = req.userFranchise?.adminScope || req.user.adminScope;
+      const effectiveRole = req.userFranchise?.role || req.userRole || req.user.role;
+
+      // Build location-based filter scoped to the admin's assigned region
       let locationFilter = {};
-      if (user.role === 'area_admin' && user.adminScope?.area) {
-        locationFilter = { 'location.area': user.adminScope.area };
-      } else if (user.role === 'district_admin' && user.adminScope?.district) {
-        locationFilter = { 'location.district': user.adminScope.district };
+      if (effectiveRole === 'unit_admin' && effectiveScope?.unit) {
+        locationFilter = { unit: effectiveScope.unit };
+      } else if (effectiveRole === 'area_admin' && effectiveScope?.area) {
+        locationFilter = { area: effectiveScope.area };
+      } else if (effectiveRole === 'district_admin' && effectiveScope?.district) {
+        locationFilter = { district: effectiveScope.district };
       }
       // super_admin and state_admin can see all data (no filter)
 
@@ -193,15 +197,19 @@ class DashboardController {
   async getRecentApplications(req, res) {
     try {
       const { limit = 10 } = req.query;
-      const user = req.user;
-      
-      // Build location-based filter for area/district admins
+      const effectiveScope = req.userFranchise?.adminScope || req.user.adminScope;
+      const effectiveRole = req.userFranchise?.role || req.userRole || req.user.role;
+
+      // Build location-based filter scoped to the admin's assigned region
       let locationFilter = {};
-      if (user.role === 'area_admin' && user.adminScope?.area) {
-        locationFilter = { 'location.area': user.adminScope.area };
-      } else if (user.role === 'district_admin' && user.adminScope?.district) {
-        locationFilter = { 'location.district': user.adminScope.district };
+      if (effectiveRole === 'unit_admin' && effectiveScope?.unit) {
+        locationFilter = { unit: effectiveScope.unit };
+      } else if (effectiveRole === 'area_admin' && effectiveScope?.area) {
+        locationFilter = { area: effectiveScope.area };
+      } else if (effectiveRole === 'district_admin' && effectiveScope?.district) {
+        locationFilter = { district: effectiveScope.district };
       }
+      // super_admin and state_admin can see all data (no filter)
 
       // Franchise scope
       Object.assign(locationFilter, buildFranchiseReadFilter(req));
@@ -214,6 +222,7 @@ class DashboardController {
         .limit(parseInt(limit));
 
       const recentApplications = applications.map(app => ({
+        _id: app._id.toString(),
         id: app.applicationNumber,
         applicant: app.beneficiary?.name || 'Unknown',
         scheme: app.scheme?.name || 'Unknown Scheme',

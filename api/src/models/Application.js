@@ -319,7 +319,7 @@ const applicationSchema = new mongoose.Schema({
     },
     allowedRoles: [{
       type: String,
-      enum: ['super_admin', 'state_admin', 'district_admin', 'area_admin', 'unit_admin', 'project_coordinator', 'scheme_coordinator']
+      enum: ['super_admin', 'state_admin', 'district_admin', 'area_admin', 'unit_admin', 'area_president', 'project_coordinator', 'scheme_coordinator']
     }],
     autoTransition: {
       type: Boolean,
