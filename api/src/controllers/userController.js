@@ -1165,7 +1165,8 @@ class UserController {
   async getSubordinates(req, res) {
     try {
       const callerRole = req.userRole || req.user.role;
-      const callerScope = req.user.adminScope || {};
+      // Prefer the UserFranchise membership scope (accurate) over the legacy User.adminScope
+      const callerScope = req.userFranchise?.adminScope || req.user.adminScope || {};
 
       const SUBORDINATE_MAP = {
         state_admin:    ['district_admin', 'area_admin', 'unit_admin', 'area_president'],
@@ -1204,12 +1205,23 @@ class UserController {
           );
         });
       } else if (callerRole === 'area_admin' && callerScope.area) {
+        // Fetch all units that belong to this area so we can match unit admins correctly
+        const unitsUnderArea = await Location.find(
+          { type: 'unit', parent: callerScope.area },
+          '_id'
+        ).lean();
+        const unitIdSet = new Set(unitsUnderArea.map(u => String(u._id)));
+
         filtered = memberships.filter(m => {
           const s = m.adminScope;
+          // area_president: their adminScope.area must match the caller's area
+          // unit_admin: their adminScope.unit must be a unit under this area,
+          //             OR adminScope.area explicitly matches (denormalized),
+          //             OR legacy regions array contains a matching unit/area
           return (
             toId(s?.area) === String(callerScope.area) ||
-            toId(s?.unit) === String(callerScope.area) ||
-            (s?.regions || []).some(r => toId(r) === String(callerScope.area))
+            unitIdSet.has(toId(s?.unit)) ||
+            (s?.regions || []).some(r => toId(r) === String(callerScope.area) || unitIdSet.has(toId(r)))
           );
         });
       }
