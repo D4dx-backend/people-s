@@ -2780,6 +2780,9 @@ const getApplicationReceipts = async (req, res) => {
       .populate('beneficiary', 'name phone')
       .populate('scheme', 'name code')
       .populate('project', 'name code')
+      .populate('district', 'name')
+      .populate('area', 'name')
+      .populate('unit', 'name')
       .lean();
     const eligibleAppIds = eligibleApps.map(a => a._id);
 
@@ -2821,7 +2824,15 @@ const getApplicationReceipts = async (req, res) => {
     }
 
     const payments = await Payment.find(paymentFilter)
-      .populate('application', 'applicationNumber status location district area unit')
+      .populate({
+        path: 'application',
+        select: 'applicationNumber status district area unit',
+        populate: [
+          { path: 'district', select: 'name' },
+          { path: 'area', select: 'name' },
+          { path: 'unit', select: 'name' }
+        ]
+      })
       .populate('beneficiary', 'name phone')
       .populate('scheme', 'name code')
       .populate('project', 'name code')
@@ -2838,9 +2849,9 @@ const getApplicationReceipts = async (req, res) => {
       schemeName: p.scheme?.name || '',
       amount: p.amount || 0,
       paidAt: p.timeline?.completedAt || p.timeline?.approvedAt || p.createdAt || '',
-      district: p.location?.district || p.application?.location?.district || p.application?.district || '',
-      area: p.location?.area || p.application?.location?.area || p.application?.area || '',
-      unit: p.location?.unit || p.application?.location?.unit || p.application?.unit || '',
+      district: p.application?.district?.name || '',
+      area: p.application?.area?.name || '',
+      unit: p.application?.unit?.name || '',
     }));
 
     // For applications with NO payment records, create fallback receipt entries from application data
@@ -2855,9 +2866,9 @@ const getApplicationReceipts = async (req, res) => {
       schemeName: a.scheme?.name || '',
       amount: a.approvedAmount || 0,
       paidAt: a.approvedAt || a.updatedAt || '',
-      district: a.location?.district || a.district || '',
-      area: a.location?.area || a.area || '',
-      unit: a.location?.unit || a.unit || '',
+      district: a.district?.name || '',
+      area: a.area?.name || '',
+      unit: a.unit?.name || '',
     }));
 
     // Merge: payment-based entries first, then fallback entries; sort by date descending

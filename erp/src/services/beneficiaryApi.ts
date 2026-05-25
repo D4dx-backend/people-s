@@ -538,6 +538,31 @@ class BeneficiaryApiService {
     if (!response.ok) throw new Error('Failed to download application PDF');
     return response.blob();
   }
+
+  async uploadFormFile(file: File, fieldId: string): Promise<{ url: string; fileName: string; originalName: string; mimetype: string; size: number }> {
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('folder', `forms/beneficiary/${fieldId}`);
+
+    // Build headers without Content-Type (browser sets multipart boundary automatically)
+    const headers: HeadersInit = {};
+    const slug = this.getFranchiseSlug();
+    if (slug) headers['X-Franchise-Slug'] = slug;
+    const token = localStorage.getItem('beneficiary_token');
+    if (token) headers['Authorization'] = `Bearer ${token}`;
+
+    const response = await fetch(`${API_BASE_URL}/upload/single`, {
+      method: 'POST',
+      headers,
+      body: formData,
+    });
+
+    const data = await response.json();
+    if (!response.ok || !data.success) {
+      throw new Error(data.message || 'File upload failed');
+    }
+    return data.data.file;
+  }
 }
 
 export const beneficiaryApi = new BeneficiaryApiService();

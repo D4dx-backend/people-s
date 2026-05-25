@@ -1112,6 +1112,37 @@ export const ApplicationDetailModal: React.FC<ApplicationDetailModalProps> = ({
       }
     }
 
+    const renderFieldValue = (key: string, value: any) => {
+      const config = getFieldConfig(key);
+      const isFileField = config?.type === 'file' || (typeof value === 'string' && value.startsWith('http'));
+      if (isFileField && typeof value === 'string' && value.startsWith('http')) {
+        const isImage = /\.(jpg|jpeg|png|gif|webp)(\?.*)?$/i.test(value);
+        const isPdf = /\.pdf(\?.*)?$/i.test(value);
+        const fileName = decodeURIComponent(value.split('/').pop()?.split('?')[0] || 'file');
+        return (
+          <div className="space-y-1">
+            {isImage && (
+              <img
+                src={value}
+                alt={fileName}
+                className="max-h-40 max-w-full rounded border object-contain"
+              />
+            )}
+            <a
+              href={value}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1 text-blue-600 hover:underline text-xs"
+            >
+              <Download className="h-3 w-3" />
+              {isPdf ? `${fileName} (PDF)` : fileName}
+            </a>
+          </div>
+        );
+      }
+      return <span>{formatFieldValue(value)}</span>;
+    };
+
     return (
       <div className="space-y-4">
         {/* Regular key-value fields in 2-col grid */}
@@ -1125,7 +1156,7 @@ export const ApplicationDetailModal: React.FC<ApplicationDetailModalProps> = ({
                     {label}
                   </label>
                   <div className="text-sm bg-muted p-2 rounded-md break-words">
-                    {formatFieldValue(value)}
+                    {renderFieldValue(key, value)}
                   </div>
                 </div>
               );
