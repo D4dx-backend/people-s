@@ -501,10 +501,10 @@ const reviewApplication = async (req, res) => {
       return res.status(403).json({ message: 'Access denied' });
     }
 
-    // Only pending, under_review, or field_verification applications can be reviewed/transitioned
-    if (!['pending', 'under_review', 'field_verification'].includes(application.status)) {
+    // Only pending, under_review, field_verification, or interview_completed applications can be reviewed/transitioned
+    if (!['pending', 'under_review', 'field_verification', 'interview_completed'].includes(application.status)) {
       return res.status(400).json({ 
-        message: 'Only pending, under_review, or field_verification applications can be reviewed' 
+        message: 'Only pending, under_review, field_verification, or interview_completed applications can be reviewed' 
       });
     }
 

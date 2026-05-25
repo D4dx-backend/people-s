@@ -746,28 +746,27 @@ export const ApplicationDetailModal: React.FC<ApplicationDetailModalProps> = ({
         });
       }
 
-      if (response.success) {
-        if (forwardToCommittee) {
-          toast({ 
-            title: "Forwarded to Committee", 
-            description: "Application has been forwarded to committee for approval" 
-          });
-        } else {
-          const message = isRecurring 
-            ? `Application approved with ${numberOfPayments} recurring payments`
-            : 'Application approved successfully';
-          toast({ 
-            title: "Success", 
-            description: message
-          });
-        }
-        setShowAction(null);
-        setRemarks("");
-        setForwardToCommittee(false);
-        // Call onActionComplete before onClose to ensure refresh happens
-        if (onActionComplete) onActionComplete();
-        onClose();
+      // request() throws on non-2xx, so reaching here means success
+      if (forwardToCommittee) {
+        toast({ 
+          title: "Forwarded to Committee", 
+          description: "Application has been forwarded to committee for approval" 
+        });
+      } else {
+        const message = isRecurring 
+          ? `Application approved with ${numberOfPayments} recurring payments`
+          : 'Application approved successfully';
+        toast({ 
+          title: "Success", 
+          description: message
+        });
       }
+      setShowAction(null);
+      setRemarks("");
+      setForwardToCommittee(false);
+      // Call onActionComplete before onClose to ensure refresh happens
+      if (onActionComplete) onActionComplete();
+      onClose();
     } catch (error: any) {
       toast({ 
         title: "Error", 
@@ -807,17 +806,16 @@ export const ApplicationDetailModal: React.FC<ApplicationDetailModalProps> = ({
         });
       }
 
-      if (response.success) {
-        toast({ 
-          title: "Success", 
-          description: "Application rejected successfully" 
-        });
-        setShowAction(null);
-        setRemarks("");
-        // Call onActionComplete before onClose to ensure refresh happens
-        if (onActionComplete) onActionComplete();
-        onClose();
-      }
+      // request() throws on non-2xx, so reaching here means success
+      toast({ 
+        title: "Success", 
+        description: "Application rejected successfully" 
+      });
+      setShowAction(null);
+      setRemarks("");
+      // Call onActionComplete before onClose to ensure refresh happens
+      if (onActionComplete) onActionComplete();
+      onClose();
     } catch (error: any) {
       toast({ 
         title: "Error", 
@@ -2428,34 +2426,35 @@ export const ApplicationDetailModal: React.FC<ApplicationDetailModalProps> = ({
           )}
           
           {application && !showAction && canApprove && (
-            // Show approve/reject buttons if:
-            // 1. Status is interview_scheduled or interview_completed, OR
-            // 2. Status is pending/under_review/field_verification AND scheme doesn't require interview
-            (application.status === 'interview_scheduled' || 
-             application.status === 'interview_completed' ||
-             (['pending', 'under_review', 'field_verification'].includes(application.status) && 
-              !application.scheme?.applicationSettings?.requiresInterview))
+            ['pending', 'under_review', 'field_verification', 'interview_scheduled', 'interview_completed'].includes(application.status)
           ) && (
             <div className="flex gap-3">
-              <Button 
-                className="bg-green-600 hover:bg-green-700"
-                onClick={() => {
-                  setShowAction("approve");
-                  // Auto-load scheme defaults when approve is clicked
-                  if (application?.scheme?.distributionTimeline && application.scheme.distributionTimeline.length > 0) {
-                    const schemeDefaults = application.scheme.distributionTimeline.map((item: any, index: number) => ({
-                      id: index + 1,
-                      phase: item.description || `Phase ${index + 1}`,
-                      percentage: item.percentage || 0,
-                      date: calculateDate(item.daysFromApproval || 0)
-                    }));
-                    setDistributionTimeline(schemeDefaults);
-                  }
-                }}
-              >
-                <CheckCircle className="mr-2 h-4 w-4" />
-                Approve Application
-              </Button>
+              {/* Approve: only when interview conditions are satisfied */}
+              {(application.status === 'interview_scheduled' || 
+                application.status === 'interview_completed' ||
+                (['pending', 'under_review', 'field_verification'].includes(application.status) && 
+                 !application.scheme?.applicationSettings?.requiresInterview)) && (
+                <Button 
+                  className="bg-green-600 hover:bg-green-700"
+                  onClick={() => {
+                    setShowAction("approve");
+                    // Auto-load scheme defaults when approve is clicked
+                    if (application?.scheme?.distributionTimeline && application.scheme.distributionTimeline.length > 0) {
+                      const schemeDefaults = application.scheme.distributionTimeline.map((item: any, index: number) => ({
+                        id: index + 1,
+                        phase: item.description || `Phase ${index + 1}`,
+                        percentage: item.percentage || 0,
+                        date: calculateDate(item.daysFromApproval || 0)
+                      }));
+                      setDistributionTimeline(schemeDefaults);
+                    }
+                  }}
+                >
+                  <CheckCircle className="mr-2 h-4 w-4" />
+                  Approve Application
+                </Button>
+              )}
+              {/* Reject: always available for any non-terminal status */}
               <Button 
                 variant="destructive"
                 onClick={() => setShowAction("reject")}
