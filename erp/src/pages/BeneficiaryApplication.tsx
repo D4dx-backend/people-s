@@ -161,6 +161,7 @@ export default function BeneficiaryApplication() {
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [currentSection, setCurrentSection] = useState(0);
   const [uploadedFiles, setUploadedFiles] = useState<Record<string, File>>({});
+  const [uploadingFields, setUploadingFields] = useState<Record<string, boolean>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [agreedToTerms, setAgreedToTerms] = useState(false);
@@ -550,6 +551,20 @@ export default function BeneficiaryApplication() {
     });
   };
 
+  const handleFormFileUpload = async (fieldKey: string, fieldId: string, file: File) => {
+    setUploadingFields(prev => ({ ...prev, [fieldKey]: true }));
+    try {
+      const result = await beneficiaryApi.uploadFormFile(file, fieldId);
+      handleInputChange(fieldKey, result.url);
+      toast({ title: "File uploaded", description: file.name });
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "Upload failed";
+      toast({ title: "Upload failed", description: msg, variant: "destructive" });
+    } finally {
+      setUploadingFields(prev => ({ ...prev, [fieldKey]: false }));
+    }
+  };
+
   const validateField = (field: FormField, value: any): string => {
     // Skip validation for layout-only field types (they don't collect input)
     if (["title", "html", "group", "page"].includes(field.type)) {
@@ -558,6 +573,14 @@ export default function BeneficiaryApplication() {
 
     if (field.type === "checkbox") {
       if (field.required && !value) {
+        return `${field.label} is required`;
+      }
+      return "";
+    }
+
+    // File upload validation: value is the CDN URL stored after upload
+    if (field.type === "file") {
+      if (field.required && (!value || typeof value !== "string" || !value.startsWith("http"))) {
         return `${field.label} is required`;
       }
       return "";
@@ -699,11 +722,7 @@ export default function BeneficiaryApplication() {
         // Submit as renewal
         const response = await beneficiaryApi.submitRenewal(parentApplicationId, {
           formData,
-          documents: Object.keys(uploadedFiles).map(docType => ({
-            type: docType,
-            filename: uploadedFiles[docType].name,
-            url: `placeholder-url-for-${uploadedFiles[docType].name}`
-          }))
+          documents: []
         });
         
         toast({
@@ -714,11 +733,7 @@ export default function BeneficiaryApplication() {
         const applicationData = {
           schemeId: scheme._id,
           formData,
-          documents: Object.keys(uploadedFiles).map(docType => ({
-            type: docType,
-            filename: uploadedFiles[docType].name,
-            url: `placeholder-url-for-${uploadedFiles[docType].name}`
-          }))
+          documents: []
         };
 
         const response = await beneficiaryApi.submitApplication(applicationData);
@@ -1276,16 +1291,29 @@ export default function BeneficiaryApplication() {
             <Input
               id={fieldKey}
               type="file"
+              disabled={uploadingFields[fieldKey]}
               onChange={(e) => {
                 const file = e.target.files?.[0];
                 if (file) {
-                  handleInputChange(fieldKey, file.name);
-                  // Handle file upload here
+                  handleFormFileUpload(fieldKey, String(field.id), file);
                 }
               }}
               className={error ? "border-red-500" : ""}
-              accept=".pdf,.jpg,.jpeg,.png,.doc,.docx"
+              accept=".pdf,.jpg,.jpeg,.png,.doc,.docx,.gif,.webp"
             />
+            {uploadingFields[fieldKey] && (
+              <p className="text-xs text-muted-foreground flex items-center gap-1">
+                <Loader2 className="h-3 w-3 animate-spin" /> Uploading…
+              </p>
+            )}
+            {!uploadingFields[fieldKey] && value && typeof value === "string" && value.startsWith("http") && (
+              <p className="text-xs text-green-600 flex items-center gap-1">
+                <CheckCircle className="h-3 w-3" />
+                <a href={value} target="_blank" rel="noopener noreferrer" className="underline truncate max-w-xs">
+                  {value.split("/").pop()}
+                </a>
+              </p>
+            )}
             {field.helpText && <p className="text-xs text-muted-foreground">{field.helpText}</p>}
             {error && <p className="text-sm text-red-500">{error}</p>}
           </div>

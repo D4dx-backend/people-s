@@ -46,7 +46,7 @@ export default function Receipts() {
   const fetchReceipts = useCallback(async (page: number, searchTerm: string) => {
     setLoading(true);
     try {
-      const params: Record<string, any> = { page, limit: 20 };
+      const params: Record<string, any> = { page, limit: 10 };
       if (searchTerm) params.search = searchTerm;
       const response = await applications.getReceipts(params) as any;
       // Handle both old format {data: {receipts, pagination}} and new flat format {data: [], pagination}

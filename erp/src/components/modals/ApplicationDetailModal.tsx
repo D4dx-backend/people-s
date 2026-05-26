@@ -46,7 +46,8 @@ const StageItem: React.FC<{
   showAction: boolean;
   onUpdate: () => void;
   userRole?: string;
-}> = ({ stage, applicationId, showAction, onUpdate, userRole }) => {
+  isApplicationRejected?: boolean;
+}> = ({ stage, applicationId, showAction, onUpdate, userRole, isApplicationRejected = false }) => {
   const { toast } = useToast();
   const [updating, setUpdating] = useState(false);
   const [showUpdateForm, setShowUpdateForm] = useState(false);
@@ -250,7 +251,7 @@ const StageItem: React.FC<{
                           </p>
                         )}
                       </div>
-                    ) : isMyField && canActOnStage && !showAction ? (
+                    ) : isMyField && canActOnStage && !showAction && !isApplicationRejected ? (
                       <div className="flex gap-1.5 mt-1">
                         <Textarea
                           placeholder="Add your comment..."
@@ -300,7 +301,7 @@ const StageItem: React.FC<{
                       <a href={doc.uploadedFile} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline flex items-center gap-0.5">
                         <Eye className="h-3 w-3" /> View
                       </a>
-                    ) : !showAction && canActOnStage ? (
+                    ) : !showAction && canActOnStage && !isApplicationRejected ? (
                       <>
                         <input
                           type="file"
@@ -339,7 +340,7 @@ const StageItem: React.FC<{
           )}
           
           {/* Update Stage Form - Compact (hidden if user role not allowed on this stage) */}
-          {(stage.status === 'pending' || stage.status === 'in_progress') && !showAction && canActOnStage && (
+          {(stage.status === 'pending' || stage.status === 'in_progress') && !showAction && canActOnStage && !isApplicationRejected && (
             <div className="mt-2">
               {!showUpdateForm ? (
                 <Button
@@ -746,28 +747,27 @@ export const ApplicationDetailModal: React.FC<ApplicationDetailModalProps> = ({
         });
       }
 
-      if (response.success) {
-        if (forwardToCommittee) {
-          toast({ 
-            title: "Forwarded to Committee", 
-            description: "Application has been forwarded to committee for approval" 
-          });
-        } else {
-          const message = isRecurring 
-            ? `Application approved with ${numberOfPayments} recurring payments`
-            : 'Application approved successfully';
-          toast({ 
-            title: "Success", 
-            description: message
-          });
-        }
-        setShowAction(null);
-        setRemarks("");
-        setForwardToCommittee(false);
-        // Call onActionComplete before onClose to ensure refresh happens
-        if (onActionComplete) onActionComplete();
-        onClose();
+      // request() throws on non-2xx, so reaching here means success
+      if (forwardToCommittee) {
+        toast({ 
+          title: "Forwarded to Committee", 
+          description: "Application has been forwarded to committee for approval" 
+        });
+      } else {
+        const message = isRecurring 
+          ? `Application approved with ${numberOfPayments} recurring payments`
+          : 'Application approved successfully';
+        toast({ 
+          title: "Success", 
+          description: message
+        });
       }
+      setShowAction(null);
+      setRemarks("");
+      setForwardToCommittee(false);
+      // Call onActionComplete before onClose to ensure refresh happens
+      if (onActionComplete) onActionComplete();
+      onClose();
     } catch (error: any) {
       toast({ 
         title: "Error", 
@@ -807,17 +807,16 @@ export const ApplicationDetailModal: React.FC<ApplicationDetailModalProps> = ({
         });
       }
 
-      if (response.success) {
-        toast({ 
-          title: "Success", 
-          description: "Application rejected successfully" 
-        });
-        setShowAction(null);
-        setRemarks("");
-        // Call onActionComplete before onClose to ensure refresh happens
-        if (onActionComplete) onActionComplete();
-        onClose();
-      }
+      // request() throws on non-2xx, so reaching here means success
+      toast({ 
+        title: "Success", 
+        description: "Application rejected successfully" 
+      });
+      setShowAction(null);
+      setRemarks("");
+      // Call onActionComplete before onClose to ensure refresh happens
+      if (onActionComplete) onActionComplete();
+      onClose();
     } catch (error: any) {
       toast({ 
         title: "Error", 
@@ -1112,6 +1111,37 @@ export const ApplicationDetailModal: React.FC<ApplicationDetailModalProps> = ({
       }
     }
 
+    const renderFieldValue = (key: string, value: any) => {
+      const config = getFieldConfig(key);
+      const isFileField = config?.type === 'file' || (typeof value === 'string' && value.startsWith('http'));
+      if (isFileField && typeof value === 'string' && value.startsWith('http')) {
+        const isImage = /\.(jpg|jpeg|png|gif|webp)(\?.*)?$/i.test(value);
+        const isPdf = /\.pdf(\?.*)?$/i.test(value);
+        const fileName = decodeURIComponent(value.split('/').pop()?.split('?')[0] || 'file');
+        return (
+          <div className="space-y-1">
+            {isImage && (
+              <img
+                src={value}
+                alt={fileName}
+                className="max-h-40 max-w-full rounded border object-contain"
+              />
+            )}
+            <a
+              href={value}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1 text-blue-600 hover:underline text-xs"
+            >
+              <Download className="h-3 w-3" />
+              {isPdf ? `${fileName} (PDF)` : fileName}
+            </a>
+          </div>
+        );
+      }
+      return <span>{formatFieldValue(value)}</span>;
+    };
+
     return (
       <div className="space-y-4">
         {/* Regular key-value fields in 2-col grid */}
@@ -1125,7 +1155,7 @@ export const ApplicationDetailModal: React.FC<ApplicationDetailModalProps> = ({
                     {label}
                   </label>
                   <div className="text-sm bg-muted p-2 rounded-md break-words">
-                    {formatFieldValue(value)}
+                    {renderFieldValue(key, value)}
                   </div>
                 </div>
               );
@@ -2187,6 +2217,7 @@ export const ApplicationDetailModal: React.FC<ApplicationDetailModalProps> = ({
                                 showAction={!!showAction}
                                 onUpdate={fetchApplicationDetails}
                                 userRole={user?.role}
+                                isApplicationRejected={application.status === 'rejected'}
                               />
                               
                               {/* Update History - Compact */}
@@ -2397,34 +2428,35 @@ export const ApplicationDetailModal: React.FC<ApplicationDetailModalProps> = ({
           )}
           
           {application && !showAction && canApprove && (
-            // Show approve/reject buttons if:
-            // 1. Status is interview_scheduled or interview_completed, OR
-            // 2. Status is pending/under_review/field_verification AND scheme doesn't require interview
-            (application.status === 'interview_scheduled' || 
-             application.status === 'interview_completed' ||
-             (['pending', 'under_review', 'field_verification'].includes(application.status) && 
-              !application.scheme?.applicationSettings?.requiresInterview))
+            ['pending', 'under_review', 'field_verification', 'interview_scheduled', 'interview_completed'].includes(application.status)
           ) && (
             <div className="flex gap-3">
-              <Button 
-                className="bg-green-600 hover:bg-green-700"
-                onClick={() => {
-                  setShowAction("approve");
-                  // Auto-load scheme defaults when approve is clicked
-                  if (application?.scheme?.distributionTimeline && application.scheme.distributionTimeline.length > 0) {
-                    const schemeDefaults = application.scheme.distributionTimeline.map((item: any, index: number) => ({
-                      id: index + 1,
-                      phase: item.description || `Phase ${index + 1}`,
-                      percentage: item.percentage || 0,
-                      date: calculateDate(item.daysFromApproval || 0)
-                    }));
-                    setDistributionTimeline(schemeDefaults);
-                  }
-                }}
-              >
-                <CheckCircle className="mr-2 h-4 w-4" />
-                Approve Application
-              </Button>
+              {/* Approve: only when interview conditions are satisfied */}
+              {(application.status === 'interview_scheduled' || 
+                application.status === 'interview_completed' ||
+                (['pending', 'under_review', 'field_verification'].includes(application.status) && 
+                 !application.scheme?.applicationSettings?.requiresInterview)) && (
+                <Button 
+                  className="bg-green-600 hover:bg-green-700"
+                  onClick={() => {
+                    setShowAction("approve");
+                    // Auto-load scheme defaults when approve is clicked
+                    if (application?.scheme?.distributionTimeline && application.scheme.distributionTimeline.length > 0) {
+                      const schemeDefaults = application.scheme.distributionTimeline.map((item: any, index: number) => ({
+                        id: index + 1,
+                        phase: item.description || `Phase ${index + 1}`,
+                        percentage: item.percentage || 0,
+                        date: calculateDate(item.daysFromApproval || 0)
+                      }));
+                      setDistributionTimeline(schemeDefaults);
+                    }
+                  }}
+                >
+                  <CheckCircle className="mr-2 h-4 w-4" />
+                  Approve Application
+                </Button>
+              )}
+              {/* Reject: always available for any non-terminal status */}
               <Button 
                 variant="destructive"
                 onClick={() => setShowAction("reject")}

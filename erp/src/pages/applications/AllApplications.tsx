@@ -181,12 +181,10 @@ export default function AllApplications() {
 
   const handleApprove = async (id: string, remarks: string, _distributionTimeline?: any[], _forwardToCommittee?: boolean, _interviewReport?: string, _isRecurring?: boolean, _recurringConfig?: any, approvedAmountFromModal?: number) => {
     try {
-      const response = await applications.approve(id, { approvedAmount: approvedAmountFromModal || selectedApp?.requestedAmount, comments: remarks });
-      if (response.success) {
-        // Force refresh by updating refreshKey
-        setRefreshKey(prev => prev + 1);
-        toast({ title: "Application Approved", description: `Application ${id} has been approved successfully.` });
-      }
+      await applications.approve(id, { approvedAmount: approvedAmountFromModal || selectedApp?.requestedAmount, comments: remarks });
+      // request() throws on non-2xx, so reaching here means success
+      setRefreshKey(prev => prev + 1);
+      toast({ title: "Application Approved", description: `Application ${id} has been approved successfully.` });
     } catch (error) {
       toast({ title: "Error", description: "Failed to approve application", variant: "destructive" });
     }
@@ -194,12 +192,10 @@ export default function AllApplications() {
 
   const handleReject = async (id: string, remarks: string) => {
     try {
-      const response = await applications.review(id, { status: 'rejected', comments: remarks });
-      if (response.success) {
-        // Force refresh by updating refreshKey
-        setRefreshKey(prev => prev + 1);
-        toast({ title: "Application Rejected", description: `Application ${id} has been rejected.`, variant: "destructive" });
-      }
+      await applications.review(id, { status: 'rejected', comments: remarks });
+      // request() throws on non-2xx, so reaching here means success
+      setRefreshKey(prev => prev + 1);
+      toast({ title: "Application Rejected", description: `Application ${id} has been rejected.`, variant: "destructive" });
     } catch (error) {
       toast({ title: "Error", description: "Failed to reject application", variant: "destructive" });
     }
