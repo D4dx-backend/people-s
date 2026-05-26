@@ -46,7 +46,8 @@ const StageItem: React.FC<{
   showAction: boolean;
   onUpdate: () => void;
   userRole?: string;
-}> = ({ stage, applicationId, showAction, onUpdate, userRole }) => {
+  isApplicationRejected?: boolean;
+}> = ({ stage, applicationId, showAction, onUpdate, userRole, isApplicationRejected = false }) => {
   const { toast } = useToast();
   const [updating, setUpdating] = useState(false);
   const [showUpdateForm, setShowUpdateForm] = useState(false);
@@ -250,7 +251,7 @@ const StageItem: React.FC<{
                           </p>
                         )}
                       </div>
-                    ) : isMyField && canActOnStage && !showAction ? (
+                    ) : isMyField && canActOnStage && !showAction && !isApplicationRejected ? (
                       <div className="flex gap-1.5 mt-1">
                         <Textarea
                           placeholder="Add your comment..."
@@ -300,7 +301,7 @@ const StageItem: React.FC<{
                       <a href={doc.uploadedFile} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline flex items-center gap-0.5">
                         <Eye className="h-3 w-3" /> View
                       </a>
-                    ) : !showAction && canActOnStage ? (
+                    ) : !showAction && canActOnStage && !isApplicationRejected ? (
                       <>
                         <input
                           type="file"
@@ -339,7 +340,7 @@ const StageItem: React.FC<{
           )}
           
           {/* Update Stage Form - Compact (hidden if user role not allowed on this stage) */}
-          {(stage.status === 'pending' || stage.status === 'in_progress') && !showAction && canActOnStage && (
+          {(stage.status === 'pending' || stage.status === 'in_progress') && !showAction && canActOnStage && !isApplicationRejected && (
             <div className="mt-2">
               {!showUpdateForm ? (
                 <Button
@@ -2216,6 +2217,7 @@ export const ApplicationDetailModal: React.FC<ApplicationDetailModalProps> = ({
                                 showAction={!!showAction}
                                 onUpdate={fetchApplicationDetails}
                                 userRole={user?.role}
+                                isApplicationRejected={application.status === 'rejected'}
                               />
                               
                               {/* Update History - Compact */}
