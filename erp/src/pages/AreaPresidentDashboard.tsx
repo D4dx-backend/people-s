@@ -120,7 +120,7 @@ export default function AreaPresidentDashboard() {
           ) : (
             <div className="divide-y">
               {recentApplications.map((app: any, idx: number) => (
-                <div key={app.id ?? idx} className="flex items-center justify-between py-3">
+                <div key={app.id ?? idx} className="flex items-center justify-between py-3 cursor-pointer hover:bg-muted/30 rounded px-2 -mx-2 transition-colors" onClick={() => navigate('/applications')}>
                   <div>
                     <p className="text-sm font-medium">{app.applicant}</p>
                     <p className="text-xs text-muted-foreground">{app.scheme}</p>

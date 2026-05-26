@@ -235,7 +235,8 @@ export default function Dashboard() {
                 {recentApplications.map((app) => (
                   <div
                     key={app._id || app.id}
-                    className="flex items-center justify-between rounded-2xl border border-border/40 bg-muted/30 px-4 py-3 transition-colors hover:bg-muted/50"
+                    className="flex items-center justify-between rounded-2xl border border-border/40 bg-muted/30 px-4 py-3 transition-colors hover:bg-muted/50 cursor-pointer"
+                    onClick={() => navigate('/applications')}
                   >
                     <div className="space-y-1">
                       <p className="font-medium">{app.applicant}</p>
@@ -251,7 +252,7 @@ export default function Dashboard() {
                   <p className="text-center text-muted-foreground py-4">No recent applications</p>
                 )}
               </div>
-              <Button variant="outline" className="w-full mt-4 rounded-full">
+              <Button variant="outline" className="w-full mt-4 rounded-full" onClick={() => navigate('/applications')}>
                 View All Applications
               </Button>
             </CardContent>
