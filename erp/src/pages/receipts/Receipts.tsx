@@ -8,6 +8,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Pagination, PaginationContent, PaginationItem, PaginationLink, PaginationNext, PaginationPrevious } from "@/components/ui/pagination";
 import { toast } from "@/hooks/use-toast";
 import { applications } from "@/lib/api";
+import { ApplicationDetailModal } from "@/components/modals/ApplicationDetailModal";
 
 interface ReceiptItem {
   paymentId: string | null;
@@ -42,6 +43,14 @@ export default function Receipts() {
   const [totalPages, setTotalPages] = useState(1);
   const [totalCount, setTotalCount] = useState(0);
   const [downloadingId, setDownloadingId] = useState<string | null>(null);
+  const [selectedApplicationId, setSelectedApplicationId] = useState<string | null>(null);
+  const [showDetailModal, setShowDetailModal] = useState(false);
+
+  const handleViewApplication = (applicationId: string) => {
+    if (!applicationId) return;
+    setSelectedApplicationId(applicationId);
+    setShowDetailModal(true);
+  };
 
   const fetchReceipts = useCallback(async (page: number, searchTerm: string) => {
     setLoading(true);
@@ -238,9 +247,13 @@ export default function Receipts() {
                     {receipts.map((item, idx) => (
                       <TableRow key={item.paymentId ? item.paymentId.toString() : `app-${item.applicationId}-${idx}`}>
                         <TableCell>
-                          <span className="font-mono text-sm font-medium">
+                          <button
+                            className="font-mono text-sm font-medium text-blue-600 hover:underline hover:text-blue-800 transition-colors"
+                            onClick={() => handleViewApplication(item.applicationId)}
+                            disabled={!item.applicationId}
+                          >
                             {item.applicationNumber}
-                          </span>
+                          </button>
                         </TableCell>
                         <TableCell>
                           <div className="font-medium">{item.beneficiaryName}</div>
@@ -329,6 +342,12 @@ export default function Receipts() {
           )}
         </CardContent>
       </Card>
+
+      <ApplicationDetailModal
+        isOpen={showDetailModal}
+        applicationId={selectedApplicationId}
+        onClose={() => { setShowDetailModal(false); setSelectedApplicationId(null); }}
+      />
     </div>
   );
 }
