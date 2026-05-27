@@ -41,7 +41,7 @@ const getBeneficiaries = async (req, res) => {
     if (gender) filter['profile.gender'] = gender;
 
     // Apply user's regional access restrictions
-    const userRegionalFilter = getUserRegionalFilter(req.user);
+    const userRegionalFilter = getUserRegionalFilter(req);
     Object.assign(filter, userRegionalFilter);
 
     // Multi-tenant: Beneficiaries are franchise-scoped
@@ -171,7 +171,7 @@ const getBeneficiary = async (req, res) => {
     }
 
     // Check if user has access to this beneficiary
-    if (!hasAccessToBeneficiary(req.user, beneficiary)) {
+    if (!hasAccessToBeneficiary(req, beneficiary)) {
       return res.status(403).json({ 
         success: false,
         message: 'Access denied' 
@@ -225,7 +225,7 @@ const createBeneficiary = async (req, res) => {
       location: { state, district, area, unit }
     });
     
-    if (!hasAccessToLocation(req.user, { state, district, area, unit })) {
+    if (!hasAccessToLocation(req, { state, district, area, unit })) {
       console.log('❌ Location access denied for user:', req.user?.role);
       return ResponseHelper.forbidden(res, 'Access denied for this location');
     }
@@ -325,7 +325,7 @@ const updateBeneficiary = async (req, res) => {
     }
 
     // Check if user has access to update this beneficiary
-    if (!hasAccessToBeneficiary(req.user, beneficiary)) {
+    if (!hasAccessToBeneficiary(req, beneficiary)) {
       return res.status(403).json({ message: 'Access denied' });
     }
 
@@ -354,7 +354,7 @@ const updateBeneficiary = async (req, res) => {
       }
 
       // Check if user has access to new location
-      if (!hasAccessToLocation(req.user, { 
+      if (!hasAccessToLocation(req, { 
         state: newState, 
         district: newDistrict, 
         area: newArea, 
@@ -404,7 +404,7 @@ const deleteBeneficiary = async (req, res) => {
     }
 
     // Check if user has access to delete this beneficiary
-    if (!hasAccessToBeneficiary(req.user, beneficiary)) {
+    if (!hasAccessToBeneficiary(req, beneficiary)) {
       return res.status(403).json({ message: 'Access denied' });
     }
 
@@ -434,7 +434,7 @@ const verifyBeneficiary = async (req, res) => {
     }
 
     // Check if user has access to verify this beneficiary
-    if (!hasAccessToBeneficiary(req.user, beneficiary)) {
+    if (!hasAccessToBeneficiary(req, beneficiary)) {
       return res.status(403).json({ message: 'Access denied' });
     }
 
@@ -461,42 +461,58 @@ const verifyBeneficiary = async (req, res) => {
 };
 
 // Helper functions
-const getUserRegionalFilter = (user) => {
+const getUserRegionalFilter = (req) => {
   const filter = {};
   
+  // Use franchise-specific role/adminScope if available, fallback to user model
+  const effectiveRole = req.userFranchise?.role || req.userRole || req.user?.role;
+  const adminScope = req.userFranchise?.adminScope || req.user?.adminScope;
+  
   // Super admin and state admin have access to all beneficiaries
-  if (user.role === 'super_admin' || user.role === 'state_admin') {
+  if (effectiveRole === 'super_admin' || effectiveRole === 'state_admin') {
     return filter; // No restrictions
   }
   
-  // For other admin roles, check their adminScope.regions
-  if (user.adminScope?.regions && user.adminScope.regions.length > 0) {
-    const regions = user.adminScope.regions;
+  // For other admin roles, check their adminScope.regions first, then fallback to single fields
+  if (adminScope?.regions && adminScope.regions.length > 0) {
+    const regions = adminScope.regions;
     
-    if (user.role === 'district_admin') {
+    if (effectiveRole === 'district_admin') {
       filter.district = { $in: regions };
-    } else if (user.role === 'area_admin') {
+    } else if (effectiveRole === 'area_admin') {
       filter.area = { $in: regions };
-    } else if (user.role === 'unit_admin') {
+    } else if (effectiveRole === 'unit_admin') {
       filter.unit = { $in: regions };
+    }
+  } else {
+    // Fallback to single scope fields
+    if (effectiveRole === 'district_admin' && adminScope?.district) {
+      filter.district = adminScope.district;
+    } else if (effectiveRole === 'area_admin' && adminScope?.area) {
+      filter.area = adminScope.area;
+    } else if (effectiveRole === 'unit_admin' && adminScope?.unit) {
+      filter.unit = adminScope.unit;
     }
   }
   
   return filter;
 };
 
-const hasAccessToBeneficiary = (user, beneficiary) => {
-  if (user.role === 'super_admin' || user.role === 'state_admin') return true;
+const hasAccessToBeneficiary = (req, beneficiary) => {
+  const effectiveRole = req.userFranchise?.role || req.userRole || req.user?.role;
+  const adminScope = req.userFranchise?.adminScope || req.user?.adminScope;
+  
+  if (effectiveRole === 'super_admin' || effectiveRole === 'state_admin') return true;
   
   // Check if user has access based on their adminScope.regions
-  if (user.adminScope?.regions && user.adminScope.regions.length > 0) {
-    const userRegions = user.adminScope.regions.map(r => r.toString());
+  if (adminScope?.regions && adminScope.regions.length > 0) {
+    const userRegions = adminScope.regions.map(r => r.toString());
     
-    if (user.role === 'district_admin') {
+    if (effectiveRole === 'district_admin') {
       return userRegions.includes(beneficiary.district?.toString());
-    } else if (user.role === 'area_admin') {
+    } else if (effectiveRole === 'area_admin') {
       return userRegions.includes(beneficiary.area?.toString());
-    } else if (user.role === 'unit_admin') {
+    } else if (effectiveRole === 'unit_admin') {
       return userRegions.includes(beneficiary.unit?.toString());
     }
   }
@@ -504,44 +520,44 @@ const hasAccessToBeneficiary = (user, beneficiary) => {
   return false;
 };
 
-const hasAccessToLocation = (user, location) => {
+const hasAccessToLocation = (req, location) => {
+  const effectiveRole = req.userFranchise?.role || req.userRole || req.user?.role;
+  const adminScope = req.userFranchise?.adminScope || req.user?.adminScope;
+  
   // Safety check
-  if (!user || !user.role) {
-    console.log('⚠️ hasAccessToLocation: Invalid user object');
+  if (!effectiveRole) {
+    console.log('⚠️ hasAccessToLocation: Invalid user/role');
     return false;
   }
 
   // Super admin and state admin have full access
-  if (user.role === 'super_admin' || user.role === 'state_admin') {
-    console.log(`✅ hasAccessToLocation: ${user.role} has full access`);
+  if (effectiveRole === 'super_admin' || effectiveRole === 'state_admin') {
+    console.log(`✅ hasAccessToLocation: ${effectiveRole} has full access`);
     return true;
   }
   
   // For other admin roles, check their adminScope
-  if (user.role === 'district_admin') {
-    // Check if user's district matches the location's district
-    const userDistrictId = user.adminScope?.district?.toString() || 
-                          (user.adminScope?.regions && user.adminScope.regions[0]?.toString());
+  if (effectiveRole === 'district_admin') {
+    const userDistrictId = adminScope?.district?.toString() || 
+                          (adminScope?.regions && adminScope.regions[0]?.toString());
     const hasAccess = userDistrictId === location.district?.toString();
     console.log(`🔍 district_admin access check: ${hasAccess}`, { userDistrictId, locationDistrict: location.district?.toString() });
     return hasAccess;
-  } else if (user.role === 'area_admin') {
-    // Check if user's area matches the location's area
-    const userAreaId = user.adminScope?.area?.toString() || 
-                      (user.adminScope?.regions && user.adminScope.regions[0]?.toString());
+  } else if (effectiveRole === 'area_admin') {
+    const userAreaId = adminScope?.area?.toString() || 
+                      (adminScope?.regions && adminScope.regions[0]?.toString());
     const hasAccess = userAreaId === location.area?.toString();
     console.log(`🔍 area_admin access check: ${hasAccess}`, { userAreaId, locationArea: location.area?.toString() });
     return hasAccess;
-  } else if (user.role === 'unit_admin') {
-    // Check if user's unit matches the location's unit
-    const userUnitId = user.adminScope?.unit?.toString() || 
-                      (user.adminScope?.regions && user.adminScope.regions[0]?.toString());
+  } else if (effectiveRole === 'unit_admin') {
+    const userUnitId = adminScope?.unit?.toString() || 
+                      (adminScope?.regions && adminScope.regions[0]?.toString());
     const hasAccess = userUnitId === location.unit?.toString();
     console.log(`🔍 unit_admin access check: ${hasAccess}`, { userUnitId, locationUnit: location.unit?.toString() });
     return hasAccess;
   }
   
-  console.log(`❌ hasAccessToLocation: Unknown role ${user.role}`);
+  console.log(`❌ hasAccessToLocation: Unknown role ${effectiveRole}`);
   return false;
 };
 
@@ -601,7 +617,7 @@ const exportBeneficiaries = async (req, res) => {
     if (gender) filter['profile.gender'] = gender;
 
     // Apply user's regional access restrictions
-    const userRegionalFilter = getUserRegionalFilter(req.user);
+    const userRegionalFilter = getUserRegionalFilter(req);
     Object.assign(filter, userRegionalFilter);
     Object.assign(filter, buildFranchiseReadFilter(req));
 
