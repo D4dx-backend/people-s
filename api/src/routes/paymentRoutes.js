@@ -12,6 +12,45 @@ const exportConfigs = require('../config/exportConfigs');
 // Utility to escape user input before using in RegExp (prevents ReDoS)
 const escapeRegex = (str) => str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
+// Build regional scope filter for aggregation pipelines (application.district/area/unit)
+function buildRegionalMatchStage(req) {
+  const effectiveRole = req.userFranchise?.role || req.userRole || req.user.role;
+  const adminScope = req.userFranchise?.adminScope || req.user.adminScope;
+
+  // Super admin and state admin see all
+  if (effectiveRole === 'super_admin' || effectiveRole === 'state_admin') {
+    return null;
+  }
+
+  const getObjectId = (ref) => {
+    if (!ref) return null;
+    if (ref instanceof mongoose.Types.ObjectId) return ref;
+    if (typeof ref === 'object' && ref._id) return new mongoose.Types.ObjectId(ref._id.toString());
+    return new mongoose.Types.ObjectId(ref.toString());
+  };
+
+  // Check regions array first
+  if (adminScope?.regions && adminScope.regions.length > 0) {
+    const regions = adminScope.regions.map(r => getObjectId(r));
+    if (effectiveRole === 'district_admin') return { 'application.district': { $in: regions } };
+    if (effectiveRole === 'area_admin') return { 'application.area': { $in: regions } };
+    if (effectiveRole === 'unit_admin') return { 'application.unit': { $in: regions } };
+  } else {
+    // Fallback to direct scope fields
+    if (effectiveRole === 'district_admin' && adminScope?.district) {
+      return { 'application.district': getObjectId(adminScope.district) };
+    }
+    if (effectiveRole === 'area_admin' && adminScope?.area) {
+      return { 'application.area': getObjectId(adminScope.area) };
+    }
+    if (effectiveRole === 'unit_admin' && adminScope?.unit) {
+      return { 'application.unit': getObjectId(adminScope.unit) };
+    }
+  }
+
+  return null;
+}
+
 // Apply authentication to all routes
 router.use(authenticate);
 router.use(crossFranchiseResolver);
@@ -144,6 +183,12 @@ router.get('/',
         { $unwind: { path: '$initiatedBy', preserveNullAndEmptyArrays: true } }
       );
 
+      // Apply regional scope filter based on admin's jurisdiction
+      const regionalFilter = buildRegionalMatchStage(req);
+      if (regionalFilter) {
+        pipeline.push({ $match: regionalFilter });
+      }
+
       // Add search filter after population
       if (search || gender) {
         const searchMatch = {};
@@ -257,6 +302,11 @@ router.get('/',
         { $unwind: { path: '$project', preserveNullAndEmptyArrays: true } },
         { $unwind: { path: '$scheme', preserveNullAndEmptyArrays: true } }
       );
+
+      // Apply regional scope filter to recurring payments
+      if (regionalFilter) {
+        recurringPipeline.push({ $match: regionalFilter });
+      }
 
       // Add search filter for recurring payments
       if (search || gender) {
@@ -464,7 +514,14 @@ router.get('/:id',
   async (req, res) => {
     try {
       const payment = await Payment.findById(req.params.id)
-        .populate('application')
+        .populate({
+          path: 'application',
+          populate: [
+            { path: 'district', select: 'name', model: 'Location' },
+            { path: 'area', select: 'name', model: 'Location' },
+            { path: 'unit', select: 'name', model: 'Location' },
+          ]
+        })
         .populate('beneficiary')
         .populate('project')
         .populate('scheme')
