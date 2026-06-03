@@ -898,6 +898,29 @@ export const ApplicationDetailModal: React.FC<ApplicationDetailModalProps> = ({
     return String(value);
   };
 
+  // Detect flat table format: { "0_0": "val", "1_0": "val", ... }
+  const isFlatTableObject = (val: any): boolean => {
+    if (!val || typeof val !== 'object' || Array.isArray(val)) return false;
+    const keys = Object.keys(val);
+    return keys.length > 0 && keys.every((k: string) => /^\d+_\d+$/.test(k));
+  };
+
+  // Convert flat { "row_col": "val" } to 2D string[][]
+  const flatTableTo2D = (obj: Record<string, string>): string[][] => {
+    let maxRow = 0, maxCol = 0;
+    for (const k of Object.keys(obj)) {
+      const [r, c] = k.split('_').map(Number);
+      if (r > maxRow) maxRow = r;
+      if (c > maxCol) maxCol = c;
+    }
+    const result: string[][] = Array.from({ length: maxRow + 1 }, () => Array(maxCol + 1).fill(''));
+    for (const [k, v] of Object.entries(obj)) {
+      const [r, c] = k.split('_').map(Number);
+      result[r][c] = v || '';
+    }
+    return result;
+  };
+
   const getFieldConfig = (fieldKey: string): any | null => {
     if (!formConfig?.pages) return null;
     for (const page of formConfig.pages) {
@@ -937,10 +960,22 @@ export const ApplicationDetailModal: React.FC<ApplicationDetailModalProps> = ({
 
     const actualRowCount = rowMeta ? rowMeta.length : baseRowCount;
 
-    // Normalize value to 2D array
-    const tableData: string[][] = Array.isArray(value)
+    // Normalize value to 2D array (handle both 2D arrays and flat { "row_col": val } objects)
+    const normalizedValue: string[][] = Array.isArray(value)
       ? value
-      : Array.from({ length: actualRowCount }, () => Array(colCount).fill(''));
+      : isFlatTableObject(value)
+        ? flatTableTo2D(value as Record<string, string>)
+        : [];
+
+    // Derive actual dimensions from data when available
+    const derivedRowCount = normalizedValue.length > 0 ? normalizedValue.length : actualRowCount;
+    const derivedColCount = normalizedValue.length > 0
+      ? Math.max(colCount, ...normalizedValue.map(r => r.length))
+      : colCount;
+
+    const tableData = normalizedValue.length > 0
+      ? normalizedValue
+      : Array.from({ length: derivedRowCount }, () => Array(derivedColCount).fill(''));
 
     // Compute row label from metadata or fall back to static titles
     const getRowLabel = (rowIndex: number) => {
@@ -958,7 +993,7 @@ export const ApplicationDetailModal: React.FC<ApplicationDetailModalProps> = ({
           <thead>
             <tr className="bg-muted">
               {hasRowLabels && <th className="border p-2 text-xs font-medium text-left text-muted-foreground">{firstColumnHeader}</th>}
-              {Array.from({ length: colCount }, (_, i) => (
+              {Array.from({ length: derivedColCount }, (_, i) => (
                 <th key={i} className="border p-2 text-xs font-semibold text-left">
                   {columnTitles[i] || `Column ${i + 1}`}
                 </th>
@@ -966,14 +1001,14 @@ export const ApplicationDetailModal: React.FC<ApplicationDetailModalProps> = ({
             </tr>
           </thead>
           <tbody>
-            {Array.from({ length: actualRowCount }, (_, r) => (
+            {Array.from({ length: derivedRowCount }, (_, r) => (
               <tr key={r} className={r % 2 === 0 ? '' : 'bg-muted/30'}>
                 {hasRowLabels && (
                   <td className="border p-2 text-xs font-medium text-muted-foreground bg-muted/50 whitespace-nowrap">
                     {getRowLabel(r)}
                   </td>
                 )}
-                {Array.from({ length: colCount }, (_, c) => (
+                {Array.from({ length: derivedColCount }, (_, c) => (
                   <td key={c} className="border p-2 text-xs">
                     {tableData[r]?.[c] || <span className="text-muted-foreground italic">—</span>}
                   </td>
@@ -1104,7 +1139,7 @@ export const ApplicationDetailModal: React.FC<ApplicationDetailModalProps> = ({
 
     for (const entry of entries) {
       const config = getFieldConfig(entry[0]);
-      if (config?.type === 'row' || config?.type === 'column' || Array.isArray(entry[1])) {
+      if (config?.type === 'row' || config?.type === 'column' || Array.isArray(entry[1]) || isFlatTableObject(entry[1])) {
         tableEntries.push(entry);
       } else {
         regularEntries.push(entry);
@@ -1113,8 +1148,10 @@ export const ApplicationDetailModal: React.FC<ApplicationDetailModalProps> = ({
 
     const renderFieldValue = (key: string, value: any) => {
       const config = getFieldConfig(key);
-      const isFileField = config?.type === 'file' || (typeof value === 'string' && value.startsWith('http'));
-      if (isFileField && typeof value === 'string' && value.startsWith('http')) {
+      const isFileField = config?.type === 'file';
+
+      // Handle CDN/server URL string
+      if (typeof value === 'string' && value.startsWith('http')) {
         const isImage = /\.(jpg|jpeg|png|gif|webp)(\?.*)?$/i.test(value);
         const isPdf = /\.pdf(\?.*)?$/i.test(value);
         const fileName = decodeURIComponent(value.split('/').pop()?.split('?')[0] || 'file');
@@ -1139,6 +1176,33 @@ export const ApplicationDetailModal: React.FC<ApplicationDetailModalProps> = ({
           </div>
         );
       }
+
+      // Handle base64/dataUrl file objects: { fileName, mimeType, dataUrl }
+      if ((isFileField || (value && typeof value === 'object' && value.dataUrl)) && value?.dataUrl) {
+        const isImage = value.mimeType?.startsWith('image/');
+        const isPdf = value.mimeType === 'application/pdf';
+        const name: string = value.fileName || value.originalName || 'file';
+        return (
+          <div className="space-y-1">
+            {isImage && (
+              <img
+                src={value.dataUrl}
+                alt={name}
+                className="max-h-40 max-w-full rounded border object-contain"
+              />
+            )}
+            <a
+              href={value.dataUrl}
+              download={name}
+              className="inline-flex items-center gap-1 text-blue-600 hover:underline text-xs"
+            >
+              <Download className="h-3 w-3" />
+              {isPdf ? `${name} (PDF)` : name}
+            </a>
+          </div>
+        );
+      }
+
       return <span>{formatFieldValue(value)}</span>;
     };
 
