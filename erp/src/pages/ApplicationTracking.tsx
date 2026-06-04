@@ -3,11 +3,12 @@ import { useNavigate, useParams } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { ArrowLeft, CheckCircle, Clock, XCircle, FileText, Loader2, IndianRupee, Calendar, User, Phone, Download } from "lucide-react";
+import { ArrowLeft, CheckCircle, Clock, XCircle, FileText, Loader2, IndianRupee, Calendar, User, Phone, Download, Eye, ChevronDown, ChevronUp } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { beneficiaryApi } from "@/services/beneficiaryApi";
 import { useOrgLogoUrl } from "@/hooks/useOrgLogoUrl";
 import defaultLogo from "@/assets/logo.png";
+import ApplicationFormDataView from "@/components/ApplicationFormDataView";
 
 interface ApplicationData {
   _id: string;
@@ -32,6 +33,10 @@ export default function ApplicationTracking() {
   const [application, setApplication] = useState<ApplicationData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [showFormData, setShowFormData] = useState(false);
+  const [fullFormData, setFullFormData] = useState<any>(null);
+  const [formConfig, setFormConfig] = useState<any>(null);
+  const [loadingFormData, setLoadingFormData] = useState(false);
 
   const phoneNumber = localStorage.getItem("user_phone") || "";
   const currentUser = beneficiaryApi.getCurrentUser();
@@ -58,6 +63,43 @@ export default function ApplicationTracking() {
       });
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const handleViewFormData = async () => {
+    if (showFormData) {
+      setShowFormData(false);
+      return;
+    }
+    if (fullFormData) {
+      setShowFormData(true);
+      return;
+    }
+    if (!application) return;
+    try {
+      setLoadingFormData(true);
+      // Fetch full application (includes formData)
+      const appResponse = await beneficiaryApi.getApplicationDetails(application._id);
+      const fullApp = (appResponse as any).application;
+      setFullFormData(fullApp?.formData || {});
+      // Fetch form config from scheme
+      const schemeId = application.scheme._id;
+      try {
+        const schemeResponse = await beneficiaryApi.getSchemeDetails(schemeId);
+        setFormConfig((schemeResponse as any).scheme?.formConfig || null);
+      } catch {
+        // Form config optional — still show data without labels
+        setFormConfig(null);
+      }
+      setShowFormData(true);
+    } catch (err) {
+      toast({
+        title: "Failed to Load Form Data",
+        description: err instanceof Error ? err.message : "Please try again",
+        variant: "destructive",
+      });
+    } finally {
+      setLoadingFormData(false);
     }
   };
 
@@ -359,6 +401,36 @@ export default function ApplicationTracking() {
               ))}
             </div>
           </CardContent>
+        </Card>
+
+        {/* View Submitted Application */}
+        <Card className="shadow-sm mt-6">
+          <CardHeader
+            className="pb-3 cursor-pointer select-none"
+            onClick={handleViewFormData}
+          >
+            <div className="flex items-center justify-between">
+              <CardTitle className="flex items-center gap-2 text-base">
+                <Eye className="h-5 w-5" />
+                View Submitted Application
+              </CardTitle>
+              {loadingFormData ? (
+                <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+              ) : showFormData ? (
+                <ChevronUp className="h-4 w-4 text-muted-foreground" />
+              ) : (
+                <ChevronDown className="h-4 w-4 text-muted-foreground" />
+              )}
+            </div>
+            <p className="text-xs text-muted-foreground mt-1">
+              {showFormData ? 'Click to collapse' : 'Click to view the details you submitted in your application'}
+            </p>
+          </CardHeader>
+          {showFormData && (
+            <CardContent>
+              <ApplicationFormDataView formData={fullFormData} formConfig={formConfig} />
+            </CardContent>
+          )}
         </Card>
 
         {/* Action Buttons */}
