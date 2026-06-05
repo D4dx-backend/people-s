@@ -208,9 +208,9 @@ router.post('/application/:applicationId',
               const appAreaId = getId(application.area);
               const appDistrictId = getId(application.district);
               
-              if (['unit_admin', 'area_president'].includes(req.user.role) && appUnitId && userRegions.includes(appUnitId)) {
+              if (req.user.role === 'unit_admin' && appUnitId && userRegions.includes(appUnitId)) {
                 canAccess = true;
-              } else if (req.user.role === 'area_admin' && appAreaId && userRegions.includes(appAreaId)) {
+              } else if (['area_admin', 'area_president'].includes(req.user.role) && appAreaId && userRegions.includes(appAreaId)) {
                 canAccess = true;
               } else if (req.user.role === 'district_admin' && appDistrictId && userRegions.includes(appDistrictId)) {
                 canAccess = true;
@@ -227,9 +227,9 @@ router.post('/application/:applicationId',
               const appAreaId = getId(application.area);
               const appDistrictId = getId(application.district);
               
-              if (['unit_admin', 'area_president'].includes(req.user.role) && userUnitId && appUnitId === userUnitId) {
+              if (req.user.role === 'unit_admin' && userUnitId && appUnitId === userUnitId) {
                 canAccess = true;
-              } else if (req.user.role === 'area_admin' && userAreaId && appAreaId === userAreaId) {
+              } else if (['area_admin', 'area_president'].includes(req.user.role) && userAreaId && appAreaId === userAreaId) {
                 canAccess = true;
               } else if (req.user.role === 'district_admin' && userDistrictId && appDistrictId === userDistrictId) {
                 canAccess = true;
@@ -545,9 +545,9 @@ router.put('/:reportId',
               const appAreaId = getId(application.area);
               const appDistrictId = getId(application.district);
               
-              if (['unit_admin', 'area_president'].includes(req.user.role) && appUnitId && userRegions.includes(appUnitId)) {
+              if (req.user.role === 'unit_admin' && appUnitId && userRegions.includes(appUnitId)) {
                 canAccess = true;
-              } else if (req.user.role === 'area_admin' && appAreaId && userRegions.includes(appAreaId)) {
+              } else if (['area_admin', 'area_president'].includes(req.user.role) && appAreaId && userRegions.includes(appAreaId)) {
                 canAccess = true;
               } else if (req.user.role === 'district_admin' && appDistrictId && userRegions.includes(appDistrictId)) {
                 canAccess = true;
@@ -564,9 +564,9 @@ router.put('/:reportId',
               const appAreaId = getId(application.area);
               const appDistrictId = getId(application.district);
               
-              if (['unit_admin', 'area_president'].includes(req.user.role) && userUnitId && appUnitId === userUnitId) {
+              if (req.user.role === 'unit_admin' && userUnitId && appUnitId === userUnitId) {
                 canAccess = true;
-              } else if (req.user.role === 'area_admin' && userAreaId && appAreaId === userAreaId) {
+              } else if (['area_admin', 'area_president'].includes(req.user.role) && userAreaId && appAreaId === userAreaId) {
                 canAccess = true;
               } else if (req.user.role === 'district_admin' && userDistrictId && appDistrictId === userDistrictId) {
                 canAccess = true;
@@ -761,9 +761,9 @@ router.delete('/:reportId',
               const appAreaId = getId(application.area);
               const appDistrictId = getId(application.district);
               
-              if (['unit_admin', 'area_president'].includes(req.user.role) && appUnitId && userRegions.includes(appUnitId)) {
+              if (req.user.role === 'unit_admin' && appUnitId && userRegions.includes(appUnitId)) {
                 canAccess = true;
-              } else if (req.user.role === 'area_admin' && appAreaId && userRegions.includes(appAreaId)) {
+              } else if (['area_admin', 'area_president'].includes(req.user.role) && appAreaId && userRegions.includes(appAreaId)) {
                 canAccess = true;
               } else if (req.user.role === 'district_admin' && appDistrictId && userRegions.includes(appDistrictId)) {
                 canAccess = true;
@@ -780,9 +780,9 @@ router.delete('/:reportId',
               const appAreaId = getId(application.area);
               const appDistrictId = getId(application.district);
               
-              if (['unit_admin', 'area_president'].includes(req.user.role) && userUnitId && appUnitId === userUnitId) {
+              if (req.user.role === 'unit_admin' && userUnitId && appUnitId === userUnitId) {
                 canAccess = true;
-              } else if (req.user.role === 'area_admin' && userAreaId && appAreaId === userAreaId) {
+              } else if (['area_admin', 'area_president'].includes(req.user.role) && userAreaId && appAreaId === userAreaId) {
                 canAccess = true;
               } else if (req.user.role === 'district_admin' && userDistrictId && appDistrictId === userDistrictId) {
                 canAccess = true;

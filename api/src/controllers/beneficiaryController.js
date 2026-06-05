@@ -479,7 +479,7 @@ const getUserRegionalFilter = (req) => {
     
     if (effectiveRole === 'district_admin') {
       filter.district = { $in: regions };
-    } else if (effectiveRole === 'area_admin') {
+    } else if (effectiveRole === 'area_admin' || effectiveRole === 'area_president') {
       filter.area = { $in: regions };
     } else if (effectiveRole === 'unit_admin') {
       filter.unit = { $in: regions };
@@ -488,7 +488,7 @@ const getUserRegionalFilter = (req) => {
     // Fallback to single scope fields
     if (effectiveRole === 'district_admin' && adminScope?.district) {
       filter.district = adminScope.district;
-    } else if (effectiveRole === 'area_admin' && adminScope?.area) {
+    } else if ((effectiveRole === 'area_admin' || effectiveRole === 'area_president') && adminScope?.area) {
       filter.area = adminScope.area;
     } else if (effectiveRole === 'unit_admin' && adminScope?.unit) {
       filter.unit = adminScope.unit;
@@ -510,7 +510,7 @@ const hasAccessToBeneficiary = (req, beneficiary) => {
     
     if (effectiveRole === 'district_admin') {
       return userRegions.includes(beneficiary.district?.toString());
-    } else if (effectiveRole === 'area_admin') {
+    } else if (effectiveRole === 'area_admin' || effectiveRole === 'area_president') {
       return userRegions.includes(beneficiary.area?.toString());
     } else if (effectiveRole === 'unit_admin') {
       return userRegions.includes(beneficiary.unit?.toString());
@@ -543,11 +543,11 @@ const hasAccessToLocation = (req, location) => {
     const hasAccess = userDistrictId === location.district?.toString();
     console.log(`🔍 district_admin access check: ${hasAccess}`, { userDistrictId, locationDistrict: location.district?.toString() });
     return hasAccess;
-  } else if (effectiveRole === 'area_admin') {
+  } else if (effectiveRole === 'area_admin' || effectiveRole === 'area_president') {
     const userAreaId = adminScope?.area?.toString() || 
                       (adminScope?.regions && adminScope.regions[0]?.toString());
     const hasAccess = userAreaId === location.area?.toString();
-    console.log(`🔍 area_admin access check: ${hasAccess}`, { userAreaId, locationArea: location.area?.toString() });
+    console.log(`🔍 area_admin/area_president access check: ${hasAccess}`, { userAreaId, locationArea: location.area?.toString() });
     return hasAccess;
   } else if (effectiveRole === 'unit_admin') {
     const userUnitId = adminScope?.unit?.toString() || 

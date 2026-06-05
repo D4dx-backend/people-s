@@ -126,8 +126,9 @@ const getApplications = async (req, res) => {
     const listStageVisibilityRoles = {
       'super_admin':    null,
       'state_admin':    null,
-      'district_admin': ['district_admin', 'area_admin', 'unit_admin'],
-      'area_admin':     ['area_admin', 'unit_admin'],
+      'district_admin': ['district_admin', 'area_admin', 'area_president', 'unit_admin'],
+      'area_admin':     ['area_admin', 'area_president', 'unit_admin'],
+      'area_president': ['area_president', 'unit_admin'],
       'unit_admin':     ['unit_admin'],
     };
     const listVisibleRoles = listStageVisibilityRoles[listUserRole];
@@ -250,8 +251,9 @@ const getApplication = async (req, res) => {
     const stageVisibilityRoles = {
       'super_admin':    null, // null = no filter (see all)
       'state_admin':    null,
-      'district_admin': ['district_admin', 'area_admin', 'unit_admin'],
-      'area_admin':     ['area_admin', 'unit_admin'],
+      'district_admin': ['district_admin', 'area_admin', 'area_president', 'unit_admin'],
+      'area_admin':     ['area_admin', 'area_president', 'unit_admin'],
+      'area_president': ['area_president', 'unit_admin'],
       'unit_admin':     ['unit_admin'],
     };
     const visibleRoles = stageVisibilityRoles[userRole];
@@ -789,10 +791,10 @@ const getUserRegionalFilter = (user) => {
       // District admin can see applications from their district
       filter.district = { $in: regions };
       console.log('🔍 District admin filter applied (from regions):', filter);
-    } else if (user.role === 'area_admin') {
-      // Area admin can see applications from their area
+    } else if (user.role === 'area_admin' || user.role === 'area_president') {
+      // Area admin / area president can see applications from their area
       filter.area = { $in: regions };
-      console.log('🔍 Area admin filter applied (from regions):', filter);
+      console.log('🔍 Area admin/president filter applied (from regions):', filter);
     } else if (user.role === 'unit_admin') {
       // Unit admin can see applications from their unit
       filter.unit = { $in: regions };
@@ -807,9 +809,9 @@ const getUserRegionalFilter = (user) => {
     if (user.role === 'unit_admin' && userUnitId) {
       filter.unit = userUnitId;
       console.log('🔍 Unit admin filter applied (from direct unit):', filter);
-    } else if (user.role === 'area_admin' && userAreaId) {
+    } else if ((user.role === 'area_admin' || user.role === 'area_president') && userAreaId) {
       filter.area = userAreaId;
-      console.log('🔍 Area admin filter applied (from direct area):', filter);
+      console.log('🔍 Area admin/president filter applied (from direct area):', filter);
     } else if (user.role === 'district_admin' && userDistrictId) {
       filter.district = userDistrictId;
       console.log('🔍 District admin filter applied (from direct district):', filter);
@@ -860,9 +862,9 @@ const hasAccessToApplication = (user, application) => {
         const hasAccess = applicationDistrictId && userRegions.includes(applicationDistrictId);
         console.log(`🔍 District admin check: ${hasAccess ? '✅' : '❌'} (user regions: [${userRegions.join(', ')}], app district: ${applicationDistrictId})`);
         return hasAccess;
-      } else if (user.role === 'area_admin') {
+      } else if (user.role === 'area_admin' || user.role === 'area_president') {
         const hasAccess = applicationAreaId && userRegions.includes(applicationAreaId);
-        console.log(`🔍 Area admin check: ${hasAccess ? '✅' : '❌'} (user regions: [${userRegions.join(', ')}], app area: ${applicationAreaId})`);
+        console.log(`🔍 Area admin/president check: ${hasAccess ? '✅' : '❌'} (user regions: [${userRegions.join(', ')}], app area: ${applicationAreaId})`);
         return hasAccess;
       } else if (user.role === 'unit_admin') {
         const hasAccess = applicationUnitId && userRegions.includes(applicationUnitId);
@@ -881,10 +883,10 @@ const hasAccessToApplication = (user, application) => {
       const hasAccess = applicationDistrictId && userDistrictId === applicationDistrictId;
       console.log(`🔍 District admin direct check: ${hasAccess ? '✅' : '❌'} (user district: ${userDistrictId}, app district: ${applicationDistrictId})`);
       return hasAccess;
-    } else if (user.role === 'area_admin' && userAreaId) {
+    } else if ((user.role === 'area_admin' || user.role === 'area_president') && userAreaId) {
       const applicationAreaId = getId(application.area);
       const hasAccess = applicationAreaId && userAreaId === applicationAreaId;
-      console.log(`🔍 Area admin direct check: ${hasAccess ? '✅' : '❌'} (user area: ${userAreaId}, app area: ${applicationAreaId})`);
+      console.log(`🔍 Area admin/president direct check: ${hasAccess ? '✅' : '❌'} (user area: ${userAreaId}, app area: ${applicationAreaId})`);
       return hasAccess;
     } else if (user.role === 'unit_admin' && userUnitId) {
       const applicationUnitId = getId(application.unit);
@@ -920,7 +922,7 @@ const hasAccessToBeneficiary = (user, beneficiary) => {
       return userRegions.includes(beneficiary.state?.toString());
     } else if (user.role === 'district_admin') {
       return userRegions.includes(beneficiary.district?.toString());
-    } else if (user.role === 'area_admin') {
+    } else if (user.role === 'area_admin' || user.role === 'area_president') {
       return userRegions.includes(beneficiary.area?.toString());
     } else if (user.role === 'unit_admin') {
       return userRegions.includes(beneficiary.unit?.toString());
@@ -950,6 +952,7 @@ const getApplicationStagesFromScheme = (scheme) => {
 
     const defaultCommentConfig = {
       unitAdmin: { enabled: false, required: false },
+      areaPresident: { enabled: false, required: false },
       areaAdmin: { enabled: false, required: false },
       districtAdmin: { enabled: false, required: false }
     };
@@ -968,6 +971,10 @@ const getApplicationStagesFromScheme = (scheme) => {
           unitAdmin: {
             enabled: stage.commentConfig?.unitAdmin?.enabled || false,
             required: stage.commentConfig?.unitAdmin?.required || false
+          },
+          areaPresident: {
+            enabled: stage.commentConfig?.areaPresident?.enabled || false,
+            required: stage.commentConfig?.areaPresident?.required || false
           },
           areaAdmin: {
             enabled: stage.commentConfig?.areaAdmin?.enabled || false,
@@ -992,7 +999,7 @@ const getApplicationStagesFromScheme = (scheme) => {
           description: "Initial application submission and registration",
           order: 1,
           isRequired: true,
-          allowedRoles: ['super_admin', 'state_admin', 'district_admin', 'area_admin', 'unit_admin'],
+          allowedRoles: ['super_admin', 'state_admin', 'district_admin', 'area_admin', 'area_president', 'unit_admin'],
           autoTransition: true,
           transitionConditions: "Automatically set when application is submitted",
           commentConfig: defaultCommentConfig,
@@ -1003,7 +1010,7 @@ const getApplicationStagesFromScheme = (scheme) => {
           description: "Verification of submitted documents and eligibility",
           order: 2,
           isRequired: true,
-          allowedRoles: ['super_admin', 'state_admin', 'district_admin', 'area_admin', 'unit_admin'],
+          allowedRoles: ['super_admin', 'state_admin', 'district_admin', 'area_admin', 'area_president', 'unit_admin'],
           autoTransition: false,
           transitionConditions: "",
           commentConfig: { ...defaultCommentConfig, unitAdmin: { enabled: true, required: false } },
@@ -1014,10 +1021,10 @@ const getApplicationStagesFromScheme = (scheme) => {
           description: "Physical verification and field assessment",
           order: 3,
           isRequired: false,
-          allowedRoles: ['super_admin', 'state_admin', 'district_admin', 'area_admin', 'unit_admin'],
+          allowedRoles: ['super_admin', 'state_admin', 'district_admin', 'area_admin', 'area_president', 'unit_admin'],
           autoTransition: false,
           transitionConditions: "",
-          commentConfig: { ...defaultCommentConfig, areaAdmin: { enabled: true, required: false } },
+          commentConfig: { ...defaultCommentConfig, areaAdmin: { enabled: true, required: false }, areaPresident: { enabled: true, required: false } },
           requiredDocuments: []
         },
         {
@@ -1025,7 +1032,7 @@ const getApplicationStagesFromScheme = (scheme) => {
           description: "Beneficiary interview and assessment",
           order: 4,
           isRequired: scheme.applicationSettings?.requiresInterview || false,
-          allowedRoles: ['super_admin', 'state_admin', 'district_admin', 'area_admin', 'unit_admin', 'scheme_coordinator'],
+          allowedRoles: ['super_admin', 'state_admin', 'district_admin', 'area_admin', 'area_president', 'unit_admin', 'scheme_coordinator'],
           autoTransition: false,
           transitionConditions: "",
           commentConfig: defaultCommentConfig,
@@ -1036,7 +1043,7 @@ const getApplicationStagesFromScheme = (scheme) => {
           description: "Final review and decision making",
           order: 5,
           isRequired: true,
-          allowedRoles: ['super_admin', 'state_admin', 'district_admin', 'area_admin'],
+          allowedRoles: ['super_admin', 'state_admin', 'district_admin', 'area_admin', 'area_president'],
           autoTransition: false,
           transitionConditions: "",
           commentConfig: { ...defaultCommentConfig, districtAdmin: { enabled: true, required: false } },
@@ -1047,7 +1054,7 @@ const getApplicationStagesFromScheme = (scheme) => {
           description: "Application approved for disbursement",
           order: 6,
           isRequired: true,
-          allowedRoles: ['super_admin', 'state_admin', 'district_admin', 'area_admin'],
+          allowedRoles: ['super_admin', 'state_admin', 'district_admin', 'area_admin', 'area_president'],
           autoTransition: false,
           transitionConditions: "",
           commentConfig: defaultCommentConfig,
@@ -1058,7 +1065,7 @@ const getApplicationStagesFromScheme = (scheme) => {
           description: "Money disbursement to beneficiary",
           order: 7,
           isRequired: true,
-          allowedRoles: ['super_admin', 'state_admin', 'district_admin', 'area_admin'],
+          allowedRoles: ['super_admin', 'state_admin', 'district_admin', 'area_admin', 'area_president'],
           autoTransition: false,
           transitionConditions: "",
           commentConfig: defaultCommentConfig,
@@ -1069,7 +1076,7 @@ const getApplicationStagesFromScheme = (scheme) => {
           description: "Application process completed successfully",
           order: 8,
           isRequired: true,
-          allowedRoles: ['super_admin', 'state_admin', 'district_admin', 'area_admin'],
+          allowedRoles: ['super_admin', 'state_admin', 'district_admin', 'area_admin', 'area_president'],
           autoTransition: true,
           transitionConditions: "Automatically set when all disbursements are complete",
           commentConfig: defaultCommentConfig,
@@ -1523,6 +1530,7 @@ const revertApplicationStage = async (req, res) => {
         // Clear comments on reverted stages so they can be re-added
         application.applicationStages[stageIdx].comments = {
           unitAdmin: { comment: null, commentedBy: null, commentedAt: null },
+          areaPresident: { comment: null, commentedBy: null, commentedAt: null },
           areaAdmin: { comment: null, commentedBy: null, commentedAt: null },
           districtAdmin: { comment: null, commentedBy: null, commentedAt: null }
         };
@@ -1671,6 +1679,7 @@ const updateApplicationStage = async (req, res) => {
       // Check required comments
       const roleCommentMap = {
         'unit_admin': 'unitAdmin',
+        'area_president': 'areaPresident',
         'area_admin': 'areaAdmin',
         'district_admin': 'districtAdmin'
       };
@@ -1812,6 +1821,7 @@ const addStageComment = async (req, res) => {
     // Map user role to comment field
     const roleToFieldMap = {
       'unit_admin': 'unitAdmin',
+      'area_president': 'areaPresident',
       'area_admin': 'areaAdmin',
       'district_admin': 'districtAdmin',
       'super_admin': null, // super_admin can comment as any role, handled below
@@ -1872,7 +1882,11 @@ const addStageComment = async (req, res) => {
 
     // Verify comment is enabled for this role in this stage
     const commentConfig = stage.commentConfig || {};
-    if (!commentConfig[commentField]?.enabled) {
+    // area_president can comment whenever unitAdmin or areaPresident comment is enabled
+    const isCommentEnabled = commentField === 'areaPresident'
+      ? (commentConfig.areaPresident?.enabled || commentConfig.unitAdmin?.enabled)
+      : commentConfig[commentField]?.enabled;
+    if (!isCommentEnabled) {
       // For super/state admin, allow anyway
       if (!['super_admin', 'state_admin'].includes(userRole)) {
         return res.status(400).json({
@@ -2457,7 +2471,7 @@ const getApplicationConsolidation = async (req, res) => {
     if (!isSuperAdmin && role !== 'state_admin') {
       if (role === 'district_admin' && adminScope?.district) {
         baseFilter.district = new mongoose.Types.ObjectId(adminScope.district);
-      } else if (role === 'area_admin' && adminScope?.area) {
+      } else if ((role === 'area_admin' || role === 'area_president') && adminScope?.area) {
         baseFilter.area = new mongoose.Types.ObjectId(adminScope.area);
       } else if (role === 'unit_admin' && adminScope?.unit) {
         baseFilter.unit = new mongoose.Types.ObjectId(adminScope.unit);
@@ -2652,7 +2666,7 @@ const updateApplicationLocation = async (req, res) => {
           message: 'Unit admin can only reassign to their own unit'
         });
       }
-    } else if (userRole === 'area_admin') {
+    } else if (userRole === 'area_admin' || userRole === 'area_president') {
       const userAreaIds = effectiveUser.adminScope?.regions
         ? effectiveUser.adminScope.regions.map(r => r.toString())
         : effectiveUser.adminScope?.area ? [effectiveUser.adminScope.area.toString()] : [];

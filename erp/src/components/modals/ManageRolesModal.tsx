@@ -17,7 +17,7 @@ import { roleColors, roleNames } from "@/pages/UserManagement";
 
 // Roles that need district → area → unit cascade selection
 const NEEDS_DISTRICT = ["area_admin", "unit_admin", "area_president"];
-const NEEDS_AREA     = ["unit_admin", "area_president"];
+const NEEDS_AREA     = ["unit_admin"];
 
 interface FranchiseMembership {
   id: string;
@@ -173,7 +173,7 @@ export function ManageRolesModal({ open, onOpenChange, user, onSave }: ManageRol
       toast({ title: "Validation", description: "Please select an area", variant: "destructive" });
       return;
     }
-    const needsUnit = newRole === "unit_admin" || newRole === "area_president";
+    const needsUnit = newRole === "unit_admin";
     if (needsUnit && !selectedRegion) {
       toast({ title: "Validation", description: "Please select a unit", variant: "destructive" });
       return;
@@ -195,10 +195,10 @@ export function ManageRolesModal({ open, onOpenChange, user, onSave }: ManageRol
     const adminScope: any = { regions: selectedRegion ? [selectedRegion] : [] };
     if (newRole === "district_admin") {
       adminScope.district = selectedRegion;
-    } else if (newRole === "area_admin") {
+    } else if (newRole === "area_admin" || newRole === "area_president") {
       adminScope.district = selectedDistrict;
       adminScope.area = selectedRegion;
-    } else if (newRole === "unit_admin" || newRole === "area_president") {
+    } else if (newRole === "unit_admin") {
       adminScope.district = selectedDistrict;
       adminScope.area = selectedArea;
       adminScope.unit = selectedRegion;

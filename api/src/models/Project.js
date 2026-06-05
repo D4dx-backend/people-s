@@ -192,7 +192,7 @@ const projectSchema = new mongoose.Schema({
       },
       allowedRoles: [{
         type: String,
-        enum: ['super_admin', 'state_admin', 'district_admin', 'area_admin', 'unit_admin', 'project_coordinator', 'scheme_coordinator']
+        enum: ['super_admin', 'state_admin', 'district_admin', 'area_admin', 'area_president', 'unit_admin', 'project_coordinator', 'scheme_coordinator']
       }],
       estimatedDuration: {
         type: Number, // in days
@@ -408,7 +408,7 @@ projectSchema.methods.canUserAccess = function(user) {
     const districtId = getId(user.adminScope.district);
     if (this.targetRegions?.some(r => getId(r) === districtId)) return true;
   }
-  if (user.role === 'area_admin' && user.adminScope?.area) {
+  if ((user.role === 'area_admin' || user.role === 'area_president') && user.adminScope?.area) {
     const areaId = getId(user.adminScope.area);
     if (this.targetRegions?.some(r => getId(r) === areaId)) return true;
   }

@@ -189,7 +189,7 @@ export default function Applications() {
   const canScheduleInterviews = user && ['super_admin', 'state_admin', 'district_admin', 'scheme_coordinator'].includes(user.role);
 
   // Check if user has admin permissions
-  const hasAdminAccess = user && ['super_admin', 'state_admin', 'district_admin', 'area_admin', 'unit_admin'].includes(user.role);
+  const hasAdminAccess = user && ['super_admin', 'state_admin', 'district_admin', 'area_admin', 'area_president', 'unit_admin'].includes(user.role);
 
   // Define functions using useCallback
   const loadApplications = useCallback(async () => {
@@ -819,7 +819,7 @@ export default function Applications() {
                       variant="outline" 
                       onClick={() => {
                         console.log('Full user object:', user);
-                        console.log('Available roles check:', ['super_admin', 'state_admin', 'district_admin', 'area_admin', 'unit_admin'].includes(user?.role || ''));
+                        console.log('Available roles check:', ['super_admin', 'state_admin', 'district_admin', 'area_admin', 'area_president', 'unit_admin'].includes(user?.role || ''));
                       }}
                     >
                       Debug User Info

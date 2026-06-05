@@ -159,7 +159,7 @@ class ProjectController {
               description: "Active project implementation and execution",
               order: 3,
               isRequired: true,
-              allowedRoles: ['super_admin', 'state_admin', 'project_coordinator', 'area_admin', 'unit_admin'],
+              allowedRoles: ['super_admin', 'state_admin', 'project_coordinator', 'area_admin', 'area_president', 'unit_admin'],
               estimatedDuration: 90
             },
             {
@@ -439,7 +439,7 @@ class ProjectController {
       }
 
       // Check if user role is allowed to update this stage
-      const allowedRoles = ['super_admin', 'state_admin', 'district_admin', 'area_admin', 'unit_admin', 'project_coordinator', 'scheme_coordinator'];
+      const allowedRoles = ['super_admin', 'state_admin', 'district_admin', 'area_admin', 'area_president', 'unit_admin', 'project_coordinator', 'scheme_coordinator'];
       if (!allowedRoles.includes(req.user.role)) {
         return ResponseHelper.error(res, 'Access denied to update project status', 403);
       }

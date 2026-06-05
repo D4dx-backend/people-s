@@ -276,7 +276,7 @@ const checkResourceOwnership = (resourceField = 'userId') => {
       // Admin roles can access all resources
       if (user.isSuperAdmin) return next();
       const effectiveRole = req.userRole || user.role;
-      const adminRoles = ['state_admin', 'district_admin', 'area_admin', 'unit_admin'];
+      const adminRoles = ['state_admin', 'district_admin', 'area_admin', 'area_president', 'unit_admin'];
       if (adminRoles.includes(effectiveRole)) {
         return next();
       }
@@ -468,6 +468,7 @@ const checkAdminHierarchy = (req, res, next) => {
       state_admin: ['state', 'district', 'area', 'unit'],
       district_admin: ['district', 'area', 'unit'],
       area_admin: ['area', 'unit'],
+      area_president: ['area', 'unit'],
       unit_admin: ['unit']
     };
 

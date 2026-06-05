@@ -185,7 +185,7 @@ class SchemeController {
             description: "Initial application submission and registration",
             order: 1,
             isRequired: true,
-            allowedRoles: ['super_admin', 'state_admin', 'district_admin', 'area_admin', 'unit_admin'],
+            allowedRoles: ['super_admin', 'state_admin', 'district_admin', 'area_admin', 'area_president', 'unit_admin'],
             autoTransition: true,
             transitionConditions: "Automatically set when application is submitted"
           },
@@ -194,7 +194,7 @@ class SchemeController {
             description: "Verification of submitted documents and eligibility",
             order: 2,
             isRequired: true,
-            allowedRoles: ['super_admin', 'state_admin', 'district_admin', 'area_admin', 'unit_admin'],
+            allowedRoles: ['super_admin', 'state_admin', 'district_admin', 'area_admin', 'area_president', 'unit_admin'],
             autoTransition: false,
             transitionConditions: ""
           },
@@ -203,7 +203,7 @@ class SchemeController {
             description: "Physical verification and field assessment",
             order: 3,
             isRequired: false,
-            allowedRoles: ['super_admin', 'state_admin', 'district_admin', 'area_admin', 'unit_admin'],
+            allowedRoles: ['super_admin', 'state_admin', 'district_admin', 'area_admin', 'area_president', 'unit_admin'],
             autoTransition: false,
             transitionConditions: ""
           },
@@ -212,7 +212,7 @@ class SchemeController {
             description: "Beneficiary interview and assessment",
             order: 4,
             isRequired: schemeData.applicationSettings?.requiresInterview || false,
-            allowedRoles: ['super_admin', 'state_admin', 'district_admin', 'area_admin', 'unit_admin', 'scheme_coordinator'],
+            allowedRoles: ['super_admin', 'state_admin', 'district_admin', 'area_admin', 'area_president', 'unit_admin', 'scheme_coordinator'],
             autoTransition: false,
             transitionConditions: ""
           },
@@ -221,7 +221,7 @@ class SchemeController {
             description: "Final review and decision making",
             order: 5,
             isRequired: true,
-            allowedRoles: ['super_admin', 'state_admin', 'district_admin', 'area_admin'],
+            allowedRoles: ['super_admin', 'state_admin', 'district_admin', 'area_admin', 'area_president'],
             autoTransition: false,
             transitionConditions: ""
           },
@@ -230,7 +230,7 @@ class SchemeController {
             description: "Application approved for disbursement",
             order: 6,
             isRequired: true,
-            allowedRoles: ['super_admin', 'state_admin', 'district_admin', 'area_admin'],
+            allowedRoles: ['super_admin', 'state_admin', 'district_admin', 'area_admin', 'area_president'],
             autoTransition: false,
             transitionConditions: ""
           },
@@ -239,7 +239,7 @@ class SchemeController {
             description: "Money disbursement to beneficiary",
             order: 7,
             isRequired: true,
-            allowedRoles: ['super_admin', 'state_admin', 'district_admin', 'area_admin'],
+            allowedRoles: ['super_admin', 'state_admin', 'district_admin', 'area_admin', 'area_president'],
             autoTransition: false,
             transitionConditions: ""
           },
@@ -248,7 +248,7 @@ class SchemeController {
             description: "Application process completed successfully",
             order: 8,
             isRequired: true,
-            allowedRoles: ['super_admin', 'state_admin', 'district_admin', 'area_admin'],
+            allowedRoles: ['super_admin', 'state_admin', 'district_admin', 'area_admin', 'area_president'],
             autoTransition: true,
             transitionConditions: "Automatically set when all disbursements are complete"
           }

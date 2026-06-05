@@ -639,6 +639,11 @@ class NotificationService {
         relatedEntities, pushData, createdBy
       }),
       ...this._notifyAdminRole({
+        role: 'area_president', filterField: 'adminScope.area', filterValue: application.area,
+        title, message, category: 'application_status', priority: 'high',
+        relatedEntities, pushData, createdBy
+      }),
+      ...this._notifyAdminRole({
         role: 'district_admin', filterField: 'adminScope.district', filterValue: application.district,
         title, message, category: 'application_status', priority: 'high',
         relatedEntities, pushData, createdBy
@@ -687,6 +692,11 @@ class NotificationService {
       }),
       ...this._notifyAdminRole({
         role: 'area_admin', filterField: 'adminScope.area', filterValue: application.area,
+        title, message: msgAdmin, category: 'application_status', priority: 'high',
+        relatedEntities, pushData, createdBy
+      }),
+      ...this._notifyAdminRole({
+        role: 'area_president', filterField: 'adminScope.area', filterValue: application.area,
         title, message: msgAdmin, category: 'application_status', priority: 'high',
         relatedEntities, pushData, createdBy
       }),
@@ -741,6 +751,11 @@ class NotificationService {
         relatedEntities, pushData, createdBy
       }),
       ...this._notifyAdminRole({
+        role: 'area_president', filterField: 'adminScope.area', filterValue: application.area,
+        title, message: msgAdmin, category: 'reminder', priority: 'high',
+        relatedEntities, pushData, createdBy
+      }),
+      ...this._notifyAdminRole({
         role: 'district_admin', filterField: 'adminScope.district', filterValue: application.district,
         title, message: msgAdmin, category: 'reminder', priority: 'high',
         relatedEntities, pushData, createdBy
@@ -791,6 +806,11 @@ class NotificationService {
         relatedEntities, pushData, createdBy
       }),
       ...this._notifyAdminRole({
+        role: 'area_president', filterField: 'adminScope.area', filterValue: application.area,
+        title, message: msgAdmin, category: 'reminder', priority: 'high',
+        relatedEntities, pushData, createdBy
+      }),
+      ...this._notifyAdminRole({
         role: 'district_admin', filterField: 'adminScope.district', filterValue: application.district,
         title, message: msgAdmin, category: 'reminder', priority: 'high',
         relatedEntities, pushData, createdBy
@@ -819,6 +839,11 @@ class NotificationService {
     const jobs = [
       ...this._notifyAdminRole({
         role: 'area_admin', filterField: 'adminScope.area', filterValue: application.area,
+        title, message, category: 'application_status', priority: 'high',
+        relatedEntities, pushData, createdBy
+      }),
+      ...this._notifyAdminRole({
+        role: 'area_president', filterField: 'adminScope.area', filterValue: application.area,
         title, message, category: 'application_status', priority: 'high',
         relatedEntities, pushData, createdBy
       }),
@@ -868,6 +893,11 @@ class NotificationService {
       }),
       ...this._notifyAdminRole({
         role: 'area_admin', filterField: 'adminScope.area', filterValue: application.area,
+        title, message: msgAdmin, category: 'application_status', priority: 'high',
+        relatedEntities, pushData, createdBy: revertedBy
+      }),
+      ...this._notifyAdminRole({
+        role: 'area_president', filterField: 'adminScope.area', filterValue: application.area,
         title, message: msgAdmin, category: 'application_status', priority: 'high',
         relatedEntities, pushData, createdBy: revertedBy
       }),
@@ -950,11 +980,12 @@ class NotificationService {
       const filterFields = {
         'unit_admin': 'adminScope.unit',
         'area_admin': 'adminScope.area',
+        'area_president': 'adminScope.area',
         'district_admin': 'adminScope.district'
       };
       const filterField = filterFields[targetRole];
       const filterValue = targetRole === 'unit_admin' ? application.unit 
-                        : targetRole === 'area_admin' ? application.area 
+                        : (targetRole === 'area_admin' || targetRole === 'area_president') ? application.area 
                         : application.district;
 
       if (filterField && filterValue) {

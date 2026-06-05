@@ -293,10 +293,11 @@ userSchema.methods.hasProjectAccess = function (projectId) {
 // Method to check role hierarchy permissions
 userSchema.methods.canManageRole = function (targetRole) {
   const roleHierarchy = {
-    super_admin: ['super_admin', 'state_admin', 'district_admin', 'area_admin', 'unit_admin', 'project_coordinator', 'scheme_coordinator', 'beneficiary'],
-    state_admin: ['district_admin', 'area_admin', 'unit_admin', 'project_coordinator', 'scheme_coordinator', 'beneficiary'],
-    district_admin: ['area_admin', 'unit_admin', 'beneficiary'],
+    super_admin: ['super_admin', 'state_admin', 'district_admin', 'area_admin', 'area_president', 'unit_admin', 'project_coordinator', 'scheme_coordinator', 'beneficiary'],
+    state_admin: ['district_admin', 'area_admin', 'area_president', 'unit_admin', 'project_coordinator', 'scheme_coordinator', 'beneficiary'],
+    district_admin: ['area_admin', 'area_president', 'unit_admin', 'beneficiary'],
     area_admin: ['unit_admin', 'beneficiary'],
+    area_president: ['unit_admin', 'beneficiary'],
     unit_admin: ['beneficiary'],
     project_coordinator: [],
     scheme_coordinator: [],
@@ -334,7 +335,7 @@ userSchema.methods.canAccessUser = function (targetUser) {
   if (!this.canManageRole(targetUser.role)) return false;
   
   // Check regional access for geographic roles
-  if (['district_admin', 'area_admin', 'unit_admin'].includes(this.role)) {
+  if (['district_admin', 'area_admin', 'area_president', 'unit_admin'].includes(this.role)) {
     if (!targetUser.adminScope?.regions) return true;
     
     return targetUser.adminScope.regions.some(regionId =>

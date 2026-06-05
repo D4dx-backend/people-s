@@ -105,7 +105,7 @@ router.get('/export',
 // Consolidation stats (must come before /:id routes)
 router.get('/consolidation',
   authenticate, crossFranchiseResolver,
-  authorize('super_admin', 'state_admin', 'district_admin', 'area_admin', 'unit_admin'),
+  authorize('super_admin', 'state_admin', 'district_admin', 'area_admin', 'unit_admin', 'area_president'),
   getApplicationConsolidation
 );
 
@@ -168,7 +168,7 @@ router.patch('/:id/location',
 // Download filled application as PDF
 router.get('/:id/pdf',
   authenticate, crossFranchiseResolver,
-  authorize('super_admin', 'state_admin', 'district_admin', 'area_admin', 'unit_admin', 'project_coordinator', 'scheme_coordinator'),
+  authorize('super_admin', 'state_admin', 'district_admin', 'area_admin', 'unit_admin', 'area_president', 'project_coordinator', 'scheme_coordinator'),
   downloadApplicationPdf
 );
 router.post('/', 

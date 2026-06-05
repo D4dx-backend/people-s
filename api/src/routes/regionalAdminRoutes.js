@@ -71,7 +71,7 @@ router.get('/applications/:id',
 // Update application status (AREA ADMIN ONLY)
 router.put('/applications/:id/status',
   authenticate, crossFranchiseResolver,
-  authorize('area_admin'), // Only area admin can update status
+  authorize('area_admin', 'area_president'), // Only area admin/president can update status
   [
     param('id').isMongoId().withMessage('Invalid application ID'),
     body('status')

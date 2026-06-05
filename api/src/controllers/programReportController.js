@@ -19,7 +19,7 @@ const isStateAdmin = (req) =>
 const effectiveRole = (req) =>
   req.userRole || req.user?.role;
 
-const SUBMITTER_ROLES = ['unit_admin', 'area_admin', 'district_admin'];
+const SUBMITTER_ROLES = ['unit_admin', 'area_admin', 'area_president', 'district_admin'];
 
 /**
  * Derive the attachment "kind" from a mimetype string.
