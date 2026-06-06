@@ -67,6 +67,7 @@ const StageItem: React.FC<{
   const roleToCommentField: Record<string, string> = {
     'unit_admin': 'unitAdmin',
     'area_admin': 'areaAdmin',
+    'area_president': 'areaPresident',
     'district_admin': 'districtAdmin',
     'super_admin': 'districtAdmin',
     'state_admin': 'districtAdmin'
@@ -156,7 +157,7 @@ const StageItem: React.FC<{
   // Comment config helpers
   const commentConfig = stage.commentConfig || {};
   const comments = stage.comments || {};
-  const hasAnyCommentConfig = commentConfig.unitAdmin?.enabled || commentConfig.areaAdmin?.enabled || commentConfig.districtAdmin?.enabled;
+  const hasAnyCommentConfig = commentConfig.unitAdmin?.enabled || commentConfig.areaPresident?.enabled || commentConfig.areaAdmin?.enabled || commentConfig.districtAdmin?.enabled;
   const requiredDocs = stage.requiredDocuments || [];
 
   return (
@@ -227,9 +228,9 @@ const StageItem: React.FC<{
           {/* Comments Section */}
           {hasAnyCommentConfig && (
             <div className="mt-2 space-y-1.5">
-              {(['unitAdmin', 'areaAdmin', 'districtAdmin'] as const).map((roleKey) => {
+              {(['unitAdmin', 'areaPresident', 'areaAdmin', 'districtAdmin'] as const).map((roleKey) => {
                 if (!commentConfig[roleKey]?.enabled) return null;
-                const roleLabels: Record<string, string> = { unitAdmin: 'Unit Admin', areaAdmin: 'Area Admin', districtAdmin: 'District Admin' };
+                const roleLabels: Record<string, string> = { unitAdmin: 'Unit Admin', areaPresident: 'Area President', areaAdmin: 'Area Admin', districtAdmin: 'District Admin' };
                 const existingComment = comments[roleKey];
                 const isMyField = myCommentField === roleKey;
                 const isRequiredComment = commentConfig[roleKey]?.required;
@@ -1271,7 +1272,7 @@ export const ApplicationDetailModal: React.FC<ApplicationDetailModalProps> = ({
 
   if (!isOpen) return null;
 
-  const canEditLocation = user?.role === 'unit_admin' || user?.role === 'area_admin';
+  const canEditLocation = user?.role === 'unit_admin' || user?.role === 'area_admin' || user?.role === 'area_president';
 
   const handleOpenLocationEdit = async () => {
     const currentAreaId = application?.area?._id || application?.area || '';
@@ -2227,8 +2228,9 @@ export const ApplicationDetailModal: React.FC<ApplicationDetailModalProps> = ({
                         const roleVisibility: Record<string, string[] | null> = {
                           super_admin:    null,
                           state_admin:    null,
-                          district_admin: ['district_admin', 'area_admin', 'unit_admin'],
-                          area_admin:     ['area_admin', 'unit_admin'],
+                          district_admin: ['district_admin', 'area_admin', 'area_president', 'unit_admin'],
+                          area_admin:     ['area_admin', 'area_president', 'unit_admin'],
+                          area_president: ['area_president', 'area_admin', 'unit_admin'],
                           unit_admin:     ['unit_admin'],
                         };
                         const visibleRoles = user?.role ? roleVisibility[user.role] : null;

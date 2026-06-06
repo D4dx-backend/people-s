@@ -303,7 +303,7 @@ router.patch('/bulk-update',
 router.get('/subordinates',
   authenticate,
   crossFranchiseResolver,
-  authorize('state_admin', 'district_admin', 'area_admin'),
+  authorize('state_admin', 'district_admin', 'area_admin', 'area_president'),
   userController.getSubordinates
 );
 
@@ -334,7 +334,7 @@ router.get('/:id/franchise-memberships',
  */
 router.post('/:id/roles',
   authenticate, crossFranchiseResolver,
-  authorize('super_admin', 'state_admin', 'district_admin', 'area_admin'),
+  authorize('super_admin', 'state_admin', 'district_admin', 'area_admin', 'area_president'),
   userController.addUserRole
 );
 
@@ -345,7 +345,7 @@ router.post('/:id/roles',
  */
 router.delete('/:id/roles/:role',
   authenticate, crossFranchiseResolver,
-  authorize('super_admin', 'state_admin', 'district_admin', 'area_admin'),
+  authorize('super_admin', 'state_admin', 'district_admin', 'area_admin', 'area_president'),
   userController.removeUserRole
 );
 

@@ -1361,6 +1361,38 @@ class RBACService {
         ]
       },
       {
+        name: 'area_president',
+        displayName: 'Area President',
+        description: 'Area-level president with access to view and comment on all applications within their area',
+        level: 4,
+        category: 'admin',
+        scopeConfig: {
+          allowedScopeLevels: ['area'],
+          defaultScopeLevel: 'area',
+          allowMultipleScopes: false,
+          maxScopes: 1
+        },
+        constraints: {
+          maxUsers: 500,
+          requiresApproval: false,
+          isDeletable: true,
+          isModifiable: true
+        },
+        permissions: [
+          'users.read.regional',
+          'roles.read',
+          'permissions.read',
+          'beneficiaries.read.regional',
+          'applications.read.regional', 'applications.update.regional',
+          'projects.read.assigned',
+          'schemes.read.assigned',
+          'reports.read',
+          'dashboard.read.regional',
+          'finances.read.regional',
+          'donors.read.regional'
+        ]
+      },
+      {
         name: 'project_coordinator',
         displayName: 'Project Coordinator',
         description: 'Project-specific coordination and management',
@@ -1481,7 +1513,7 @@ class RBACService {
         // Update existing role if it's modifiable or if it's a system role that needs permission updates
         const shouldUpdate = existingRole.type === 'system' && (existingRole.constraints.isModifiable !== false);
         
-        if (shouldUpdate || existingRole.name === 'super_admin' || existingRole.name === 'area_admin' || existingRole.name === 'district_admin' || existingRole.name === 'unit_admin') {
+        if (shouldUpdate || existingRole.name === 'super_admin' || existingRole.name === 'area_admin' || existingRole.name === 'district_admin' || existingRole.name === 'unit_admin' || existingRole.name === 'area_president') {
           const permissionIds = [];
           
           if (roleData.name === 'super_admin') {

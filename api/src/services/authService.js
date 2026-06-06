@@ -1119,7 +1119,7 @@ class AuthService {
     if (user.role === 'super_admin' || user.role === 'state_admin') return true;
 
     // Check regional access for geographic roles
-    if (['district_admin', 'area_admin', 'unit_admin'].includes(user.role)) {
+    if (['district_admin', 'area_admin', 'area_president', 'unit_admin'].includes(user.role)) {
       if (resourceData.regionId || resourceData.regions) {
         const targetRegions = Array.isArray(resourceData.regions) 
           ? resourceData.regions 

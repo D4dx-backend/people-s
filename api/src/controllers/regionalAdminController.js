@@ -29,7 +29,7 @@ class RegionalAdminController {
       const user = await User.findOne({ 
         phone, 
         isActive: true,
-        role: { $in: ['unit_admin', 'area_admin', 'district_admin'] }
+        role: { $in: ['unit_admin', 'area_admin', 'area_president', 'district_admin'] }
       }).populate('profile.location.district profile.location.area profile.location.unit');
 
       if (!user) {
@@ -116,7 +116,7 @@ class RegionalAdminController {
       const user = await User.findOne({ 
         phone, 
         isActive: true,
-        role: { $in: ['unit_admin', 'area_admin', 'district_admin'] }
+        role: { $in: ['unit_admin', 'area_admin', 'area_president', 'district_admin'] }
       }).populate('profile.location.district profile.location.area profile.location.unit');
 
       if (!user) {
@@ -235,7 +235,7 @@ class RegionalAdminController {
         }
         filter.district = districtId;
         console.log('🔍 District admin filter:', filter);
-      } else if (user.role === 'area_admin') {
+      } else if (user.role === 'area_admin' || user.role === 'area_president') {
         // Support both new (adminScope.area) and old (adminScope.regions) formats
         const areaId = user.adminScope?.area || 
                       (user.adminScope?.regions && user.adminScope.regions[0]) ||
@@ -245,7 +245,7 @@ class RegionalAdminController {
           return ResponseHelper.error(res, 'Area location not set for admin', 400);
         }
         filter.area = areaId;
-        console.log('🔍 Area admin filter:', filter);
+        console.log('🔍 Area admin/president filter:', filter);
       } else if (user.role === 'unit_admin') {
         // Support both new (adminScope.unit) and old (adminScope.regions) formats
         const unitId = user.adminScope?.unit || 
@@ -370,7 +370,7 @@ class RegionalAdminController {
 
       const hasAccess = 
         (user.role === 'district_admin' && application.district?._id.toString() === districtId?.toString()) ||
-        (user.role === 'area_admin' && application.area?._id.toString() === areaId?.toString()) ||
+        ((user.role === 'area_admin' || user.role === 'area_president') && application.area?._id.toString() === areaId?.toString()) ||
         (user.role === 'unit_admin' && application.unit?._id.toString() === unitId?.toString());
 
       if (!hasAccess) {
@@ -395,8 +395,8 @@ class RegionalAdminController {
       const { status, comments, approvedAmount } = req.body;
       const user = req.user;
 
-      // Only area admin can update status
-      if (user.role !== 'area_admin') {
+      // Only area admin/president can update status
+      if (user.role !== 'area_admin' && user.role !== 'area_president') {
         return ResponseHelper.error(res, 'Only area admins can update application status', 403);
       }
 
@@ -508,7 +508,7 @@ class RegionalAdminController {
                           (user.adminScope?.regions && user.adminScope.regions[0]) ||
                           user.profile?.location?.district;
         filter.district = districtId;
-      } else if (user.role === 'area_admin') {
+      } else if (user.role === 'area_admin' || user.role === 'area_president') {
         const areaId = user.adminScope?.area || 
                       (user.adminScope?.regions && user.adminScope.regions[0]) ||
                       user.profile?.location?.area;

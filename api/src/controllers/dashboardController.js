@@ -17,7 +17,7 @@ class DashboardController {
       let locationFilter = {};
       if (effectiveRole === 'unit_admin' && effectiveScope?.unit) {
         locationFilter = { unit: effectiveScope.unit };
-      } else if (effectiveRole === 'area_admin' && effectiveScope?.area) {
+      } else if ((effectiveRole === 'area_admin' || effectiveRole === 'area_president') && effectiveScope?.area) {
         locationFilter = { area: effectiveScope.area };
       } else if (effectiveRole === 'district_admin' && effectiveScope?.district) {
         locationFilter = { district: effectiveScope.district };
@@ -204,7 +204,7 @@ class DashboardController {
       let locationFilter = {};
       if (effectiveRole === 'unit_admin' && effectiveScope?.unit) {
         locationFilter = { unit: effectiveScope.unit };
-      } else if (effectiveRole === 'area_admin' && effectiveScope?.area) {
+      } else if ((effectiveRole === 'area_admin' || effectiveRole === 'area_president') && effectiveScope?.area) {
         locationFilter = { area: effectiveScope.area };
       } else if (effectiveRole === 'district_admin' && effectiveScope?.district) {
         locationFilter = { district: effectiveScope.district };

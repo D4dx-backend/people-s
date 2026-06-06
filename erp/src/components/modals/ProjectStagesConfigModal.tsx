@@ -59,6 +59,7 @@ const roleOptions = [
   { value: 'state_admin', label: 'State Admin' },
   { value: 'district_admin', label: 'District Admin' },
   { value: 'area_admin', label: 'Area Admin' },
+  { value: 'area_president', label: 'Area President' },
   { value: 'unit_admin', label: 'Unit Admin' },
   { value: 'project_coordinator', label: 'Project Coordinator' },
   { value: 'scheme_coordinator', label: 'Scheme Coordinator' }

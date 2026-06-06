@@ -235,10 +235,10 @@ masterDataSchema.methods.canUserAccess = function(user) {
   // Check scope-based access
   switch (this.scope) {
     case 'global':
-      return ['state_admin', 'district_admin', 'area_admin', 'unit_admin', 'project_coordinator', 'scheme_coordinator'].includes(user.role);
+      return ['state_admin', 'district_admin', 'area_admin', 'area_president', 'unit_admin', 'project_coordinator', 'scheme_coordinator'].includes(user.role);
     
     case 'state':
-      return ['state_admin', 'district_admin', 'area_admin', 'unit_admin'].includes(user.role);
+      return ['state_admin', 'district_admin', 'area_admin', 'area_president', 'unit_admin'].includes(user.role);
     
     case 'district':
     case 'area':
@@ -260,7 +260,7 @@ masterDataSchema.methods.canUserAccess = function(user) {
     
     case 'scheme_specific':
       // For scheme-specific, check if user has access to any of the target schemes
-      return user.role === 'scheme_coordinator' || ['state_admin', 'district_admin', 'area_admin', 'unit_admin'].includes(user.role);
+      return user.role === 'scheme_coordinator' || ['state_admin', 'district_admin', 'area_admin', 'area_president', 'unit_admin'].includes(user.role);
     
     default:
       return false;

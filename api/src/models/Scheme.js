@@ -148,7 +148,7 @@ const schemeSchema = new mongoose.Schema({
     },
     interviewSchedulerRoles: [{
       type: String,
-      enum: ['super_admin', 'state_admin', 'district_admin', 'area_admin', 'unit_admin', 'scheme_coordinator', 'project_coordinator']
+      enum: ['super_admin', 'state_admin', 'district_admin', 'area_admin', 'area_president', 'unit_admin', 'scheme_coordinator', 'project_coordinator']
     }],
     allowMultipleApplications: {
       type: Boolean,
@@ -464,8 +464,8 @@ schemeSchema.methods.canUserAccess = function(user) {
     if (hasAccess) return true;
   }
   
-  // Area admins can access schemes if their area is in targetRegions
-  if (user.role === 'area_admin' && user.adminScope?.area) {
+  // Area admins/presidents can access schemes if their area is in targetRegions
+  if ((user.role === 'area_admin' || user.role === 'area_president') && user.adminScope?.area) {
     const userAreaId = getId(user.adminScope.area);
     const hasAccess = this.targetRegions.some(regionId => 
       getId(regionId) === userAreaId

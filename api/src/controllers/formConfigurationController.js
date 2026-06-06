@@ -43,7 +43,7 @@ class FormConfigurationController {
       // SIMPLE FIX: If direct scheme access fails for unit/area/district admin,
       // check if they have ANY applications for this scheme in their scope
       // Since form config is read-only metadata, this is safe
-      if (!canAccess && ['unit_admin', 'area_admin', 'district_admin'].includes(req.user.role)) {
+      if (!canAccess && ['unit_admin', 'area_admin', 'area_president', 'district_admin'].includes(req.user.role)) {
         console.log('🔍 [FORM-CONFIG] Fallback check: Looking for applications in user scope');
         const Application = require('../models/Application');
         
@@ -65,7 +65,7 @@ class FormConfigurationController {
         if (req.user.role === 'unit_admin' && userUnitId) {
           locationMatch.push({ unit: userUnitId });
         }
-        if (req.user.role === 'area_admin' && userAreaId) {
+        if ((req.user.role === 'area_admin' || req.user.role === 'area_president') && userAreaId) {
           locationMatch.push({ area: userAreaId });
         }
         if (req.user.role === 'district_admin' && userDistrictId) {

@@ -24,7 +24,9 @@ async function enrichUsersWithLocationScope(users, franchiseId) {
       u.adminScope.district = r0;
     } else if (u.role === 'area_admin' && !u.adminScope.area) {
       u.adminScope.area = r0;
-    } else if (['unit_admin', 'area_president'].includes(u.role) && !u.adminScope.unit) {
+    } else if (u.role === 'area_president' && !u.adminScope.area) {
+      u.adminScope.area = r0;
+    } else if (u.role === 'unit_admin' && !u.adminScope.unit) {
       u.adminScope.unit = r0;
     }
   }
@@ -563,8 +565,8 @@ class UserController {
       // Prevent role escalation
       if (updates.role && updates.role !== user.role) {
         const roleHierarchy = {
-          super_admin: ['super_admin', 'state_admin', 'project_coordinator', 'scheme_coordinator', 'district_admin', 'area_admin', 'unit_admin', 'beneficiary'],
-          state_admin: ['state_admin', 'project_coordinator', 'scheme_coordinator', 'district_admin', 'area_admin', 'unit_admin', 'beneficiary'],
+          super_admin: ['super_admin', 'state_admin', 'project_coordinator', 'scheme_coordinator', 'district_admin', 'area_admin', 'area_president', 'unit_admin', 'beneficiary'],
+          state_admin: ['state_admin', 'project_coordinator', 'scheme_coordinator', 'district_admin', 'area_admin', 'area_president', 'unit_admin', 'beneficiary'],
           district_admin: ['area_admin', 'unit_admin', 'area_president', 'beneficiary'],
           area_admin: ['unit_admin', 'area_president', 'beneficiary']
         };
@@ -1204,7 +1206,7 @@ class UserController {
             (s?.regions || []).some(r => toId(r) === String(callerScope.district))
           );
         });
-      } else if (callerRole === 'area_admin' && callerScope.area) {
+      } else if ((callerRole === 'area_admin' || callerRole === 'area_president') && callerScope.area) {
         // Fetch all units that belong to this area so we can match unit admins correctly
         const unitsUnderArea = await Location.find(
           { type: 'unit', parent: callerScope.area },

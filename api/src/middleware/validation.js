@@ -167,7 +167,7 @@ const userSchemas = {
     password: commonSchemas.password.optional().allow('', null),
     role: Joi.string().valid(
       'super_admin', 'state_admin', 'project_coordinator', 'scheme_coordinator', 
-      'district_admin', 'area_admin', 'unit_admin', 'beneficiary'
+      'district_admin', 'area_admin', 'area_president', 'unit_admin', 'beneficiary'
     ).required(),
     isActive: Joi.boolean().default(true),
     adminScope: Joi.object({
@@ -179,7 +179,7 @@ const userSchemas = {
       projects: Joi.array().items(commonSchemas.objectId),
       schemes: Joi.array().items(commonSchemas.objectId)
     }).when('role', {
-      is: Joi.string().valid('district_admin', 'area_admin', 'unit_admin', 'project_coordinator', 'scheme_coordinator'),
+      is: Joi.string().valid('district_admin', 'area_admin', 'area_president', 'unit_admin', 'project_coordinator', 'scheme_coordinator'),
       then: Joi.required(),
       otherwise: Joi.optional()
     }),
@@ -203,7 +203,7 @@ const userSchemas = {
     phone: commonSchemas.phone,
     role: Joi.string().valid(
       'state_admin', 'project_coordinator', 'scheme_coordinator', 
-      'district_admin', 'area_admin', 'unit_admin', 'beneficiary'
+      'district_admin', 'area_admin', 'area_president', 'unit_admin', 'beneficiary'
     ),
     isActive: Joi.boolean(),
     profile: Joi.object({
@@ -229,7 +229,7 @@ const userSchemas = {
   query: Joi.object({
     role: Joi.string().valid(
       'super_admin', 'state_admin', 'project_coordinator', 'scheme_coordinator', 
-      'district_admin', 'area_admin', 'unit_admin', 'beneficiary'
+      'district_admin', 'area_admin', 'area_president', 'unit_admin', 'beneficiary'
     ),
     isActive: Joi.boolean(),
     region: commonSchemas.objectId,
@@ -526,7 +526,7 @@ const notificationSchemas = {
     targeting: Joi.object({
       userRoles: Joi.array().items(Joi.string().valid(
         'state_admin', 'project_coordinator', 'scheme_coordinator', 
-        'district_admin', 'area_admin', 'unit_admin', 'beneficiary'
+        'district_admin', 'area_admin', 'area_president', 'unit_admin', 'beneficiary'
       )),
       regions: Joi.array().items(commonSchemas.objectId),
       projects: Joi.array().items(commonSchemas.objectId),

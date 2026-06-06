@@ -33,14 +33,14 @@ function buildRegionalMatchStage(req) {
   if (adminScope?.regions && adminScope.regions.length > 0) {
     const regions = adminScope.regions.map(r => getObjectId(r));
     if (effectiveRole === 'district_admin') return { 'application.district': { $in: regions } };
-    if (effectiveRole === 'area_admin') return { 'application.area': { $in: regions } };
+    if (effectiveRole === 'area_admin' || effectiveRole === 'area_president') return { 'application.area': { $in: regions } };
     if (effectiveRole === 'unit_admin') return { 'application.unit': { $in: regions } };
   } else {
     // Fallback to direct scope fields
     if (effectiveRole === 'district_admin' && adminScope?.district) {
       return { 'application.district': getObjectId(adminScope.district) };
     }
-    if (effectiveRole === 'area_admin' && adminScope?.area) {
+    if ((effectiveRole === 'area_admin' || effectiveRole === 'area_president') && adminScope?.area) {
       return { 'application.area': getObjectId(adminScope.area) };
     }
     if (effectiveRole === 'unit_admin' && adminScope?.unit) {

@@ -334,7 +334,7 @@ router.get('/:id/form-config',
 
 // Download blank application form as PDF
 router.get('/:id/form-pdf/blank',
-  authorize('super_admin', 'state_admin', 'district_admin', 'area_admin', 'unit_admin'),
+  authorize('super_admin', 'state_admin', 'district_admin', 'area_admin', 'unit_admin', 'area_president'),
   require('../controllers/applicationController').downloadBlankFormPdf
 );
 

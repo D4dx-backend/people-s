@@ -63,7 +63,7 @@ const CommandPalette: React.FC = () => {
 
   // ── Permission helpers (same logic as Sidebar) ──
 
-  const isLimitedAdmin = user && ['area_admin', 'district_admin', 'unit_admin'].includes(user.role);
+  const isLimitedAdmin = user && ['area_admin', 'area_president', 'district_admin', 'unit_admin'].includes(user.role);
 
   const hasAccessToItem = useCallback(
     (item: { permissions: string[]; requireSuperAdmin?: boolean }) => {
