@@ -8,6 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { ApplicationDetailModal } from "@/components/modals/ApplicationDetailModal";
+import { TransferApplicationButton } from "@/components/applications/TransferApplicationButton";
 import { GenericFilters } from "@/components/filters/GenericFilters";
 import { useApplicationFilters } from "@/hooks/useApplicationFilters";
 import { useExport } from '@/hooks/useExport';
@@ -296,6 +297,7 @@ export default function UnderReviewApplications() {
                           </div>
                         )}
                         <Button variant="secondary" size="sm" onClick={() => { setSelectedApp(app); setShowReportsModal(true); }} className="w-full"><FileText className="mr-2 h-4 w-4" />Reports</Button>
+                        <TransferApplicationButton application={app} onTransferred={loadApplications} variant="default" className="w-full" />
                       </div>
                     </div>
                   </div>
@@ -366,6 +368,7 @@ export default function UnderReviewApplications() {
                             </Button>
                           </>
                         )}
+                        <TransferApplicationButton application={app} onTransferred={loadApplications} />
                       </div>
                     </TableCell>
                   </TableRow>

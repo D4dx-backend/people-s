@@ -179,6 +179,16 @@ const getApplication = async (req, res) => {
       .populate('district', 'name code')
       .populate('area', 'name code')
       .populate('unit', 'name code')
+      .populate('originalLocation.district', 'name code')
+      .populate('originalLocation.area', 'name code')
+      .populate('originalLocation.unit', 'name code')
+      .populate('locationChangeHistory.previousDistrict', 'name code')
+      .populate('locationChangeHistory.previousArea', 'name code')
+      .populate('locationChangeHistory.previousUnit', 'name code')
+      .populate('locationChangeHistory.newDistrict', 'name code')
+      .populate('locationChangeHistory.newArea', 'name code')
+      .populate('locationChangeHistory.newUnit', 'name code')
+      .populate('locationChangeHistory.changedBy', 'name role')
       .populate('createdBy', 'name')
       .populate('reviewedBy', 'name')
       .populate('approvedBy', 'name');
@@ -579,6 +589,33 @@ const approveApplication = async (req, res) => {
     application.approvedAt = new Date();
     application.approvalComments = comments;
     application.updatedBy = req.user.id;
+
+    // On direct approval, mark all pending/in-progress stages as completed
+    // and set currentStage to the last stage (typically "Completed")
+    if (application.applicationStages && application.applicationStages.length > 0) {
+      const sortedStages = [...application.applicationStages].sort((a, b) => a.order - b.order);
+      application.applicationStages.forEach(stage => {
+        if (stage.status === 'pending' || stage.status === 'in_progress') {
+          stage.status = 'completed';
+          stage.completedAt = new Date();
+          stage.completedBy = req.user.id;
+          stage.notes = stage.notes || 'Completed via direct approval';
+        }
+      });
+      // Set currentStage to the last stage name (highest order)
+      const lastStage = sortedStages[sortedStages.length - 1];
+      application.currentStage = lastStage.name;
+
+      // Add to stage history
+      if (!application.stageHistory) application.stageHistory = [];
+      application.stageHistory.push({
+        stageName: lastStage.name,
+        status: 'completed',
+        timestamp: new Date(),
+        updatedBy: req.user.id,
+        notes: `Direct approval by ${req.user.role || 'admin'}`
+      });
+    }
 
     // Update distribution timeline with actual approved amount and dates
     await updateDistributionTimelineOnApproval(application, approvedAmount);
@@ -2639,7 +2676,7 @@ const updateApplicationLocation = async (req, res) => {
     if (!area || !unit) {
       return res.status(400).json({
         success: false,
-        message: 'Area and unit are required for location update'
+        message: 'Area and unit are required for transfer'
       });
     }
 
@@ -2654,38 +2691,30 @@ const updateApplicationLocation = async (req, res) => {
       return res.status(403).json({ success: false, message: 'Access denied' });
     }
 
-    // unit_admin and area_admin can only assign to locations within their own scope
-    const userRole = effectiveUser.role;
-    if (userRole === 'unit_admin') {
-      const userUnitIds = effectiveUser.adminScope?.regions
-        ? effectiveUser.adminScope.regions.map(r => r.toString())
-        : effectiveUser.adminScope?.unit ? [effectiveUser.adminScope.unit.toString()] : [];
-      if (!userUnitIds.includes(unit.toString())) {
-        return res.status(403).json({
-          success: false,
-          message: 'Unit admin can only reassign to their own unit'
-        });
-      }
-    } else if (userRole === 'area_admin' || userRole === 'area_president') {
-      const userAreaIds = effectiveUser.adminScope?.regions
-        ? effectiveUser.adminScope.regions.map(r => r.toString())
-        : effectiveUser.adminScope?.area ? [effectiveUser.adminScope.area.toString()] : [];
-      if (area && !userAreaIds.includes(area.toString())) {
-        return res.status(403).json({
-          success: false,
-          message: 'Area admin can only reassign to their own area'
-        });
-      }
+    // Transfers are only allowed while the application is still in an early,
+    // pre-approval state ("just submitted" → "under review"). Once it has moved
+    // past review it must not be relocated.
+    const TRANSFERABLE_STATUSES = ['pending', 'under_review'];
+    if (!TRANSFERABLE_STATUSES.includes(application.status)) {
+      return res.status(400).json({
+        success: false,
+        message: `Application can only be transferred while it is pending or under review (current status: ${application.status}).`
+      });
     }
 
-    // Verify Location documents exist
+    // Verify Location documents exist. Any allowed admin role may transfer to any
+    // location, so we validate the target documents only (no scope restriction).
     const Location = require('../models/Location');
-    const [areaDoc, unitDoc] = await Promise.all([
+    const [areaDoc, unitDoc, districtDoc] = await Promise.all([
       Location.findById(area),
-      Location.findById(unit)
+      Location.findById(unit),
+      district ? Location.findById(district) : Promise.resolve(null)
     ]);
-    if (!areaDoc) return res.status(400).json({ success: false, message: 'Invalid area ID' });
-    if (!unitDoc) return res.status(400).json({ success: false, message: 'Invalid unit ID' });
+    if (!areaDoc || areaDoc.type !== 'area') return res.status(400).json({ success: false, message: 'Invalid area ID' });
+    if (!unitDoc || unitDoc.type !== 'unit') return res.status(400).json({ success: false, message: 'Invalid unit ID' });
+    if (district && (!districtDoc || districtDoc.type !== 'district')) {
+      return res.status(400).json({ success: false, message: 'Invalid district ID' });
+    }
 
     // Record previous values for history
     const previousValues = {
@@ -2694,8 +2723,26 @@ const updateApplicationLocation = async (req, res) => {
       previousUnit: application.unit,
     };
 
-    // Apply new location
-    if (district) application.district = district;
+    // Capture the original (reference) location once, on the first transfer, so
+    // the very first location the application arrived at is always recoverable.
+    if (!application.originalLocation || !application.originalLocation.capturedAt) {
+      application.originalLocation = {
+        state: application.state,
+        district: application.district,
+        area: application.area,
+        unit: application.unit,
+        capturedAt: new Date()
+      };
+    }
+
+    // Apply new location. Keep state in sync with the resolved district when one
+    // is provided (district's parent is the state in the location hierarchy).
+    if (district) {
+      application.district = district;
+      if (districtDoc && districtDoc.parent) {
+        application.state = districtDoc.parent;
+      }
+    }
     application.area = area;
     application.unit = unit;
     application.updatedBy = req.user._id;
@@ -2715,11 +2762,11 @@ const updateApplicationLocation = async (req, res) => {
     // Add to stage history for admin visibility
     if (!application.stageHistory) application.stageHistory = [];
     application.stageHistory.push({
-      stageName: 'Location Updated',
+      stageName: 'Application Transferred',
       status: 'completed',
       timestamp: new Date(),
       updatedBy: req.user._id,
-      notes: `Location updated by ${req.user.role}. ${reason ? `Reason: ${reason}` : ''}`
+      notes: `Application transferred by ${req.user.role}. ${reason ? `Reason: ${reason}` : ''}`
     });
 
     await application.save();
@@ -2727,21 +2774,25 @@ const updateApplicationLocation = async (req, res) => {
     const updated = await Application.findById(id)
       .populate('district', 'name code')
       .populate('area', 'name code')
-      .populate('unit', 'name code');
+      .populate('unit', 'name code')
+      .populate('originalLocation.district', 'name code')
+      .populate('originalLocation.area', 'name code')
+      .populate('originalLocation.unit', 'name code');
 
     res.json({
       success: true,
-      message: 'Application location updated successfully',
+      message: 'Application transferred successfully',
       data: {
         district: updated.district,
         area: updated.area,
         unit: updated.unit,
+        originalLocation: updated.originalLocation,
         locationChangeHistory: updated.locationChangeHistory
       }
     });
   } catch (error) {
-    console.error('Error updating application location:', error);
-    res.status(500).json({ success: false, message: 'Failed to update location' });
+    console.error('Error transferring application:', error);
+    res.status(500).json({ success: false, message: 'Failed to transfer application' });
   }
 };
 

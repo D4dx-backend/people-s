@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
+import VoiceTextarea from '@/components/ui/VoiceTextarea';
 import {
   Dialog,
   DialogContent,
@@ -395,7 +396,7 @@ export default function Banners() {
 
               <div className="space-y-2">
                 <Label htmlFor="description">Description</Label>
-                <Textarea
+                <VoiceTextarea
                   id="description"
                   value={formData.description}
                   onChange={(e) =>

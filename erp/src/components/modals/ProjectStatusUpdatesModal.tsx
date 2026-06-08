@@ -19,6 +19,7 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import VoiceTextarea from "@/components/ui/VoiceTextarea";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -327,7 +328,7 @@ export function ProjectStatusUpdatesModal({ open, onOpenChange, project, onSucce
                           <FormItem>
                             <FormLabel>Description</FormLabel>
                             <FormControl>
-                              <Textarea 
+                              <VoiceTextarea 
                                 placeholder="Describe the current status and progress"
                                 className="resize-none"
                                 {...field}
@@ -345,7 +346,7 @@ export function ProjectStatusUpdatesModal({ open, onOpenChange, project, onSucce
                           <FormItem>
                             <FormLabel>Remarks (Optional)</FormLabel>
                             <FormControl>
-                              <Textarea 
+                              <VoiceTextarea 
                                 placeholder="Additional remarks or notes"
                                 className="resize-none"
                                 {...field}

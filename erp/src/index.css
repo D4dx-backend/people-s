@@ -2,6 +2,12 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Voice waveform bar animation */
+@keyframes voiceWave {
+  0%   { transform: scaleY(0.15); }
+  100% { transform: scaleY(1); }
+}
+
 /* Definition of the design system. All colors, gradients, fonts, etc should be defined here. 
 All colors MUST be HSL.
 */

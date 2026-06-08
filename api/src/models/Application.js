@@ -598,7 +598,18 @@ const applicationSchema = new mongoose.Schema({
     }
   },
 
-  // Location Change History — tracks when area/unit admins correct the location
+  // Original (reference) location — snapshot of where the application first arrived.
+  // Captured once, on the first transfer, so the original submission location is
+  // always visible even after the application has been moved.
+  originalLocation: {
+    state: { type: mongoose.Schema.Types.ObjectId, ref: 'Location' },
+    district: { type: mongoose.Schema.Types.ObjectId, ref: 'Location' },
+    area: { type: mongoose.Schema.Types.ObjectId, ref: 'Location' },
+    unit: { type: mongoose.Schema.Types.ObjectId, ref: 'Location' },
+    capturedAt: { type: Date }
+  },
+
+  // Location Change History — tracks when admins transfer the application
   locationChangeHistory: [{
     changedBy: {
       type: mongoose.Schema.Types.ObjectId,
@@ -644,13 +655,22 @@ applicationSchema.index({ 'recurringConfig.nextPaymentDate': 1 });
 applicationSchema.index({ renewalStatus: 1, expiryDate: 1 });
 applicationSchema.index({ parentApplication: 1 });
 applicationSchema.index({ isRenewal: 1 });
+// Compound indexes for hot lookups (existing-application check & duplicate detection)
+applicationSchema.index({ scheme: 1, status: 1 });
+applicationSchema.index({ beneficiary: 1, scheme: 1, status: 1 });
 
-// Pre-save middleware to generate application number
+// Pre-save middleware to generate application number (atomic, race-condition safe)
 applicationSchema.pre('save', async function(next) {
   if (this.isNew && !this.applicationNumber) {
-    const count = await this.constructor.countDocuments();
-    const year = new Date().getFullYear();
-    this.applicationNumber = `APP${year}${String(count + 1).padStart(6, '0')}`;
+    try {
+      const { generateApplicationNumber } = require('../utils/applicationNumberGenerator');
+      this.applicationNumber = await generateApplicationNumber({
+        franchiseId: this.franchise || null,
+        ApplicationModel: this.constructor
+      });
+    } catch (err) {
+      return next(err);
+    }
   }
   next();
 });

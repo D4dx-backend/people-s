@@ -4,6 +4,7 @@ import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { CheckCircle, XCircle, User, MapPin, Calendar, IndianRupee, FileText, Phone, Mail, Download, Plus, Trash2, Clock, AlertCircle, Repeat } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
+import VoiceTextarea from "@/components/ui/VoiceTextarea";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -746,7 +747,7 @@ export function ApplicationViewModal({
                     Interview Report
                     <span className="text-destructive ml-1">*</span>
                   </Label>
-                  <Textarea 
+                  <VoiceTextarea 
                     placeholder="Enter detailed interview report for committee review..."
                     value={interviewReport}
                     onChange={(e) => setInterviewReport(e.target.value)}
@@ -764,7 +765,7 @@ export function ApplicationViewModal({
                   {showAction === "approve" ? (forwardToCommittee ? "Interview Notes" : "Approval Remarks / Comments") : "Rejection Remarks / Comments"}
                   <span className="text-destructive ml-1">*</span>
                 </Label>
-                <Textarea 
+                <VoiceTextarea 
                   placeholder={`Enter ${showAction === "approve" ? (forwardToCommittee ? "interview notes" : "approval") : "rejection"} remarks...`}
                   value={remarks}
                   onChange={(e) => setRemarks(e.target.value)}
@@ -920,7 +921,7 @@ export function ApplicationViewModal({
                 <Label className="text-base font-semibold">
                   Modification Reason <span className="text-destructive">*</span>
                 </Label>
-                <Textarea
+                <VoiceTextarea
                   placeholder="Enter the reason for modifying this approved application..."
                   value={modificationReason}
                   onChange={(e) => setModificationReason(e.target.value)}
@@ -935,7 +936,7 @@ export function ApplicationViewModal({
                 <Label className="text-base font-semibold">
                   Updated Comments (Optional)
                 </Label>
-                <Textarea
+                <VoiceTextarea
                   placeholder="Update approval comments if needed..."
                   value={remarks}
                   onChange={(e) => setRemarks(e.target.value)}

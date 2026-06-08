@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import ReactDOM from 'react-dom';
-import { X, FileText, Calendar, User, MapPin, IndianRupee, Download, Eye, CheckCircle, XCircle, Loader2, Plus, Trash2, AlertTriangle, AlertCircle, CheckCircle2, Repeat, MessageSquare, Upload, RotateCcw } from 'lucide-react';
+import { X, FileText, Calendar, User, MapPin, IndianRupee, Download, Eye, CheckCircle, XCircle, Loader2, Plus, Trash2, AlertTriangle, AlertCircle, CheckCircle2, Repeat, MessageSquare, Upload, RotateCcw, ArrowRightLeft } from 'lucide-react';
 import { Button } from '../ui/button';
 import { Badge } from '../ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
@@ -9,11 +9,14 @@ import { Textarea } from '../ui/textarea';
 import { Label } from '../ui/label';
 import { Input } from '../ui/input';
 import VoiceToTextButton from '../ui/VoiceToTextButton';
+import VoiceTextarea from '../ui/VoiceTextarea';
 import { Checkbox } from '../ui/checkbox';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 import { applications as applicationsApi, interviews, locations as locationsApi } from '../../lib/api';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
+import { canTransferApplication } from '@/utils/transferEligibility';
+import { TransferApplicationModal } from './TransferApplicationModal';
 
 // Button that auto-syncs application top-level status based on current stage states
 const SyncStatusButton: React.FC<{ applicationId: string; onSynced: () => void }> = ({ applicationId, onSynced }) => {
@@ -355,7 +358,7 @@ const StageItem: React.FC<{
               ) : (
                 <div className="space-y-1.5 p-2 bg-muted/30 rounded border">
                   <Label className="text-xs">Notes (optional)</Label>
-                  <Textarea
+                  <VoiceTextarea
                     placeholder="Add notes..."
                     value={stageNotes}
                     onChange={(e) => setStageNotes(e.target.value)}
@@ -452,15 +455,8 @@ export const ApplicationDetailModal: React.FC<ApplicationDetailModalProps> = ({
   const [amountPerPayment, setAmountPerPayment] = useState(0);
   const [recurringStartDate, setRecurringStartDate] = useState('');
 
-  // Location edit state
-  const [showLocationEdit, setShowLocationEdit] = useState(false);
-  const [locationEditArea, setLocationEditArea] = useState('');
-  const [locationEditUnit, setLocationEditUnit] = useState('');
-  const [locationEditReason, setLocationEditReason] = useState('');
-  const [locationEditAreas, setLocationEditAreas] = useState<any[]>([]);
-  const [locationEditUnits, setLocationEditUnits] = useState<any[]>([]);
-  const [loadingLocationUnits, setLoadingLocationUnits] = useState(false);
-  const [savingLocation, setSavingLocation] = useState(false);
+  // Transfer application state
+  const [showTransferModal, setShowTransferModal] = useState(false);
 
   // Duplicate check state
   const [recheckingDuplicates, setRecheckingDuplicates] = useState(false);
@@ -1272,68 +1268,7 @@ export const ApplicationDetailModal: React.FC<ApplicationDetailModalProps> = ({
 
   if (!isOpen) return null;
 
-  const canEditLocation = user?.role === 'unit_admin' || user?.role === 'area_admin' || user?.role === 'area_president';
-
-  const handleOpenLocationEdit = async () => {
-    const currentAreaId = application?.area?._id || application?.area || '';
-    const currentUnitId = application?.unit?._id || application?.unit || '';
-    const districtId = application?.district?._id || application?.district || '';
-    setShowLocationEdit(true);
-    setLocationEditArea(currentAreaId);
-    setLocationEditUnit(currentUnitId);
-    setLocationEditReason('');
-    setLocationEditUnits([]);
-    try {
-      const areasRes = await locationsApi.getByType('area', districtId ? { parent: districtId } : undefined) as any;
-      setLocationEditAreas(areasRes?.data?.locations || areasRes?.locations || []);
-      if (currentAreaId) {
-        setLoadingLocationUnits(true);
-        const unitsRes = await locationsApi.getByType('unit', { parent: currentAreaId }) as any;
-        setLocationEditUnits(unitsRes?.data?.locations || unitsRes?.locations || []);
-        setLoadingLocationUnits(false);
-      }
-    } catch {
-      setLoadingLocationUnits(false);
-    }
-  };
-
-  const handleLocationAreaChange = async (areaId: string) => {
-    setLocationEditArea(areaId);
-    setLocationEditUnit('');
-    setLocationEditUnits([]);
-    if (!areaId) return;
-    setLoadingLocationUnits(true);
-    try {
-      const unitsRes = await locationsApi.getByType('unit', { parent: areaId }) as any;
-      setLocationEditUnits(unitsRes?.data?.locations || unitsRes?.locations || []);
-    } catch {
-      // ignore
-    } finally {
-      setLoadingLocationUnits(false);
-    }
-  };
-
-  const handleSaveLocation = async () => {
-    if (!locationEditUnit) {
-      toast({ title: 'Unit required', description: 'Please select a unit.', variant: 'destructive' });
-      return;
-    }
-    setSavingLocation(true);
-    try {
-      await applicationsApi.updateLocation(application._id, {
-        area: locationEditArea || undefined,
-        unit: locationEditUnit,
-        reason: locationEditReason,
-      });
-      toast({ title: 'Location updated', description: 'Application location has been updated.' });
-      setShowLocationEdit(false);
-      fetchApplicationDetails();
-    } catch (err: any) {
-      toast({ title: 'Failed', description: err?.message || 'Could not update location.', variant: 'destructive' });
-    } finally {
-      setSavingLocation(false);
-    }
-  };
+  const canTransfer = canTransferApplication(user, application);
 
   const handleRecheckDuplicates = async () => {
     setRecheckingDuplicates(true);
@@ -1349,6 +1284,7 @@ export const ApplicationDetailModal: React.FC<ApplicationDetailModalProps> = ({
   };
 
   return ReactDOM.createPortal(
+    <>
     <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50">
       <div className="bg-background rounded-lg shadow-lg w-full min-w-[60vw] max-w-4xl max-h-[90vh] overflow-hidden flex flex-col">
         {/* Header */}
@@ -1773,67 +1709,15 @@ export const ApplicationDetailModal: React.FC<ApplicationDetailModalProps> = ({
                       <MapPin className="h-5 w-5" />
                       Application Location
                     </span>
-                    {canEditLocation && !showLocationEdit && (
-                      <Button size="sm" variant="outline" onClick={handleOpenLocationEdit}>
-                        Edit Location
+                    {canTransfer && (
+                      <Button size="sm" variant="outline" onClick={() => setShowTransferModal(true)}>
+                        <ArrowRightLeft className="h-4 w-4 mr-1" />
+                        Transfer Application
                       </Button>
                     )}
                   </CardTitle>
                 </CardHeader>
-                <CardContent>
-                  {showLocationEdit ? (
-                    <div className="space-y-3">
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                        {user?.role === 'area_admin' && (
-                          <div>
-                            <Label className="text-sm">Area</Label>
-                            <select
-                              className="w-full mt-1 border rounded px-2 py-1.5 text-sm bg-background"
-                              value={locationEditArea}
-                              onChange={(e) => handleLocationAreaChange(e.target.value)}
-                            >
-                              <option value="">-- Select Area --</option>
-                              {locationEditAreas.map((a: any) => (
-                                <option key={a._id} value={a._id}>{a.name}</option>
-                              ))}
-                            </select>
-                          </div>
-                        )}
-                        <div>
-                          <Label className="text-sm">Unit</Label>
-                          <select
-                            className="w-full mt-1 border rounded px-2 py-1.5 text-sm bg-background"
-                            value={locationEditUnit}
-                            onChange={(e) => setLocationEditUnit(e.target.value)}
-                            disabled={loadingLocationUnits}
-                          >
-                            <option value="">{loadingLocationUnits ? 'Loading...' : !locationEditArea ? 'Select area first' : locationEditUnits.length === 0 ? 'No units' : '-- Select Unit --'}</option>
-                            {locationEditUnits.map((u: any) => (
-                              <option key={u._id} value={u._id}>{u.name}</option>
-                            ))}
-                          </select>
-                        </div>
-                      </div>
-                      <div>
-                        <Label className="text-sm">Reason for change</Label>
-                        <Input
-                          className="mt-1 text-sm"
-                          placeholder="e.g. Beneficiary selected wrong unit"
-                          value={locationEditReason}
-                          onChange={(e) => setLocationEditReason(e.target.value)}
-                        />
-                      </div>
-                      <div className="flex gap-2">
-                        <Button size="sm" onClick={handleSaveLocation} disabled={savingLocation}>
-                          {savingLocation ? <Loader2 className="h-3.5 w-3.5 animate-spin mr-1" /> : null}
-                          Save
-                        </Button>
-                        <Button size="sm" variant="outline" onClick={() => setShowLocationEdit(false)}>
-                          Cancel
-                        </Button>
-                      </div>
-                    </div>
-                  ) : (
+                <CardContent className="space-y-4">
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                     <div>
                       <label className="text-sm font-medium text-muted-foreground">State</label>
@@ -1852,6 +1736,43 @@ export const ApplicationDetailModal: React.FC<ApplicationDetailModalProps> = ({
                       <p className="text-sm">{application.unit?.name || 'N/A'}</p>
                     </div>
                   </div>
+
+                  {/* Reference (original) location + transfer trail — only shown once transferred */}
+                  {application.originalLocation?.capturedAt && (
+                    <div className="rounded-lg border border-blue-200 bg-blue-50/50 p-3 space-y-2">
+                      <div className="flex items-center gap-2 text-sm font-semibold text-blue-800">
+                        <ArrowRightLeft className="h-4 w-4" />
+                        Transfer History
+                      </div>
+                      <div className="text-xs text-muted-foreground">
+                        <span className="font-medium text-foreground">Reference (original) location:</span>{' '}
+                        {[
+                          application.originalLocation?.district?.name,
+                          application.originalLocation?.area?.name,
+                          application.originalLocation?.unit?.name,
+                        ].filter(Boolean).join(' › ') || 'N/A'}
+                      </div>
+                      {Array.isArray(application.locationChangeHistory) && application.locationChangeHistory.length > 0 && (
+                        <ul className="space-y-1.5">
+                          {application.locationChangeHistory.map((h: any, idx: number) => {
+                            const from = [h.previousDistrict?.name, h.previousArea?.name, h.previousUnit?.name].filter(Boolean).join(' › ');
+                            const to = [h.newDistrict?.name, h.newArea?.name, h.newUnit?.name].filter(Boolean).join(' › ');
+                            return (
+                              <li key={idx} className="text-xs text-blue-900 flex flex-wrap items-center gap-1">
+                                <span className="font-medium">{from || 'N/A'}</span>
+                                <ArrowRightLeft className="h-3 w-3 shrink-0" />
+                                <span className="font-medium">{to || 'N/A'}</span>
+                                <span className="text-muted-foreground">
+                                  — {h.changedBy?.name || 'Admin'}{h.changedBy?.role ? ` (${h.changedBy.role})` : ''}
+                                  {h.changedAt ? `, ${new Date(h.changedAt).toLocaleDateString()}` : ''}
+                                  {h.reason ? ` · ${h.reason}` : ''}
+                                </span>
+                              </li>
+                            );
+                          })}
+                        </ul>
+                      )}
+                    </div>
                   )}
                 </CardContent>
               </Card>
@@ -2733,5 +2654,12 @@ export const ApplicationDetailModal: React.FC<ApplicationDetailModalProps> = ({
         </div>
       </div>
     </div>
+    <TransferApplicationModal
+      isOpen={showTransferModal}
+      onClose={() => setShowTransferModal(false)}
+      application={application}
+      onTransferred={() => { setShowTransferModal(false); fetchApplicationDetails(); }}
+    />
+    </>
   , document.body);
 };

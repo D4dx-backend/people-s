@@ -8,6 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { ApplicationDetailModal } from "@/components/modals/ApplicationDetailModal";
+import { TransferApplicationButton } from "@/components/applications/TransferApplicationButton";
 import { GenericFilters } from "@/components/filters/GenericFilters";
 import { useApplicationFilters } from "@/hooks/useApplicationFilters";
 import { useExport } from '@/hooks/useExport';
@@ -334,6 +335,7 @@ export default function PendingApplications() {
                       <div className="flex flex-col gap-2 w-full">
                         <div className="flex gap-2">
                           <Button variant="outline" size="sm" onClick={() => handleViewApplication(app, "view")} className="flex-1"><Eye className="mr-2 h-4 w-4" />View</Button>
+                          <TransferApplicationButton application={app} onTransferred={loadApplications} variant="default" />
                           {getActionButton(app)}
                         </div>
                         <Button variant="secondary" size="sm" onClick={() => { setSelectedApp(app); setShowReportsModal(true); }} className="w-full"><FileText className="mr-2 h-4 w-4" />Reports</Button>
@@ -406,6 +408,7 @@ export default function PendingApplications() {
                         <Button variant="outline" size="sm" onClick={() => { setSelectedApp(app); setShowReportsModal(true); }}>
                           <FileText className="h-4 w-4" />
                         </Button>
+                        <TransferApplicationButton application={app} onTransferred={loadApplications} />
                         {getActionButton(app, true)}
                       </div>
                     </TableCell>

@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import VoiceTextarea from "@/components/ui/VoiceTextarea";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -281,7 +282,7 @@ export function ProjectModal({ open, onOpenChange, project, mode }: ProjectModal
           
           <div className="space-y-2">
             <Label>Description *</Label>
-            <Textarea 
+            <VoiceTextarea 
               placeholder="Project description" 
               rows={3} 
               value={formData.description}

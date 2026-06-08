@@ -29,6 +29,13 @@ const NewsEvent = require('./NewsEvent');
 const Brochure = require('./Brochure');
 const Partner = require('./Partner');
 const Banner = require('./Banner');
+const FAQ = require('./FAQ');
+const GalleryAlbum = require('./GalleryAlbum');
+const Video = require('./Video');
+const ContactMessage = require('./ContactMessage');
+const Volunteer = require('./Volunteer');
+const Blog = require('./Blog');
+const MediaCoverage = require('./MediaCoverage');
 
 // Admin Report Module
 const AdminReport = require('./AdminReport');
@@ -79,6 +86,13 @@ module.exports = {
   Brochure,
   Partner,
   Banner,
+  FAQ,
+  GalleryAlbum,
+  Video,
+  ContactMessage,
+  Volunteer,
+  Blog,
+  MediaCoverage,
 
   AdminReport,
   AdminReportFormConfig,

@@ -12,6 +12,9 @@ import { ConfigProvider } from "./contexts/ConfigContext";
 import { FranchiseProvider } from "./contexts/FranchiseContext";
 import CommandPalette from "./components/CommandPalette";
 import Index from "./pages/Index";
+import SiteHome from "./pages/site/SiteHome";
+import GalleryAlbumPage from "./pages/site/GalleryAlbumPage";
+import BlogDetailPage from "./pages/site/BlogDetailPage";
 import Dashboard from "./pages/Dashboard";
 import Projects from "./pages/Projects";
 import Schemes from "./pages/Schemes";
@@ -84,6 +87,13 @@ import NewsEvents from "./pages/NewsEvents";
 import Brochures from "./pages/Brochures";
 import Partners from "./pages/Partners";
 import Banners from "./pages/Banners";
+import WebsiteFAQs from "./pages/WebsiteFAQs";
+import WebsiteGallery from "./pages/WebsiteGallery";
+import WebsiteVideos from "./pages/WebsiteVideos";
+import WebsiteBlogs from "./pages/WebsiteBlogs";
+import WebsiteMedia from "./pages/WebsiteMedia";
+import WebsiteContactMessages from "./pages/WebsiteContactMessages";
+import WebsiteVolunteers from "./pages/WebsiteVolunteers";
 import FormBuilder from "./pages/FormBuilder";
 import ApplicationConsolidation from "./pages/ApplicationConsolidation";
 import AdminReports from "./pages/AdminReports";
@@ -110,7 +120,10 @@ const App = () => (
             <ConfigProvider>
               <CommandPalette />
               <Routes>
-            <Route path="/" element={<Index />} />
+            <Route path="/" element={<SiteHome />} />
+            <Route path="/home-legacy" element={<Index />} />
+            <Route path="/gallery/:id" element={<GalleryAlbumPage />} />
+            <Route path="/blog/:slug" element={<BlogDetailPage />} />
             <Route path="/auth" element={<Auth />} />
             <Route path="/login" element={<Login />} />
             <Route path="/beneficiary-login" element={<BeneficiaryLogin />} />
@@ -207,6 +220,13 @@ const App = () => (
             <Route path="/news-events" element={<AuthGuard><Layout><NewsEvents /></Layout></AuthGuard>} />
             <Route path="/brochures" element={<AuthGuard><Layout><Brochures /></Layout></AuthGuard>} />
             <Route path="/partners" element={<AuthGuard><Layout><Partners /></Layout></AuthGuard>} />
+            <Route path="/website-faqs" element={<AuthGuard><Layout><WebsiteFAQs /></Layout></AuthGuard>} />
+            <Route path="/website-gallery" element={<AuthGuard><Layout><WebsiteGallery /></Layout></AuthGuard>} />
+            <Route path="/website-videos" element={<AuthGuard><Layout><WebsiteVideos /></Layout></AuthGuard>} />
+            <Route path="/website-blogs" element={<AuthGuard><Layout><WebsiteBlogs /></Layout></AuthGuard>} />
+            <Route path="/website-media" element={<AuthGuard><Layout><WebsiteMedia /></Layout></AuthGuard>} />
+            <Route path="/website-messages" element={<AuthGuard><Layout><WebsiteContactMessages /></Layout></AuthGuard>} />
+            <Route path="/website-volunteers" element={<AuthGuard><Layout><WebsiteVolunteers /></Layout></AuthGuard>} />
             
             {/* Global Super Admin — standalone, no Layout */}
             <Route path="/global-admin" element={<AuthGuard><GlobalAdmin /></AuthGuard>} />

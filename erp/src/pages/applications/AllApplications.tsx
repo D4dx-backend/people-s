@@ -9,6 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { ApplicationViewModal } from "@/components/modals/ApplicationViewModal";
 import { ApplicationDetailModal } from "@/components/modals/ApplicationDetailModal";
+import { TransferApplicationButton } from "@/components/applications/TransferApplicationButton";
 import { GenericFilters } from "@/components/filters/GenericFilters";
 import { useApplicationFilters } from "@/hooks/useApplicationFilters";
 import { useExport } from '@/hooks/useExport';
@@ -384,6 +385,7 @@ export default function AllApplications() {
                             >
                               <Eye className="mr-2 h-4 w-4" />Details
                             </Button>
+                            <TransferApplicationButton application={app} onTransferred={handleApplicationActionComplete} variant="default" />
                             {getActionButton(app)}
                           </div>
                           <Button variant="secondary" size="sm" onClick={() => { setSelectedApp(app); setShowReportsModal(true); }} className="w-full">
@@ -476,6 +478,7 @@ export default function AllApplications() {
                           <Button variant="outline" size="sm" onClick={() => { setSelectedApp(app); setShowReportsModal(true); }} title="Reports">
                             <FileText className="h-4 w-4" />
                           </Button>
+                          <TransferApplicationButton application={app} onTransferred={handleApplicationActionComplete} />
                           {getActionButton(app, true)}
                         </div>
                       </TableCell>

@@ -588,10 +588,12 @@ class BeneficiaryApplicationController {
         : null;
       const requestedAmount = parsedAmount || scheme.benefits?.amount || 0;
 
-      // Generate application number manually to avoid pre-save middleware issues
-      const applicationCount = await Application.countDocuments({ franchise: req.franchiseId });
-      const year = new Date().getFullYear();
-      const applicationNumber = `APP${year}${String(applicationCount + 1).padStart(6, '0')}`;
+      // Generate application number atomically (race-condition safe across concurrent submissions)
+      const { generateApplicationNumber } = require('../utils/applicationNumberGenerator');
+      const applicationNumber = await generateApplicationNumber({
+        franchiseId: req.franchiseId,
+        ApplicationModel: Application
+      });
 
       console.log('📝 Generated application number:', applicationNumber);
       console.log('📝 Form data received:', formData);
@@ -681,7 +683,23 @@ class BeneficiaryApplicationController {
         // Don't block application submission if scoring fails
       }
 
-      await application.save();
+      // Save with a graceful retry: if a rare application-number collision still
+      // occurs under heavy concurrency, regenerate the number and try once more
+      // instead of failing the whole submission with a 500.
+      try {
+        await application.save();
+      } catch (saveErr) {
+        if (saveErr && saveErr.code === 11000 && saveErr.keyPattern && saveErr.keyPattern.applicationNumber) {
+          const { generateApplicationNumber } = require('../utils/applicationNumberGenerator');
+          application.applicationNumber = await generateApplicationNumber({
+            franchiseId: req.franchiseId,
+            ApplicationModel: Application
+          });
+          await application.save();
+        } else {
+          throw saveErr;
+        }
+      }
 
       // Check for duplicate applications (phone, aadhaar, ration card) — fire-and-forget
       // Never blocks submission; just stores a flag for admin awareness.
@@ -815,6 +833,9 @@ class BeneficiaryApplicationController {
 
       const applications = await Application.find(query)
         .populate('scheme', 'name category benefits')
+        .populate('district', 'name')
+        .populate('area', 'name')
+        .populate('unit', 'name')
         .sort({ createdAt: -1 })
         .skip(skip)
         .limit(parseInt(limit));
@@ -835,7 +856,12 @@ class BeneficiaryApplicationController {
           },
           status: app.status,
           submittedAt: app.createdAt,
-          requestedAmount: app.requestedAmount
+          requestedAmount: app.requestedAmount,
+          location: {
+            district: app.district?.name || null,
+            area: app.area?.name || null,
+            unit: app.unit?.name || null
+          }
         };
       });
 
@@ -907,7 +933,10 @@ class BeneficiaryApplicationController {
       const application = await Application.findOne({ applicationNumber: applicationId, ...buildFranchiseReadFilter(req) })
         .populate('scheme', 'name category benefits')
         .populate('beneficiary', 'name phone')
-        .select('applicationNumber scheme status createdAt reviewedAt approvedAt requestedAmount approvedAmount');
+        .populate('district', 'name')
+        .populate('area', 'name')
+        .populate('unit', 'name')
+        .select('applicationNumber scheme beneficiary status createdAt reviewedAt approvedAt requestedAmount approvedAmount district area unit');
 
       if (!application) {
         return ResponseHelper.error(res, 'Application not found', 404);
@@ -933,7 +962,12 @@ class BeneficiaryApplicationController {
         reviewedAt: application.reviewedAt,
         approvedAt: application.approvedAt,
         requestedAmount: application.requestedAmount,
-        approvedAmount: application.approvedAmount
+        approvedAmount: application.approvedAmount,
+        location: {
+          district: application.district?.name || null,
+          area: application.area?.name || null,
+          unit: application.unit?.name || null
+        }
       };
 
       return ResponseHelper.success(res, { application: formattedApplication }, 'Application tracking retrieved successfully');

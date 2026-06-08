@@ -44,6 +44,7 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
+import VoiceTextarea from "@/components/ui/VoiceTextarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
 import { useRBAC } from "@/hooks/useRBAC";
@@ -964,7 +965,7 @@ export default function FollowUpDashboard() {
           <DialogHeader>
             <DialogTitle>Add Note</DialogTitle>
           </DialogHeader>
-          <Textarea
+          <VoiceTextarea
             placeholder="Enter your note..."
             value={noteText}
             onChange={(e) => setNoteText(e.target.value)}

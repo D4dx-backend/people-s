@@ -108,7 +108,7 @@ exports.createBanner = async (req, res) => {
     const banner = new Banner({
       title,
       description,
-      imageUrl: uploadResult.url,
+      imageUrl: uploadResult.fileUrl,
       imageKey: uploadResult.key,
       link,
       order: order || 0,
@@ -180,7 +180,7 @@ exports.updateBanner = async (req, res) => {
 
       // Upload new image
       const uploadResult = await uploadToSpaces(req.file, 'banners');
-      banner.imageUrl = uploadResult.url;
+      banner.imageUrl = uploadResult.fileUrl;
       banner.imageKey = uploadResult.key;
     }
 

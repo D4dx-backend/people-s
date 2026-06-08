@@ -18,6 +18,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
+import VoiceTextarea from "@/components/ui/VoiceTextarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "@/hooks/use-toast";
 import { donors, donations } from "@/lib/api";
@@ -360,7 +361,7 @@ export function QuickDonationModal({
             
             <div>
               <Label htmlFor="notes">Notes (Optional)</Label>
-              <Textarea
+              <VoiceTextarea
                 id="notes"
                 value={formData.notes}
                 onChange={(e) => handleInputChange('notes', e.target.value)}
