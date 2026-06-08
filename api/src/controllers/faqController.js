@@ -1,4 +1,4 @@
-const FAQ = require('../models/FAQ');
+const FAQ = require('../models/Faq');
 const { buildFranchiseReadFilter } = require('../utils/franchiseFilterHelper');
 
 // Public: active FAQs
