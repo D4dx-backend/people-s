@@ -154,11 +154,12 @@ router.get('/:id/duplicates',
   getApplicationDuplicates
 );
 
-// Update location (district/area/unit) — for area_admin and unit_admin corrections
+// Transfer application (district/area/unit) — for admins to relocate a just-submitted application
 router.patch('/:id/location',
   authenticate, crossFranchiseResolver,
   authorize('super_admin', 'state_admin', 'district_admin', 'area_admin', 'unit_admin', 'area_president'),
   [
+    body('district').optional().isMongoId().withMessage('Valid district ID is required'),
     body('area').notEmpty().isMongoId().withMessage('Valid area ID is required'),
     body('unit').notEmpty().isMongoId().withMessage('Valid unit ID is required'),
     body('reason').optional().trim().isLength({ max: 500 }).withMessage('Reason must be less than 500 characters')

@@ -161,6 +161,13 @@ const newsEventRoutes = require('./routes/newsEventRoutes');
 const brochureRoutes = require('./routes/brochureRoutes');
 const partnerRoutes = require('./routes/partnerRoutes');
 const bannerRoutes = require('./routes/bannerRoutes');
+const faqRoutes = require('./routes/faqRoutes');
+const galleryRoutes = require('./routes/galleryRoutes');
+const videoRoutes = require('./routes/videoRoutes');
+const mediaRoutes = require('./routes/mediaRoutes');
+const blogRoutes = require('./routes/blogRoutes');
+const contactMessageRoutes = require('./routes/contactMessageRoutes');
+const volunteerRoutes = require('./routes/volunteerRoutes');
 
 // Application Configuration Routes
 const applicationConfigRoutes = require('./routes/applicationConfig');
@@ -206,6 +213,13 @@ app.use('/api/news-events', newsEventRoutes);
 app.use('/api/brochures', brochureRoutes);
 app.use('/api/partners', partnerRoutes);
 app.use('/api/banners', bannerRoutes);
+app.use('/api/faqs', faqRoutes);
+app.use('/api/gallery', galleryRoutes);
+app.use('/api/videos', videoRoutes);
+app.use('/api/media', mediaRoutes);
+app.use('/api/blogs', blogRoutes);
+app.use('/api/contact-messages', contactMessageRoutes);
+app.use('/api/volunteers', volunteerRoutes);
 
 // Application Configuration Routes
 app.use('/api/config', applicationConfigRoutes);

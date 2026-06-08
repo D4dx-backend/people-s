@@ -4,9 +4,10 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import VoiceTextarea from "@/components/ui/VoiceTextarea";
 import { useToast } from "@/hooks/use-toast";
 import { website } from "@/lib/api";
-import { Loader2, Plus, Trash2, Save, Globe, Users, Phone, Mail, MapPin, Facebook, Instagram, Youtube, Twitter } from "lucide-react";
+import { Loader2, Plus, Trash2, Save, Globe, Users, Phone, Mail, MapPin, Facebook, Instagram, Youtube, Twitter, Upload, X, ImageIcon } from "lucide-react";
 import { useRBAC } from "@/hooks/useRBAC";
 import { useConfig } from "@/contexts/ConfigContext";
 
@@ -31,6 +32,8 @@ export default function WebsiteSettings() {
   // About Us
   const [aboutTitle, setAboutTitle] = useState("");
   const [aboutDescription, setAboutDescription] = useState("");
+  const [aboutImageUrl, setAboutImageUrl] = useState("");
+  const [aboutImageUploading, setAboutImageUploading] = useState(false);
   
   // Counters
   const [counters, setCounters] = useState<Counter[]>([]);
@@ -48,6 +51,18 @@ export default function WebsiteSettings() {
   const [youtube, setYoutube] = useState("");
   const [twitter, setTwitter] = useState("");
 
+  // Hero
+  const [hero, setHero] = useState({ title: "", subtitle: "", ctaText: "", ctaLink: "", secondaryCtaText: "", secondaryCtaLink: "" });
+  // Vision & Mission
+  const [vision, setVision] = useState({ title: "", description: "" });
+  const [mission, setMission] = useState({ title: "", description: "" });
+  // Donation
+  const [donation, setDonation] = useState({ enabled: false, heading: "", description: "", accountName: "", accountNumber: "", bankName: "", ifsc: "", upiId: "", paymentLink: "" });
+  // SEO
+  const [seo, setSeo] = useState({ title: "", description: "", keywords: "" });
+  // Footer
+  const [footer, setFooter] = useState({ description: "", copyrightText: "" });
+
   useEffect(() => {
     loadSettings();
   }, []);
@@ -62,6 +77,7 @@ export default function WebsiteSettings() {
         
         setAboutTitle(settings.aboutUs?.title || "");
         setAboutDescription(settings.aboutUs?.description || "");
+        setAboutImageUrl(settings.aboutUs?.imageUrl || "");
         setCounters(Array.isArray(settings.counts) ? settings.counts : []);
         setPhone(settings.contactDetails?.phone || "");
         setEmail(settings.contactDetails?.email || "");
@@ -71,6 +87,33 @@ export default function WebsiteSettings() {
         setInstagram(settings.socialMedia?.instagram || "");
         setYoutube(settings.socialMedia?.youtube || "");
         setTwitter(settings.socialMedia?.twitter || "");
+        setHero({
+          title: settings.hero?.title || "",
+          subtitle: settings.hero?.subtitle || "",
+          ctaText: settings.hero?.ctaText || "",
+          ctaLink: settings.hero?.ctaLink || "",
+          secondaryCtaText: settings.hero?.secondaryCtaText || "",
+          secondaryCtaLink: settings.hero?.secondaryCtaLink || "",
+        });
+        setVision({ title: settings.vision?.title || "", description: settings.vision?.description || "" });
+        setMission({ title: settings.mission?.title || "", description: settings.mission?.description || "" });
+        setDonation({
+          enabled: !!settings.donation?.enabled,
+          heading: settings.donation?.heading || "",
+          description: settings.donation?.description || "",
+          accountName: settings.donation?.accountName || "",
+          accountNumber: settings.donation?.accountNumber || "",
+          bankName: settings.donation?.bankName || "",
+          ifsc: settings.donation?.ifsc || "",
+          upiId: settings.donation?.upiId || "",
+          paymentLink: settings.donation?.paymentLink || "",
+        });
+        setSeo({
+          title: settings.seo?.title || "",
+          description: settings.seo?.description || "",
+          keywords: Array.isArray(settings.seo?.keywords) ? settings.seo.keywords.join(", ") : (settings.seo?.keywords || ""),
+        });
+        setFooter({ description: settings.footer?.description || "", copyrightText: settings.footer?.copyrightText || "" });
       }
     } catch (error: any) {
       toast({
@@ -90,7 +133,8 @@ export default function WebsiteSettings() {
       const data = {
         aboutUs: {
           title: aboutTitle,
-          description: aboutDescription
+          description: aboutDescription,
+          imageUrl: aboutImageUrl
         },
         counts: counters,
         contactDetails: {
@@ -104,7 +148,16 @@ export default function WebsiteSettings() {
           instagram,
           youtube,
           twitter
-        }
+        },
+        hero,
+        vision,
+        mission,
+        donation,
+        seo: {
+          ...seo,
+          keywords: seo.keywords.split(",").map((k) => k.trim()).filter(Boolean),
+        },
+        footer
       };
 
       await website.updateSettings(data);
@@ -124,6 +177,30 @@ export default function WebsiteSettings() {
       });
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleAboutImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.size > 5 * 1024 * 1024) {
+      toast({ title: "Error", description: "Image must be under 5 MB", variant: "destructive" });
+      return;
+    }
+    try {
+      setAboutImageUploading(true);
+      const fd = new FormData();
+      fd.append('image', file);
+      const res = await website.uploadAboutImage(fd);
+      if ((res as any).success) {
+        setAboutImageUrl((res as any).data.imageUrl);
+        toast({ title: "Success", description: "About Us image uploaded" });
+      }
+    } catch (err: any) {
+      toast({ title: "Error", description: err.message || "Upload failed", variant: "destructive" });
+    } finally {
+      setAboutImageUploading(false);
+      e.target.value = '';
     }
   };
 
@@ -211,13 +288,66 @@ export default function WebsiteSettings() {
           </div>
           <div className="space-y-2">
             <Label>Description</Label>
-            <Textarea
+            <VoiceTextarea
               value={aboutDescription}
               onChange={(e) => setAboutDescription(e.target.value)}
               placeholder="Enter about us description..."
               rows={6}
               disabled={!canEdit}
             />
+          </div>
+
+          {/* About Us Image */}
+          <div className="space-y-2">
+            <Label>Section Image</Label>
+            {aboutImageUrl ? (
+              <div className="relative w-full overflow-hidden rounded-xl border">
+                <img src={aboutImageUrl} alt="About Us" className="h-48 w-full object-cover" />
+                {canEdit && (
+                  <button
+                    type="button"
+                    onClick={() => setAboutImageUrl("")}
+                    className="absolute right-2 top-2 rounded-full bg-black/60 p-1 text-white hover:bg-black/80"
+                    title="Remove image"
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                )}
+              </div>
+            ) : (
+              <div className="flex h-40 w-full items-center justify-center rounded-xl border-2 border-dashed border-border bg-muted/30">
+                <div className="text-center text-muted-foreground">
+                  <ImageIcon className="mx-auto h-10 w-10 mb-2 opacity-40" />
+                  <p className="text-sm">No image set</p>
+                </div>
+              </div>
+            )}
+            {canEdit && (
+              <label className="flex cursor-pointer items-center gap-2 w-fit">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  disabled={aboutImageUploading}
+                  asChild
+                >
+                  <span>
+                    {aboutImageUploading ? (
+                      <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Uploading...</>
+                    ) : (
+                      <><Upload className="mr-2 h-4 w-4" /> {aboutImageUrl ? "Change Image" : "Upload Image"}</>
+                    )}
+                  </span>
+                </Button>
+                <input
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={handleAboutImageUpload}
+                  disabled={aboutImageUploading}
+                />
+              </label>
+            )}
           </div>
         </CardContent>
       </Card>
@@ -248,7 +378,7 @@ export default function WebsiteSettings() {
                 <Input
                   type="number"
                   value={counter.count}
-                  onChange={(e) => handleUpdateCounter(index, 'count', parseInt(e.target.value))}
+                  onChange={(e) => handleUpdateCounter(index, 'count', parseInt(e.target.value) || 0)}
                   disabled={!canEdit}
                 />
               </div>
@@ -280,7 +410,7 @@ export default function WebsiteSettings() {
                 <Input
                   type="number"
                   value={newCounter.count}
-                  onChange={(e) => setNewCounter({ ...newCounter, count: parseInt(e.target.value) })}
+                  onChange={(e) => setNewCounter({ ...newCounter, count: parseInt(e.target.value) || 0 })}
                 />
               </div>
               <Button onClick={handleAddCounter}>
@@ -343,7 +473,7 @@ export default function WebsiteSettings() {
               <MapPin className="h-4 w-4" />
               Address
             </Label>
-            <Textarea
+            <VoiceTextarea
               value={address}
               onChange={(e) => setAddress(e.target.value)}
               placeholder="Enter organization address..."
@@ -411,6 +541,114 @@ export default function WebsiteSettings() {
               />
             </div>
           </div>
+        </CardContent>
+      </Card>
+
+      {/* Hero Section */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Hero Section</CardTitle>
+          <CardDescription>The main banner heading and call-to-action shown on the homepage</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="grid gap-4 md:grid-cols-2">
+            <div className="space-y-2"><Label>Title</Label>
+              <Input value={hero.title} onChange={(e) => setHero({ ...hero, title: e.target.value })} disabled={!canEdit} placeholder="Empowering communities" /></div>
+            <div className="space-y-2"><Label>Subtitle</Label>
+              <Input value={hero.subtitle} onChange={(e) => setHero({ ...hero, subtitle: e.target.value })} disabled={!canEdit} /></div>
+            <div className="space-y-2"><Label>Primary Button Text</Label>
+              <Input value={hero.ctaText} onChange={(e) => setHero({ ...hero, ctaText: e.target.value })} disabled={!canEdit} placeholder="Donate Now" /></div>
+            <div className="space-y-2"><Label>Primary Button Link</Label>
+              <Input value={hero.ctaLink} onChange={(e) => setHero({ ...hero, ctaLink: e.target.value })} disabled={!canEdit} placeholder="#donate" /></div>
+            <div className="space-y-2"><Label>Secondary Button Text</Label>
+              <Input value={hero.secondaryCtaText} onChange={(e) => setHero({ ...hero, secondaryCtaText: e.target.value })} disabled={!canEdit} /></div>
+            <div className="space-y-2"><Label>Secondary Button Link</Label>
+              <Input value={hero.secondaryCtaLink} onChange={(e) => setHero({ ...hero, secondaryCtaLink: e.target.value })} disabled={!canEdit} /></div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Vision & Mission */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Vision & Mission</CardTitle>
+          <CardDescription>Your organization's vision and mission statements</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="grid gap-4 md:grid-cols-2">
+            <div className="space-y-2"><Label>Vision Title</Label>
+              <Input value={vision.title} onChange={(e) => setVision({ ...vision, title: e.target.value })} disabled={!canEdit} placeholder="Our Vision" /></div>
+            <div className="space-y-2"><Label>Mission Title</Label>
+              <Input value={mission.title} onChange={(e) => setMission({ ...mission, title: e.target.value })} disabled={!canEdit} placeholder="Our Mission" /></div>
+            <div className="space-y-2"><Label>Vision Description</Label>
+              <VoiceTextarea rows={4} value={vision.description} onChange={(e) => setVision({ ...vision, description: e.target.value })} disabled={!canEdit} /></div>
+            <div className="space-y-2"><Label>Mission Description</Label>
+              <VoiceTextarea rows={4} value={mission.description} onChange={(e) => setMission({ ...mission, description: e.target.value })} disabled={!canEdit} /></div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Donation */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Donation Section</CardTitle>
+          <CardDescription>Bank and payment details shown in the donation section</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <label className="flex items-center gap-2 text-sm">
+            <input type="checkbox" checked={donation.enabled} onChange={(e) => setDonation({ ...donation, enabled: e.target.checked })} disabled={!canEdit} />
+            Show donation section on website
+          </label>
+          <div className="grid gap-4 md:grid-cols-2">
+            <div className="space-y-2"><Label>Heading</Label>
+              <Input value={donation.heading} onChange={(e) => setDonation({ ...donation, heading: e.target.value })} disabled={!canEdit} placeholder="Support Our Cause" /></div>
+            <div className="space-y-2"><Label>Payment Link</Label>
+              <Input value={donation.paymentLink} onChange={(e) => setDonation({ ...donation, paymentLink: e.target.value })} disabled={!canEdit} placeholder="https://..." /></div>
+          </div>
+          <div className="space-y-2"><Label>Description</Label>
+            <VoiceTextarea rows={2} value={donation.description} onChange={(e) => setDonation({ ...donation, description: e.target.value })} disabled={!canEdit} /></div>
+          <div className="grid gap-4 md:grid-cols-2">
+            <div className="space-y-2"><Label>Account Name</Label>
+              <Input value={donation.accountName} onChange={(e) => setDonation({ ...donation, accountName: e.target.value })} disabled={!canEdit} /></div>
+            <div className="space-y-2"><Label>Account Number</Label>
+              <Input value={donation.accountNumber} onChange={(e) => setDonation({ ...donation, accountNumber: e.target.value })} disabled={!canEdit} /></div>
+            <div className="space-y-2"><Label>Bank Name</Label>
+              <Input value={donation.bankName} onChange={(e) => setDonation({ ...donation, bankName: e.target.value })} disabled={!canEdit} /></div>
+            <div className="space-y-2"><Label>IFSC Code</Label>
+              <Input value={donation.ifsc} onChange={(e) => setDonation({ ...donation, ifsc: e.target.value })} disabled={!canEdit} /></div>
+            <div className="space-y-2"><Label>UPI ID</Label>
+              <Input value={donation.upiId} onChange={(e) => setDonation({ ...donation, upiId: e.target.value })} disabled={!canEdit} /></div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* SEO */}
+      <Card>
+        <CardHeader>
+          <CardTitle>SEO</CardTitle>
+          <CardDescription>Search engine metadata for your website</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="space-y-2"><Label>Meta Title</Label>
+            <Input value={seo.title} onChange={(e) => setSeo({ ...seo, title: e.target.value })} disabled={!canEdit} /></div>
+          <div className="space-y-2"><Label>Meta Description</Label>
+            <VoiceTextarea rows={2} value={seo.description} onChange={(e) => setSeo({ ...seo, description: e.target.value })} disabled={!canEdit} /></div>
+          <div className="space-y-2"><Label>Keywords (comma-separated)</Label>
+            <Input value={seo.keywords} onChange={(e) => setSeo({ ...seo, keywords: e.target.value })} disabled={!canEdit} /></div>
+        </CardContent>
+      </Card>
+
+      {/* Footer */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Footer</CardTitle>
+          <CardDescription>Footer description and copyright text</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="space-y-2"><Label>Footer Description</Label>
+            <VoiceTextarea rows={2} value={footer.description} onChange={(e) => setFooter({ ...footer, description: e.target.value })} disabled={!canEdit} /></div>
+          <div className="space-y-2"><Label>Copyright Text</Label>
+            <Input value={footer.copyrightText} onChange={(e) => setFooter({ ...footer, copyrightText: e.target.value })} disabled={!canEdit} /></div>
         </CardContent>
       </Card>
     </div>

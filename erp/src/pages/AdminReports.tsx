@@ -21,6 +21,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import VoiceTextarea from "@/components/ui/VoiceTextarea";
 import { Separator } from "@/components/ui/separator";
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow
@@ -144,7 +145,7 @@ function ReportFormModal({ open, mode, report, onClose, onSaved }: ReportFormMod
           </div>
           <div className="space-y-1">
             <Label htmlFor="description">Description</Label>
-            <Textarea
+            <VoiceTextarea
               id="description"
               value={description}
               onChange={(e) => setDescription(e.target.value)}

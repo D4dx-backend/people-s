@@ -8,6 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Separator } from '@/components/ui/separator';
 import { Textarea } from '@/components/ui/textarea';
+import VoiceTextarea from '@/components/ui/VoiceTextarea';
 import { useRBAC } from '@/hooks/useRBAC';
 import { useToast } from '@/hooks/use-toast';
 import { errorLogService, ErrorLog } from '@/services/errorLogService';
@@ -391,7 +392,7 @@ const ErrorLogs: React.FC = () => {
           <div className="space-y-4">
             <p className="text-sm text-muted-foreground">Add an optional resolution note for this error:</p>
             <div className="p-2 bg-muted rounded text-sm font-mono truncate">{selectedLog?.message}</div>
-            <Textarea placeholder="Resolution note (optional)..." value={resolveNote}
+            <VoiceTextarea placeholder="Resolution note (optional)..." value={resolveNote}
               onChange={(e) => setResolveNote(e.target.value)} rows={3} />
           </div>
           <DialogFooter>

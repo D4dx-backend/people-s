@@ -15,8 +15,16 @@ const config = require('../config/environment');
 const authenticate = async (req, res, next) => {
   try {
     // Skip authentication for public routes
-    const publicPaths = ['/public', '/test'];
-    if (publicPaths.some(path => req.path.endsWith(path))) {
+    // - any path ending in /public or /test (e.g. /banners/public)
+    // - any path with a /public/ segment (e.g. /gallery/public/:id, /blogs/public/:slug)
+    // - explicit public endpoints that don't follow the /public convention
+    const publicSuffixes = ['/public', '/test'];
+    const publicExact = ['/website/home'];
+    const isPublic =
+      publicSuffixes.some(p => req.path.endsWith(p)) ||
+      req.path.includes('/public/') ||
+      publicExact.includes(req.path);
+    if (isPublic) {
       console.log('✅ Skipping auth for public path:', req.path);
       return next();
     }

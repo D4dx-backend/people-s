@@ -28,6 +28,7 @@ import {
 import { applications, dashboard, projects, schemes, locations } from "@/lib/api";
 import { useAuth } from "@/hooks/useAuth";
 import { getApplicationDisplay } from "@/utils/applicationDisplay";
+import { TransferApplicationButton } from "@/components/applications/TransferApplicationButton";
 
 // Interface for application data
 interface Application {
@@ -933,6 +934,7 @@ export default function Applications() {
                             </Button>
                             {getActionButton(app)}
                           </div>
+                          <TransferApplicationButton application={app} onTransferred={loadApplications} variant="default" className="w-full" />
                           <Button variant="secondary" size="sm" onClick={() => {
                             setSelectedApp(app);
                             setShowReportsModal(true);

@@ -1,9 +1,17 @@
 const express = require('express');
 const router = express.Router();
 const websiteController = require('../controllers/websiteController');
+const publicSiteController = require('../controllers/publicSiteController');
 const { authenticate, crossFranchiseResolver } = require('../middleware/auth');
 const { hasAnyPermission } = require('../middleware/rbacMiddleware');
 const { uploadSingleMemory } = require('../middleware/upload');
+
+/**
+ * @route   GET /api/website/home
+ * @desc    Aggregated public home content for the resolved franchise
+ * @access  Public
+ */
+router.get('/home', publicSiteController.getHome);
 
 /**
  * @route   GET /api/website/public-settings
@@ -32,6 +40,13 @@ router.put('/settings',
   authenticate, crossFranchiseResolver,
   hasAnyPermission(['website.write', 'settings.write']),
   websiteController.updateSettings
+);
+
+router.put('/settings/about-image',
+  authenticate, crossFranchiseResolver,
+  hasAnyPermission(['website.write', 'settings.write']),
+  uploadSingleMemory('image'),
+  websiteController.uploadAboutImage
 );
 
 /**

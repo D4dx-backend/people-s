@@ -174,6 +174,57 @@ const transcribeAudio = async (req, res) => {
   }
 };
 
+/**
+ * GET /api/speech/soniox-token
+ * Generates a short-lived single-use Soniox temporary API key for the frontend.
+ * The frontend uses this key to connect directly to the Soniox WebSocket for
+ * real-time transcription without exposing the main API key.
+ */
+const getSonioxToken = async (req, res) => {
+  const apiKey = process.env.SONIOX_API_KEY;
+  if (!apiKey || apiKey === 'your-soniox-api-key-here') {
+    return res.status(500).json({
+      success: false,
+      message: 'Soniox API key is not configured'
+    });
+  }
+
+  try {
+    const response = await axios.post(
+      'https://api.soniox.com/v1/auth/temporary-api-key',
+      {
+        usage_type: 'transcribe_websocket',
+        expires_in_seconds: 120,
+        single_use: true,
+        max_session_duration_seconds: 300
+      },
+      {
+        headers: {
+          'Authorization': `Bearer ${apiKey}`,
+          'Content-Type': 'application/json'
+        },
+        timeout: 10000
+      }
+    );
+
+    return res.status(200).json({
+      success: true,
+      data: {
+        api_key: response.data.api_key,
+        expires_at: response.data.expires_at
+      }
+    });
+  } catch (error) {
+    console.error('Soniox token error:', error.response?.data || error.message);
+    return res.status(500).json({
+      success: false,
+      message: 'Failed to generate Soniox token',
+      error: error.response?.data?.error_message || error.message
+    });
+  }
+};
+
 module.exports = {
-  transcribeAudio
+  transcribeAudio,
+  getSonioxToken
 };

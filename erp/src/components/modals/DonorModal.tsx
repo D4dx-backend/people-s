@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Textarea } from '@/components/ui/textarea';
-import VoiceToTextButton from '@/components/ui/VoiceToTextButton';
+import VoiceTextarea from '@/components/ui/VoiceTextarea';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Badge } from '@/components/ui/badge';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
@@ -294,7 +294,7 @@ export function DonorModal({ open, onOpenChange, donor, mode, onSuccess }: Donor
                       <FormItem>
                         <FormLabel>Address</FormLabel>
                         <FormControl>
-                          <Textarea
+                          <VoiceTextarea
                             placeholder="House/Building, Street, Locality..."
                             className="min-h-[80px] resize-none"
                             {...field}
@@ -613,20 +613,11 @@ export function DonorModal({ open, onOpenChange, donor, mode, onSuccess }: Donor
                     <FormItem>
                       <FormLabel>Notes</FormLabel>
                       <FormControl>
-                        <div className="relative">
-                          <Textarea
-                            placeholder="Additional notes about the donor"
-                            className="min-h-[100px] pr-12"
-                            {...field}
-                          />
-                          <div className="absolute right-2 top-2">
-                            <VoiceToTextButton
-                              onTranscript={(text) => field.onChange(field.value ? field.value + ' ' + text : text)}
-                              size="icon"
-                              className="h-8 w-8"
-                            />
-                          </div>
-                        </div>
+                        <VoiceTextarea
+                          placeholder="Additional notes about the donor"
+                          className="min-h-[100px]"
+                          {...field}
+                        />
                       </FormControl>
                       <FormMessage />
                     </FormItem>

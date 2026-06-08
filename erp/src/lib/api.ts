@@ -378,6 +378,15 @@ class ApiClient {
       headers,
     };
 
+    // Abort the request if the server takes too long, so the UI never hangs
+    // indefinitely on "Submitting..." when the network/server is slow.
+    const timeoutMs = (options as RequestInit & { timeoutMs?: number }).timeoutMs ?? 45000;
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+    if (!config.signal) {
+      config.signal = controller.signal;
+    }
+
     try {
       const response = await fetch(url, config);
       const data = await response.json();
@@ -407,8 +416,19 @@ class ApiClient {
 
       return data;
     } catch (error) {
+      // Surface a clear, user-friendly message when the request times out.
+      if (error instanceof DOMException && error.name === 'AbortError') {
+        const timeoutError = new Error(
+          'The server is taking too long to respond. Please check your connection and try again.'
+        );
+        (timeoutError as any).isTimeout = true;
+        console.error('API Request Timeout:', url);
+        throw timeoutError;
+      }
       console.error('API Request Error:', error);
       throw error;
+    } finally {
+      clearTimeout(timeoutId);
     }
   }
 
@@ -2119,6 +2139,11 @@ export const website = {
     method: 'PUT',
     body: JSON.stringify(data)
   }),
+  uploadAboutImage: (formData: FormData) => apiClient.request('/website/settings/about-image', {
+    method: 'PUT',
+    body: formData,
+    headers: {}
+  }),
   addCounter: (data: any) => apiClient.request('/website/settings/counter', {
     method: 'POST',
     body: JSON.stringify(data)
@@ -2203,6 +2228,9 @@ export const website = {
     method: 'DELETE'
   }),
   exportPartners: (params?: any) => apiClient.request(buildExportUrl('/partners/export', params)),
+
+  // Aggregated public home content (resolved by hostname/franchise)
+  getHome: () => apiClient.request('/website/home'),
 };
 
 // Banners API
@@ -2223,6 +2251,101 @@ export const banners = {
   delete: (id: string) => apiClient.request(`/banners/${id}`, {
     method: 'DELETE'
   })
+};
+
+// FAQ API
+export const faqs = {
+  getPublic: () => apiClient.request('/faqs/public'),
+  getAll: (params?: any) => {
+    const query = params ? `?${new URLSearchParams(params).toString()}` : '';
+    return apiClient.request(`/faqs${query}`);
+  },
+  create: (data: any) => apiClient.request('/faqs', { method: 'POST', body: JSON.stringify(data) }),
+  update: (id: string, data: any) => apiClient.request(`/faqs/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
+  delete: (id: string) => apiClient.request(`/faqs/${id}`, { method: 'DELETE' }),
+};
+
+// Gallery API
+export const gallery = {
+  getPublic: (params?: any) => {
+    const query = params ? `?${new URLSearchParams(params).toString()}` : '';
+    return apiClient.request(`/gallery/public${query}`);
+  },
+  getPublicById: (id: string) => apiClient.request(`/gallery/public/${id}`),
+  getAll: (params?: any) => {
+    const query = params ? `?${new URLSearchParams(params).toString()}` : '';
+    return apiClient.request(`/gallery${query}`);
+  },
+  getById: (id: string) => apiClient.request(`/gallery/${id}`),
+  create: (formData: FormData) => apiClient.request('/gallery', { method: 'POST', body: formData, headers: {} }),
+  update: (id: string, formData: FormData) => apiClient.request(`/gallery/${id}`, { method: 'PUT', body: formData, headers: {} }),
+  delete: (id: string) => apiClient.request(`/gallery/${id}`, { method: 'DELETE' }),
+};
+
+// Videos API
+export const videos = {
+  getPublic: (params?: any) => {
+    const query = params ? `?${new URLSearchParams(params).toString()}` : '';
+    return apiClient.request(`/videos/public${query}`);
+  },
+  getAll: (params?: any) => {
+    const query = params ? `?${new URLSearchParams(params).toString()}` : '';
+    return apiClient.request(`/videos${query}`);
+  },
+  create: (formData: FormData) => apiClient.request('/videos', { method: 'POST', body: formData, headers: {} }),
+  update: (id: string, formData: FormData) => apiClient.request(`/videos/${id}`, { method: 'PUT', body: formData, headers: {} }),
+  delete: (id: string) => apiClient.request(`/videos/${id}`, { method: 'DELETE' }),
+};
+
+// Media coverage API
+export const media = {
+  getPublic: () => apiClient.request('/media/public'),
+  getAll: (params?: any) => {
+    const query = params ? `?${new URLSearchParams(params).toString()}` : '';
+    return apiClient.request(`/media${query}`);
+  },
+  create: (formData: FormData) => apiClient.request('/media', { method: 'POST', body: formData, headers: {} }),
+  update: (id: string, formData: FormData) => apiClient.request(`/media/${id}`, { method: 'PUT', body: formData, headers: {} }),
+  delete: (id: string) => apiClient.request(`/media/${id}`, { method: 'DELETE' }),
+};
+
+// Blogs API
+export const blogs = {
+  getPublic: (params?: any) => {
+    const query = params ? `?${new URLSearchParams(params).toString()}` : '';
+    return apiClient.request(`/blogs/public${query}`);
+  },
+  getPublicBySlug: (slug: string) => apiClient.request(`/blogs/public/${slug}`),
+  getAll: (params?: any) => {
+    const query = params ? `?${new URLSearchParams(params).toString()}` : '';
+    return apiClient.request(`/blogs${query}`);
+  },
+  getById: (id: string) => apiClient.request(`/blogs/${id}`),
+  create: (formData: FormData) => apiClient.request('/blogs', { method: 'POST', body: formData, headers: {} }),
+  update: (id: string, formData: FormData) => apiClient.request(`/blogs/${id}`, { method: 'PUT', body: formData, headers: {} }),
+  delete: (id: string) => apiClient.request(`/blogs/${id}`, { method: 'DELETE' }),
+};
+
+// Contact messages API
+export const contactMessages = {
+  submit: (data: any) => apiClient.request('/contact-messages/public', { method: 'POST', body: JSON.stringify(data) }),
+  getAll: (params?: any) => {
+    const query = params ? `?${new URLSearchParams(params).toString()}` : '';
+    return apiClient.request(`/contact-messages${query}`);
+  },
+  updateStatus: (id: string, data: any) => apiClient.request(`/contact-messages/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
+  delete: (id: string) => apiClient.request(`/contact-messages/${id}`, { method: 'DELETE' }),
+};
+
+// Volunteers API
+export const volunteers = {
+  submit: (data: any) => apiClient.request('/volunteers/public', { method: 'POST', body: JSON.stringify(data) }),
+  getAll: (params?: any) => {
+    const query = params ? `?${new URLSearchParams(params).toString()}` : '';
+    return apiClient.request(`/volunteers${query}`);
+  },
+  updateStatus: (id: string, data: any) => apiClient.request(`/volunteers/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
+  delete: (id: string) => apiClient.request(`/volunteers/${id}`, { method: 'DELETE' }),
 };
 
 // Application Configuration API
@@ -2308,6 +2431,10 @@ export const speech = {
         languageCode: options?.languageCode || 'ml-IN',
         rawText: options?.rawText
       })
+    }),
+  getSonioxToken: () =>
+    apiClient.request<{ api_key: string; expires_at: string }>('/speech/soniox-token', {
+      method: 'GET'
     })
 };
 

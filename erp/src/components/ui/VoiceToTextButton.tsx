@@ -1,5 +1,5 @@
 import React, { useState, useRef, useCallback } from 'react';
-import { Mic, MicOff, Loader2, Square } from 'lucide-react';
+import { Mic, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { speech } from '@/lib/api';
 import {
@@ -9,10 +9,34 @@ import {
   TooltipTrigger,
 } from '@/components/ui/tooltip';
 
+const SONIOX_WS_URL = 'wss://stt-rt.soniox.com/transcribe-websocket';
+
+/** Animated equalizer bars shown while recording — mimics an audio waveform signal. */
+const WaveformBars: React.FC = () => {
+  const bars = [0.45, 0.75, 1.0, 0.85, 0.6, 0.9, 0.5];
+  return (
+    <span className="flex items-center justify-center gap-[2px] w-5 h-4">
+      {bars.map((peak, i) => (
+        <span
+          key={i}
+          className="inline-block w-[2.5px] rounded-full bg-current origin-bottom"
+          style={{
+            height: `${Math.round(peak * 14)}px`,
+            animation: `voiceWave ${0.5 + (i % 3) * 0.15}s ease-in-out infinite alternate`,
+            animationDelay: `${i * 0.08}s`,
+          }}
+        />
+      ))}
+    </span>
+  );
+};
+
 interface VoiceToTextButtonProps {
-  /** Callback when transcription is available - appends text to existing value */
+  /** Callback fired with each batch of newly finalized transcript text */
   onTranscript: (text: string) => void;
-  /** Language code for speech recognition (default: ml-IN for Malayalam) */
+  /** Optional callback fired with the current non-final (interim) text while recording */
+  onInterimTranscript?: (text: string) => void;
+  /** Language code hint — 'ml-IN' or 'ml' enables Malayalam + English mixed mode */
   languageCode?: string;
   /** Whether the button is disabled */
   disabled?: boolean;
@@ -25,222 +49,180 @@ interface VoiceToTextButtonProps {
 }
 
 /**
- * VoiceToTextButton - Records voice and converts to Malayalam text
- * 
- * Uses Web Speech API (browser native) as primary method for real-time transcription,
- * falls back to Google Cloud Speech-to-Text API for unsupported browsers.
+ * VoiceToTextButton — Real-time voice transcription via Soniox WebSocket API.
+ *
+ * Idle     → shows Mic icon
+ * Connecting → shows spinner
+ * Recording  → shows animated waveform bars (like WhatsApp)
  */
 const VoiceToTextButton: React.FC<VoiceToTextButtonProps> = ({
   onTranscript,
+  onInterimTranscript,
   languageCode = 'ml-IN',
   disabled = false,
   size = 'icon',
   className = '',
-  tooltip = 'Voice to Malayalam text (മലയാളം)',
+  tooltip = 'Voice to text (മലയാളം)',
 }) => {
   const [isRecording, setIsRecording] = useState(false);
-  const [isProcessing, setIsProcessing] = useState(false);
+  const [isConnecting, setIsConnecting] = useState(false);
+
+  const wsRef = useRef<WebSocket | null>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
-  const audioChunksRef = useRef<Blob[]>([]);
   const streamRef = useRef<MediaStream | null>(null);
-  const recognitionRef = useRef<any>(null);
-  const [useWebSpeechAPI, setUseWebSpeechAPI] = useState<boolean | null>(null);
 
-  // Check if Web Speech API is available
-  const checkWebSpeechAPI = useCallback(() => {
-    if (useWebSpeechAPI !== null) return useWebSpeechAPI;
-    
-    const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
-    const available = !!SpeechRecognition;
-    setUseWebSpeechAPI(available);
-    return available;
-  }, [useWebSpeechAPI]);
+  const getLanguageHints = (langCode: string): string[] => {
+    const base = langCode.split('-')[0].toLowerCase();
+    return base === 'ml' ? ['ml', 'en'] : [base, 'en'];
+  };
 
-  // Web Speech API approach (real-time, browser native)
-  const startWebSpeechRecognition = useCallback(() => {
-    const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
-    const recognition = new SpeechRecognition();
-    
-    recognition.lang = languageCode;
-    recognition.continuous = true;
-    recognition.interimResults = false;
-    recognition.maxAlternatives = 1;
-
-    let fullTranscript = '';
-
-    recognition.onresult = (event: any) => {
-      for (let i = event.resultIndex; i < event.results.length; i++) {
-        if (event.results[i].isFinal) {
-          const text = event.results[i][0].transcript;
-          fullTranscript += (fullTranscript ? ' ' : '') + text;
-        }
-      }
-    };
-
-    recognition.onerror = (event: any) => {
-      console.error('Speech recognition error:', event.error);
-      if (event.error === 'not-allowed') {
-        alert('Microphone access denied. Please allow microphone access in your browser settings.');
-      }
-      setIsRecording(false);
-      // If Web Speech API fails, fall back to Google API
-      if (event.error === 'no-speech' || event.error === 'network') {
-        setUseWebSpeechAPI(false);
-      }
-    };
-
-    recognition.onend = async () => {
-      if (fullTranscript.trim()) {
-        // Send through backend for Gemini AI correction
-        setIsProcessing(true);
-        try {
-          const response = await speech.transcribe('', {
-            languageCode,
-            rawText: fullTranscript.trim()
-          });
-          if (response.success && response.data?.text) {
-            onTranscript(response.data.text);
-          } else {
-            onTranscript(fullTranscript.trim());
-          }
-        } catch {
-          // Fallback to raw transcript if correction fails
-          onTranscript(fullTranscript.trim());
-        } finally {
-          setIsProcessing(false);
-        }
-      }
-      setIsRecording(false);
-    };
-
-    recognitionRef.current = recognition;
-    recognition.start();
-    setIsRecording(true);
-  }, [languageCode, onTranscript]);
-
-  const stopWebSpeechRecognition = useCallback(() => {
-    if (recognitionRef.current) {
-      recognitionRef.current.stop();
-      recognitionRef.current = null;
-    }
-  }, []);
-
-  // Google Cloud Speech-to-Text fallback approach
-  const startGoogleRecording = useCallback(async () => {
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({ 
-        audio: { 
-          channelCount: 1, 
-          sampleRate: 48000 
-        } 
-      });
-      streamRef.current = stream;
-      audioChunksRef.current = [];
-
-      const mediaRecorder = new MediaRecorder(stream, {
-        mimeType: MediaRecorder.isTypeSupported('audio/webm;codecs=opus')
-          ? 'audio/webm;codecs=opus'
-          : 'audio/webm'
-      });
-
-      mediaRecorder.ondataavailable = (event) => {
-        if (event.data.size > 0) {
-          audioChunksRef.current.push(event.data);
-        }
-      };
-
-      mediaRecorder.onstop = async () => {
-        setIsProcessing(true);
-        try {
-          const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
-          
-          // Convert to base64
-          const reader = new FileReader();
-          const base64Audio = await new Promise<string>((resolve, reject) => {
-            reader.onloadend = () => {
-              const base64 = (reader.result as string).split(',')[1];
-              resolve(base64);
-            };
-            reader.onerror = reject;
-            reader.readAsDataURL(audioBlob);
-          });
-
-          // Send to API
-          const response = await speech.transcribe(base64Audio, {
-            encoding: 'WEBM_OPUS',
-            sampleRateHertz: 48000,
-            languageCode
-          });
-
-          if (response.success && response.data?.text) {
-            onTranscript(response.data.text);
-          } else if (!response.data?.text) {
-            // No speech detected - show subtle feedback
-            console.warn('No speech detected in audio');
-          }
-        } catch (error) {
-          console.error('Transcription error:', error);
-        } finally {
-          setIsProcessing(false);
-          // Clean up stream
-          if (streamRef.current) {
-            streamRef.current.getTracks().forEach(track => track.stop());
-            streamRef.current = null;
-          }
-        }
-      };
-
-      mediaRecorderRef.current = mediaRecorder;
-      mediaRecorder.start(1000); // Collect in 1-second chunks
-      setIsRecording(true);
-    } catch (error: any) {
-      console.error('Microphone access error:', error);
-      if (error.name === 'NotAllowedError') {
-        alert('Microphone access denied. Please allow microphone access in your browser settings.');
-      } else {
-        alert('Could not access microphone. Please check your device settings.');
-      }
-    }
-  }, [languageCode, onTranscript]);
-
-  const stopGoogleRecording = useCallback(() => {
+  const cleanup = useCallback((ws?: WebSocket | null) => {
     if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
       mediaRecorderRef.current.stop();
-      setIsRecording(false);
     }
+    mediaRecorderRef.current = null;
     if (streamRef.current) {
-      streamRef.current.getTracks().forEach(track => track.stop());
+      streamRef.current.getTracks().forEach(t => t.stop());
+      streamRef.current = null;
     }
+    const socket = ws ?? wsRef.current;
+    if (socket && socket.readyState === WebSocket.OPEN) {
+      // Empty binary frame = end-of-stream signal to Soniox
+      socket.send(new ArrayBuffer(0));
+    }
+    wsRef.current = null;
+    setIsRecording(false);
+    setIsConnecting(false);
   }, []);
 
-  // Toggle recording
-  const handleToggleRecording = useCallback(() => {
-    if (isRecording) {
-      // Stop recording
-      if (checkWebSpeechAPI() && recognitionRef.current) {
-        stopWebSpeechRecognition();
-      } else {
-        stopGoogleRecording();
+  const startRecording = useCallback(async () => {
+    setIsConnecting(true);
+    try {
+      // 1. Get a short-lived temp key from backend
+      const tokenRes = await speech.getSonioxToken();
+      if (!tokenRes.success || !tokenRes.data?.api_key) {
+        throw new Error(tokenRes.message || 'Failed to get Soniox token');
       }
-    } else {
-      // Start recording
-      if (checkWebSpeechAPI()) {
-        startWebSpeechRecognition();
-      } else {
-        startGoogleRecording();
-      }
-    }
-  }, [isRecording, checkWebSpeechAPI, startWebSpeechRecognition, stopWebSpeechRecognition, startGoogleRecording, stopGoogleRecording]);
+      const tempKey = tokenRes.data.api_key;
 
-  const buttonContent = () => {
-    if (isProcessing) {
-      return <Loader2 className="h-4 w-4 animate-spin" />;
+      // 2. Acquire microphone BEFORE opening the socket so audio is ready to stream immediately
+      const stream = await navigator.mediaDevices.getUserMedia({
+        audio: { channelCount: 1, sampleRate: 16000, echoCancellation: true, noiseSuppression: true }
+      });
+      streamRef.current = stream;
+
+      // 3. Set up MediaRecorder early so it can buffer audio while WS handshakes
+      const mimeType = MediaRecorder.isTypeSupported('audio/webm;codecs=opus')
+        ? 'audio/webm;codecs=opus'
+        : 'audio/webm';
+      const mediaRecorder = new MediaRecorder(stream, { mimeType });
+      mediaRecorderRef.current = mediaRecorder;
+
+      // Collect pending chunks before WS is open
+      const pendingChunks: Blob[] = [];
+      let wsReady = false;
+
+      mediaRecorder.ondataavailable = (event) => {
+        if (event.data.size === 0) return;
+        if (wsReady && wsRef.current?.readyState === WebSocket.OPEN) {
+          // Send Blob directly — no async arrayBuffer() needed
+          wsRef.current.send(event.data);
+        } else {
+          pendingChunks.push(event.data);
+        }
+      };
+
+      // Start capturing immediately — don't wait for WS
+      mediaRecorder.start(100);
+
+      // 4. Open Soniox WebSocket
+      const ws = new WebSocket(SONIOX_WS_URL);
+      wsRef.current = ws;
+      ws.binaryType = 'arraybuffer';
+
+      ws.onopen = () => {
+        ws.send(JSON.stringify({
+          api_key: tempKey,
+          model: 'stt-rt-preview',
+          audio_format: 'auto',
+          language_hints: getLanguageHints(languageCode),
+          enable_endpoint_detection: true,
+          max_endpoint_delay_ms: 1500,
+        }));
+
+        // Flush any buffered chunks that arrived while WS was connecting
+        wsReady = true;
+        for (const chunk of pendingChunks) {
+          if (ws.readyState === WebSocket.OPEN) ws.send(chunk);
+        }
+        pendingChunks.length = 0;
+
+        setIsConnecting(false);
+        setIsRecording(true);
+      };
+
+      // 5. Handle incoming tokens
+      ws.onmessage = (event) => {
+        try {
+          const msg = JSON.parse(event.data as string);
+
+          if (msg.error_code) {
+            console.error('Soniox error:', msg.error_message);
+            cleanup(ws);
+            return;
+          }
+
+          const tokens: Array<{ text: string; is_final: boolean }> = msg.tokens || [];
+
+          // Filter out Soniox control tokens (e.g. "<end>", "<fin>") emitted by
+          // endpoint detection — they are markers, not transcript text.
+          const isControlToken = (t: string) => /^<[^>]*>$/.test(t.trim());
+
+          const finalText = tokens
+            .filter(t => t.is_final && !isControlToken(t.text))
+            .map(t => t.text)
+            .join('');
+          if (finalText) onTranscript(finalText);
+
+          if (onInterimTranscript) {
+            const interim = tokens
+              .filter(t => !t.is_final && !isControlToken(t.text))
+              .map(t => t.text)
+              .join('');
+            onInterimTranscript(interim);
+          }
+
+          if (msg.finished) {
+            if (onInterimTranscript) onInterimTranscript('');
+            cleanup(ws);
+          }
+        } catch (e) {
+          console.error('Failed to parse Soniox response:', e);
+        }
+      };
+
+      ws.onerror = () => cleanup(ws);
+      ws.onclose = () => {
+        if (isRecording || isConnecting) cleanup(ws);
+      };
+
+    } catch (error: any) {
+      console.error('Voice recording start failed:', error);
+      cleanup();
+      if (error.name === 'NotAllowedError') {
+        alert('Microphone access denied. Please allow microphone access in your browser settings.');
+      }
     }
-    if (isRecording) {
-      return <Square className="h-3.5 w-3.5 fill-current" />;
-    }
-    return <Mic className="h-4 w-4" />;
-  };
+  }, [languageCode, onTranscript, onInterimTranscript, cleanup, isRecording, isConnecting]);
+
+  const stopRecording = useCallback(() => {
+    cleanup();
+  }, [cleanup]);
+
+  const handleToggle = useCallback(() => {
+    if (isRecording) stopRecording();
+    else startRecording();
+  }, [isRecording, startRecording, stopRecording]);
 
   return (
     <TooltipProvider>
@@ -248,23 +230,24 @@ const VoiceToTextButton: React.FC<VoiceToTextButtonProps> = ({
         <TooltipTrigger asChild>
           <Button
             type="button"
-            variant={isRecording ? 'destructive' : 'outline'}
+            variant={isRecording ? 'destructive' : 'ghost'}
             size={size}
-            onClick={handleToggleRecording}
-            disabled={disabled || isProcessing}
-            className={`relative ${isRecording ? 'animate-pulse' : ''} ${className}`}
+            onClick={handleToggle}
+            disabled={disabled || isConnecting}
+            className={className}
             aria-label={isRecording ? 'Stop recording' : tooltip}
           >
-            {buttonContent()}
-            {isRecording && (
-              <span className="absolute -top-1 -right-1 h-2.5 w-2.5 rounded-full bg-red-500 animate-ping" />
+            {isConnecting ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : isRecording ? (
+              <WaveformBars />
+            ) : (
+              <Mic className="h-4 w-4" />
             )}
           </Button>
         </TooltipTrigger>
-        <TooltipContent side="top">
-          <p className="text-xs">
-            {isProcessing ? 'Processing audio...' : isRecording ? 'Click to stop recording' : tooltip}
-          </p>
+        <TooltipContent>
+          <p>{isRecording ? 'Tap to stop' : tooltip}</p>
         </TooltipContent>
       </Tooltip>
     </TooltipProvider>
@@ -272,3 +255,5 @@ const VoiceToTextButton: React.FC<VoiceToTextButtonProps> = ({
 };
 
 export default VoiceToTextButton;
+
+

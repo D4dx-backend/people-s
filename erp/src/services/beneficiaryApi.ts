@@ -75,6 +75,11 @@ interface Application {
   status: string;
   submittedAt: string;
   formData: any;
+  location?: {
+    district: string | null;
+    area: string | null;
+    unit: string | null;
+  };
 }
 
 class BeneficiaryApiService {

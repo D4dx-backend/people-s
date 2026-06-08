@@ -3,7 +3,7 @@ import { useNavigate, useParams } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { ArrowLeft, CheckCircle, Clock, XCircle, FileText, Loader2, IndianRupee, Calendar, User, Phone, Download, Eye, ChevronDown, ChevronUp } from "lucide-react";
+import { ArrowLeft, CheckCircle, Clock, XCircle, FileText, Loader2, IndianRupee, Calendar, User, Phone, Download, Eye, ChevronDown, ChevronUp, MapPin } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { beneficiaryApi } from "@/services/beneficiaryApi";
 import { useOrgLogoUrl } from "@/hooks/useOrgLogoUrl";
@@ -24,6 +24,11 @@ interface ApplicationData {
   approvedAt?: string;
   requestedAmount: number;
   approvedAmount?: number;
+  location?: {
+    district: string | null;
+    area: string | null;
+    unit: string | null;
+  };
 }
 
 export default function ApplicationTracking() {
@@ -354,6 +359,21 @@ export default function ApplicationTracking() {
                 <p className="font-semibold">{new Date(application.submittedAt).toLocaleDateString()}</p>
               </div>
             </div>
+
+            {/* Applied Location - District / Area / Unit */}
+            {(application.location?.district || application.location?.area || application.location?.unit) && (
+              <div className="flex items-start gap-2 sm:col-span-2">
+                <MapPin className="h-4 w-4 text-muted-foreground mt-0.5" />
+                <div>
+                  <p className="text-sm text-muted-foreground">Applied Location</p>
+                  <p className="font-semibold">
+                    {[application.location?.district, application.location?.area, application.location?.unit]
+                      .filter(Boolean)
+                      .join(" \u203A ") || "N/A"}
+                  </p>
+                </div>
+              </div>
+            )}
             
             {/* Show approved amount if available */}
             {application.approvedAmount && application.approvedAmount > 0 && (

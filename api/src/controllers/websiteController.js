@@ -2,6 +2,7 @@ const WebsiteSettings = require('../models/WebsiteSettings');
 const ResponseHelper = require('../utils/responseHelper');
 const orgConfig = require('../config/orgConfig');
 const { buildFranchiseReadFilter, buildFranchiseMatchStage, getWriteFranchiseId } = require('../utils/franchiseFilterHelper');
+const { uploadToSpaces, deleteFromSpaces } = require('../utils/s3Upload');
 
 class WebsiteController {
   /**
@@ -66,21 +67,32 @@ class WebsiteController {
    */
   async updateSettings(req, res) {
     try {
-      let { aboutUs, counts, contactDetails, socialMedia } = req.body;
+      let { aboutUs, counts, contactDetails, socialMedia, hero, vision, mission, values, donation, seo, footer } = req.body;
       const userId = req.user._id;
 
       // Parse JSON strings if they come from FormData
-      if (typeof aboutUs === 'string') {
-        aboutUs = JSON.parse(aboutUs);
-      }
-      if (typeof counts === 'string') {
-        counts = JSON.parse(counts);
-      }
-      if (typeof contactDetails === 'string') {
-        contactDetails = JSON.parse(contactDetails);
-      }
-      if (typeof socialMedia === 'string') {
-        socialMedia = JSON.parse(socialMedia);
+      const parseMaybe = (val) => (typeof val === 'string' ? JSON.parse(val) : val);
+      aboutUs = parseMaybe(aboutUs);
+      counts = parseMaybe(counts);
+      contactDetails = parseMaybe(contactDetails);
+      socialMedia = parseMaybe(socialMedia);
+      hero = parseMaybe(hero);
+      vision = parseMaybe(vision);
+      mission = parseMaybe(mission);
+      values = parseMaybe(values);
+      donation = parseMaybe(donation);
+      seo = parseMaybe(seo);
+      footer = parseMaybe(footer);
+
+      // Normalize seo.keywords to an array (accept array or comma-separated string)
+      if (seo && seo.keywords !== undefined) {
+        if (Array.isArray(seo.keywords)) {
+          seo.keywords = seo.keywords.map((k) => String(k).trim()).filter(Boolean);
+        } else if (typeof seo.keywords === 'string') {
+          seo.keywords = seo.keywords.split(',').map((k) => k.trim()).filter(Boolean);
+        } else {
+          seo.keywords = [];
+        }
       }
 
       let settings = await WebsiteSettings.findOne({ franchise: req.franchiseId });
@@ -89,11 +101,18 @@ class WebsiteController {
         settings = new WebsiteSettings({ franchise: req.franchiseId || null });
       }
 
-      // Update fields
-      if (aboutUs) settings.aboutUs = aboutUs;
+      // Update fields — merge aboutUs to preserve imageUrl/imageKey set via the dedicated upload endpoint
+      if (aboutUs) settings.aboutUs = { ...(settings.aboutUs?.toObject ? settings.aboutUs.toObject() : settings.aboutUs || {}), ...aboutUs };
       if (counts) settings.counts = counts;
       if (contactDetails) settings.contactDetails = contactDetails;
       if (socialMedia) settings.socialMedia = socialMedia;
+      if (hero) settings.hero = hero;
+      if (vision) settings.vision = vision;
+      if (mission) settings.mission = mission;
+      if (values) settings.values = values;
+      if (donation) settings.donation = donation;
+      if (seo) settings.seo = seo;
+      if (footer) settings.footer = footer;
       
       settings.updatedBy = userId;
       await settings.save();
@@ -198,6 +217,44 @@ class WebsiteController {
       return ResponseHelper.success(res, { settings }, 'Counter deleted successfully');
     } catch (error) {
       console.error('❌ Delete Counter Error:', error);
+      return ResponseHelper.error(res, error.message, 500);
+    }
+  }
+  /**
+   * Upload About Us image
+   * PUT /api/website/settings/about-image
+   */
+  async uploadAboutImage(req, res) {
+    try {
+      if (!req.file) {
+        return ResponseHelper.error(res, 'Image file is required', 400);
+      }
+
+      let settings = await WebsiteSettings.findOne({ franchise: req.franchiseId });
+      if (!settings) {
+        settings = new WebsiteSettings({ franchise: req.franchiseId || null });
+      }
+
+      // Delete old image from S3 if exists
+      if (settings.aboutUs?.imageKey) {
+        await deleteFromSpaces(settings.aboutUs.imageKey).catch(() => {});
+      }
+
+      // Upload new image
+      const uploadResult = await uploadToSpaces(req.file, 'website/about');
+      if (!uploadResult.success) {
+        return ResponseHelper.error(res, 'Failed to upload image to storage', 500);
+      }
+
+      // Merge into existing aboutUs (preserve title/description)
+      const existing = settings.aboutUs?.toObject ? settings.aboutUs.toObject() : (settings.aboutUs || {});
+      settings.aboutUs = { ...existing, imageUrl: uploadResult.fileUrl, imageKey: uploadResult.key };
+      settings.updatedBy = req.user._id;
+      await settings.save();
+
+      return ResponseHelper.success(res, { imageUrl: uploadResult.fileUrl, imageKey: uploadResult.key }, 'About image updated successfully');
+    } catch (error) {
+      console.error('❌ Upload About Image Error:', error);
       return ResponseHelper.error(res, error.message, 500);
     }
   }

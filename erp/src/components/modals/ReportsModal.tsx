@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import VoiceTextarea from "@/components/ui/VoiceTextarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
@@ -372,7 +373,7 @@ export function ReportsModal({ isOpen, onClose, applicationId, applicantName }: 
                 
                 <div className="space-y-2">
                   <Label>Details *</Label>
-                  <Textarea
+                  <VoiceTextarea
                     placeholder="Enter report details..."
                     value={formData.details}
                     onChange={(e) => setFormData({ ...formData, details: e.target.value })}
@@ -431,7 +432,7 @@ export function ReportsModal({ isOpen, onClose, applicationId, applicantName }: 
                     </div>
                     <div className="space-y-2">
                       <Label>Follow-up Notes</Label>
-                      <Textarea
+                      <VoiceTextarea
                         placeholder="Enter follow-up notes..."
                         value={formData.followUpNotes}
                         onChange={(e) => setFormData({ ...formData, followUpNotes: e.target.value })}

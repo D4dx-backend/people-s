@@ -163,6 +163,8 @@ export default function BeneficiaryApplication() {
   const [uploadedFiles, setUploadedFiles] = useState<Record<string, File>>({});
   const [uploadingFields, setUploadingFields] = useState<Record<string, boolean>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submittedInfo, setSubmittedInfo] = useState<{ applicationId: string; isRenewal: boolean } | null>(null);
+  const [copied, setCopied] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [agreedToTerms, setAgreedToTerms] = useState(false);
   const [instructionsAccepted, setInstructionsAccepted] = useState(false);
@@ -725,10 +727,19 @@ export default function BeneficiaryApplication() {
           documents: []
         });
         
+        const renewalId = response.application?.applicationId || response.application?.applicationNumber || '';
         toast({
           title: "Renewal Submitted Successfully!",
-          description: `Your renewal application ID is ${response.application?.applicationId || response.application?.applicationNumber || 'generated'}`,
+          description: `Your renewal application ID is ${renewalId || 'generated'}`,
         });
+
+        // Clear auto-save timer
+        if (autoSaveTimerRef.current) {
+          clearInterval(autoSaveTimerRef.current);
+        }
+
+        setSubmittedInfo({ applicationId: renewalId, isRenewal: true });
+        window.scrollTo({ top: 0, behavior: 'smooth' });
       } else {
         const applicationData = {
           schemeId: scheme._id,
@@ -738,19 +749,20 @@ export default function BeneficiaryApplication() {
 
         const response = await beneficiaryApi.submitApplication(applicationData);
         
+        const newId = response.application.applicationId || '';
         toast({
           title: "Application Submitted Successfully!",
-          description: `Your application ID is ${response.application.applicationId}`,
+          description: `Your application ID is ${newId}`,
         });
-      }
 
-      // Clear auto-save timer
-      if (autoSaveTimerRef.current) {
-        clearInterval(autoSaveTimerRef.current);
-      }
+        // Clear auto-save timer
+        if (autoSaveTimerRef.current) {
+          clearInterval(autoSaveTimerRef.current);
+        }
 
-      // Navigate to dashboard
-      navigate("/beneficiary/dashboard");
+        setSubmittedInfo({ applicationId: newId, isRenewal: false });
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      }
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : "Please try again later";
       
@@ -1449,6 +1461,72 @@ export default function BeneficiaryApplication() {
     );
   }
 
+  // Success confirmation screen — shown after a successful submission so the
+  // beneficiary can clearly see and copy their application reference number.
+  if (submittedInfo) {
+    const appId = submittedInfo.applicationId || 'Generated';
+    return (
+      <div className="min-h-screen bg-gradient-to-b from-green-50 to-background flex items-center justify-center p-4">
+        <Card className="w-full max-w-md text-center shadow-lg animate-in fade-in zoom-in-95 duration-500">
+          <CardContent className="pt-10 pb-8 px-6">
+            {/* Animated success check */}
+            <div className="mx-auto mb-6 flex h-20 w-20 items-center justify-center rounded-full bg-green-100 animate-success-pop">
+              <CheckCircle className="h-12 w-12 text-green-600" strokeWidth={2.5} />
+            </div>
+
+            <h2 className="text-2xl font-bold text-foreground">
+              {submittedInfo.isRenewal ? 'Renewal Submitted!' : 'Application Submitted!'}
+            </h2>
+            <p className="mt-1 text-sm text-muted-foreground">
+              നിങ്ങളുടെ അപേക്ഷ വിജയകരമായി സമർപ്പിച്ചു.
+            </p>
+
+            {/* Reference number block */}
+            <div className="mt-6 rounded-lg border bg-muted/40 p-4">
+              <p className="text-xs uppercase tracking-wide text-muted-foreground">
+                Your Application ID / അപേക്ഷ നമ്പർ
+              </p>
+              <div className="mt-2 flex items-center justify-center gap-2">
+                <span className="text-xl font-mono font-semibold text-foreground select-all">
+                  {appId}
+                </span>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-8 px-2"
+                  onClick={async () => {
+                    try {
+                      await navigator.clipboard.writeText(appId);
+                      setCopied(true);
+                      toast({ title: 'Copied!', description: 'Application ID copied to clipboard' });
+                      setTimeout(() => setCopied(false), 2000);
+                    } catch {
+                      toast({ title: 'Copy failed', description: 'Please copy the ID manually', variant: 'destructive' });
+                    }
+                  }}
+                >
+                  {copied ? <CheckCircle className="h-4 w-4 text-green-600" /> : <CopyPlus className="h-4 w-4" />}
+                </Button>
+              </div>
+              <p className="mt-2 text-xs text-muted-foreground">
+                ഭാവിയിലെ ആവശ്യങ്ങൾക്കായി ഈ നമ്പർ സൂക്ഷിക്കുക. Please save this number for future reference.
+              </p>
+            </div>
+
+            <div className="mt-6 flex flex-col gap-2">
+              <Button className="w-full" onClick={() => navigate('/beneficiary/dashboard')}>
+                Go to Dashboard
+              </Button>
+              <Button variant="outline" className="w-full" onClick={() => navigate('/beneficiary/applications')}>
+                View My Applications
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-background">
       {/* Header */}
@@ -1598,12 +1676,34 @@ export default function BeneficiaryApplication() {
                 disabled={isSubmitting}
                 className="bg-green-600 hover:bg-green-700"
               >
+                {isSubmitting ? (
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                ) : (
+                  <CheckCircle className="h-4 w-4 mr-2" />
+                )}
                 {isSubmitting ? "Submitting..." : "Submit Application"}
               </Button>
             )}
           </div>
         </div>
       </div>
+
+      {/* Full-screen submitting overlay — reassures the user to wait while the
+          request is in flight, and blocks accidental double interactions. */}
+      {isSubmitting && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-background/70 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="flex flex-col items-center gap-4 rounded-xl bg-card px-8 py-6 shadow-xl border">
+            <Loader2 className="h-10 w-10 animate-spin text-green-600" />
+            <div className="text-center">
+              <p className="font-semibold text-foreground">Submitting your application…</p>
+              <p className="mt-1 text-sm text-muted-foreground">
+                ദയവായി കാത്തിരിക്കൂ, പേജ് ക്ലോസ് ചെയ്യരുത്.
+              </p>
+              <p className="text-sm text-muted-foreground">Please wait, do not close this page.</p>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
