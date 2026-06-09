@@ -9,7 +9,6 @@ import { Textarea } from '../ui/textarea';
 import { Label } from '../ui/label';
 import { Input } from '../ui/input';
 import VoiceToTextButton from '../ui/VoiceToTextButton';
-import VoiceTextarea from '../ui/VoiceTextarea';
 import { Checkbox } from '../ui/checkbox';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 import { applications as applicationsApi, interviews, locations as locationsApi } from '../../lib/api';
@@ -358,7 +357,7 @@ const StageItem: React.FC<{
               ) : (
                 <div className="space-y-1.5 p-2 bg-muted/30 rounded border">
                   <Label className="text-xs">Notes (optional)</Label>
-                  <VoiceTextarea
+                  <Textarea
                     placeholder="Add notes..."
                     value={stageNotes}
                     onChange={(e) => setStageNotes(e.target.value)}
