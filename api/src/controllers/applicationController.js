@@ -2689,8 +2689,20 @@ const updateApplicationLocation = async (req, res) => {
 
     let hasAccess = hasAccessToApplication(effectiveUser, application);
 
-    // If the simple scope check fails, try the RBAC middleware check (same
-    // fallback used by the GET application-by-ID endpoint).
+    // Fallback 1: franchise-scope check may fail if UserFranchise.adminScope.regions
+    // is not populated in the DB.  Re-try using the raw User.adminScope (User model)
+    // which is populated from the legacy adminScope field and is more likely to have
+    // district/area/unit set even on older records.
+    if (!hasAccess && req.user.adminScope) {
+      const userViaModel = {
+        role: effectiveUser.role,
+        adminScope: req.user.adminScope,
+        isSuperAdmin: req.user.isSuperAdmin,
+      };
+      hasAccess = hasAccessToApplication(userViaModel, application);
+    }
+
+    // Fallback 2: RBAC middleware check (uses UserRole collection, same as GET endpoint).
     if (!hasAccess) {
       try {
         hasAccess = await RBACMiddleware.checkApplicationAccess(req.user, application);
