@@ -2687,7 +2687,19 @@ const updateApplicationLocation = async (req, res) => {
 
     const effectiveUser = getEffectiveUserForFilter(req);
 
-    if (!hasAccessToApplication(effectiveUser, application)) {
+    let hasAccess = hasAccessToApplication(effectiveUser, application);
+
+    // If the simple scope check fails, try the RBAC middleware check (same
+    // fallback used by the GET application-by-ID endpoint).
+    if (!hasAccess) {
+      try {
+        hasAccess = await RBACMiddleware.checkApplicationAccess(req.user, application);
+      } catch (_rbacErr) {
+        // fall through — hasAccess stays false
+      }
+    }
+
+    if (!hasAccess) {
       return res.status(403).json({ success: false, message: 'Access denied' });
     }
 
