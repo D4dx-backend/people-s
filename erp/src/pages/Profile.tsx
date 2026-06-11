@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { auth } from "@/lib/api";
 import { toast } from "@/hooks/use-toast";
@@ -8,10 +8,13 @@ import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
-import { User, Lock, Save, Eye, EyeOff, Shield } from "lucide-react";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { User, Lock, Save, Eye, EyeOff, Shield, Camera, Loader2 } from "lucide-react";
+import { uploadSingleFile } from "@/utils/fileUploadHelper";
 
 const Profile = () => {
   const { user, updateUser } = useAuth();
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Profile form state  
   const [profileForm, setProfileForm] = useState({
@@ -20,6 +23,8 @@ const Profile = () => {
     dateOfBirth: "",
     gender: "",
   });
+  const [avatarUrl, setAvatarUrl] = useState<string>("");
+  const [avatarUploading, setAvatarUploading] = useState(false);
   const [profileLoading, setProfileLoading] = useState(false);
 
   // Password form state
@@ -47,6 +52,7 @@ const Profile = () => {
             dateOfBirth: u.profile?.dateOfBirth ? new Date(u.profile.dateOfBirth).toISOString().split("T")[0] : "",
             gender: u.profile?.gender || "",
           });
+          setAvatarUrl(u.profile?.avatar || "");
           // If the user was created via OTP-only, they might not have a password
           // We can't know for sure from the frontend, so we default to showing the field
           // The backend will handle the logic gracefully
@@ -58,6 +64,45 @@ const Profile = () => {
     loadProfile();
   }, []);
 
+  const handleAvatarChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    // Reset the input so selecting the same file again still triggers change.
+    e.target.value = "";
+    if (!file) return;
+
+    if (!file.type.startsWith("image/")) {
+      toast({
+        title: "Invalid file",
+        description: "Please select an image file.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setAvatarUploading(true);
+    try {
+      const uploaded = await uploadSingleFile(file, { folder: "avatars" });
+      if (uploaded?.url) {
+        setAvatarUrl(uploaded.url);
+        // Persist immediately so the photo is saved without requiring a full form save.
+        await auth.updateProfile({ profile: { avatar: uploaded.url } });
+        updateUser({ profile: { ...(user?.profile || {}), avatar: uploaded.url } });
+        toast({
+          title: "Photo updated",
+          description: "Your profile photo has been updated.",
+        });
+      }
+    } catch (error: any) {
+      toast({
+        title: "Upload failed",
+        description: error.message || "Could not upload the photo.",
+        variant: "destructive",
+      });
+    } finally {
+      setAvatarUploading(false);
+    }
+  };
+
   const handleProfileSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setProfileLoading(true);
@@ -68,13 +113,12 @@ const Profile = () => {
         email: profileForm.email || undefined,
       };
 
-      if (profileForm.dateOfBirth) {
-        updateData.profile = {
-          ...(profileForm.gender && { gender: profileForm.gender }),
-          dateOfBirth: profileForm.dateOfBirth,
-        };
-      } else if (profileForm.gender) {
-        updateData.profile = { gender: profileForm.gender };
+      const profilePatch: any = {};
+      if (profileForm.dateOfBirth) profilePatch.dateOfBirth = profileForm.dateOfBirth;
+      if (profileForm.gender) profilePatch.gender = profileForm.gender;
+      if (avatarUrl) profilePatch.avatar = avatarUrl;
+      if (Object.keys(profilePatch).length > 0) {
+        updateData.profile = profilePatch;
       }
 
       const response = await auth.updateProfile(updateData);
@@ -168,8 +212,34 @@ const Profile = () => {
       <Card>
         <CardContent className="pt-6">
           <div className="flex items-center gap-4">
-            <div className="flex items-center justify-center w-16 h-16 rounded-full bg-primary/10">
-              <User className="h-8 w-8 text-primary" />
+            <div className="relative">
+              <Avatar className="h-16 w-16">
+                <AvatarImage src={avatarUrl || undefined} alt={user?.name || "User"} />
+                <AvatarFallback className="bg-primary/10">
+                  <User className="h-8 w-8 text-primary" />
+                </AvatarFallback>
+              </Avatar>
+              {avatarUploading && (
+                <div className="absolute inset-0 flex items-center justify-center rounded-full bg-black/40">
+                  <Loader2 className="h-5 w-5 animate-spin text-white" />
+                </div>
+              )}
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                disabled={avatarUploading}
+                className="absolute -bottom-1 -right-1 flex h-7 w-7 items-center justify-center rounded-full border-2 border-background bg-primary text-primary-foreground shadow-sm transition hover:opacity-90 disabled:opacity-60"
+                aria-label="Change profile photo"
+              >
+                <Camera className="h-3.5 w-3.5" />
+              </button>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={handleAvatarChange}
+              />
             </div>
             <div>
               <h2 className="text-xl font-semibold">{user?.name || "User"}</h2>

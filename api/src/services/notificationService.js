@@ -537,6 +537,194 @@ class NotificationService {
     }
   }
 
+  // ============================================
+  // ADMIN BROADCAST (announcements with HTML/images/links)
+  // ============================================
+
+  /**
+   * Resolve the set of recipient Users for a broadcast based on targeting.
+   * Roles live on UserFranchise in the multi-tenant model, so we query there.
+   * @param {Object} targeting - { userRoles: [], locationIds: [] }
+   * @param {ObjectId} franchise - franchise to scope membership lookup
+   * @returns {Promise<Array<{_id, phone, name}>>}
+   */
+  async _resolveBroadcastRecipients(targeting = {}, franchise = null) {
+    const UserFranchise = require('../models/UserFranchise');
+    const roles = (targeting.userRoles || []).filter(Boolean);
+    const locationIds = (targeting.locationIds || []).filter(Boolean);
+
+    const query = { isActive: true };
+    if (franchise) query.franchise = franchise;
+    if (roles.length) query.role = { $in: roles };
+    if (locationIds.length) {
+      query.$or = [
+        { 'adminScope.district': { $in: locationIds } },
+        { 'adminScope.area': { $in: locationIds } },
+        { 'adminScope.unit': { $in: locationIds } },
+        { 'adminScope.regions': { $in: locationIds } }
+      ];
+    }
+
+    const memberships = await UserFranchise.find(query)
+      .populate('user', 'name phone isActive')
+      .lean();
+
+    const seen = new Set();
+    const users = [];
+    for (const m of memberships) {
+      const u = m.user;
+      if (!u || u.isActive === false) continue;
+      const id = u._id.toString();
+      if (seen.has(id)) continue;
+      seen.add(id);
+      users.push({ _id: u._id, phone: u.phone, name: u.name });
+    }
+    return users;
+  }
+
+  /**
+   * Create an admin-composed broadcast notification (in-app).
+   * Materialises recipients so they appear in each user's /me feed.
+   */
+  async createAdminBroadcast(data) {
+    try {
+      const {
+        title,
+        message,
+        htmlContent = '',
+        images = [],
+        linkUrl = '',
+        linkLabel = '',
+        targeting = {},
+        priority = 'medium',
+        category = 'announcement',
+        relatedEntities = {},
+        createdBy,
+        franchise = null
+      } = data;
+
+      const recipientUsers = await this._resolveBroadcastRecipients(targeting, franchise);
+
+      const now = new Date();
+      const notification = new Notification({
+        title,
+        message,
+        htmlContent,
+        images,
+        linkUrl,
+        linkLabel,
+        type: 'in_app',
+        category,
+        priority,
+        targeting: {
+          userRoles: targeting.userRoles || [],
+          regions: targeting.locationIds || []
+        },
+        relatedEntities,
+        recipients: recipientUsers.map(u => ({
+          user: u._id,
+          phone: u.phone,
+          status: 'sent',
+          sentAt: now
+        })),
+        delivery: {
+          status: 'sent',
+          totalRecipients: recipientUsers.length,
+          sentCount: recipientUsers.length,
+          startedAt: now,
+          completedAt: now
+        },
+        createdBy,
+        franchise
+      });
+
+      await notification.save();
+      return notification;
+    } catch (error) {
+      console.error('❌ Create Admin Broadcast Error:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * List admin broadcasts (sent feed for the composer screen).
+   * Excludes the heavy recipients array; delivery counts give the summary.
+   */
+  async getSentNotifications(filter = {}, { limit = 50, offset = 0 } = {}) {
+    return Notification.find(filter)
+      .sort({ createdAt: -1 })
+      .limit(limit)
+      .skip(offset)
+      .select('-recipients')
+      .populate('createdBy', 'name');
+  }
+
+  /**
+   * Get a single broadcast with read/delivery stats.
+   */
+  async getSentNotificationById(filter = {}) {
+    const notification = await Notification.findOne(filter)
+      .populate('createdBy', 'name')
+      .select('-recipients.fcmToken');
+    if (!notification) return null;
+
+    const readCount = (notification.recipients || []).filter(r => r.status === 'read').length;
+    const stats = {
+      total: notification.recipients?.length || 0,
+      read: readCount,
+      unread: (notification.recipients?.length || 0) - readCount
+    };
+    return { notification, stats };
+  }
+
+  /**
+   * Update an existing broadcast (content and optionally re-target recipients).
+   */
+  async updateBroadcast(filter, updates) {
+    const notification = await Notification.findOne(filter);
+    if (!notification) return null;
+
+    const editable = ['title', 'message', 'htmlContent', 'images', 'linkUrl', 'linkLabel', 'priority', 'category'];
+    for (const key of editable) {
+      if (updates[key] !== undefined) notification[key] = updates[key];
+    }
+    if (updates.updatedBy) notification.updatedBy = updates.updatedBy;
+
+    // Re-resolve recipients only when targeting is explicitly provided.
+    if (updates.targeting && (updates.targeting.userRoles || updates.targeting.locationIds)) {
+      const recipientUsers = await this._resolveBroadcastRecipients(
+        updates.targeting,
+        notification.franchise
+      );
+      const existingByUser = new Map(
+        (notification.recipients || [])
+          .filter(r => r.user)
+          .map(r => [r.user.toString(), r])
+      );
+      const now = new Date();
+      notification.recipients = recipientUsers.map(u => {
+        const prev = existingByUser.get(u._id.toString());
+        return prev || { user: u._id, phone: u.phone, status: 'sent', sentAt: now };
+      });
+      notification.targeting = {
+        userRoles: updates.targeting.userRoles || [],
+        regions: updates.targeting.locationIds || []
+      };
+      notification.delivery.totalRecipients = notification.recipients.length;
+    }
+
+    await notification.save();
+    return notification;
+  }
+
+  /**
+   * Hard-delete a broadcast (admin action — removes for everyone).
+   */
+  async deleteBroadcast(filter) {
+    const result = await Notification.deleteOne(filter);
+    return { success: result.deletedCount > 0 };
+  }
+
   async getNotificationStatistics(filters = {}) {
     try {
       const stats = await Notification.aggregate([

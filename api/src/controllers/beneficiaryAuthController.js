@@ -355,6 +355,10 @@ class BeneficiaryAuthController {
         if (profile.gender) {
           updateData['profile.gender'] = profile.gender;
         }
+        // Profile photo (avatar). Allow setting a new URL or clearing it ('').
+        if (profile.avatar !== undefined) {
+          updateData['profile.avatar'] = profile.avatar;
+        }
         if (profile.address) {
           updateData['profile.address'] = profile.address;
         }

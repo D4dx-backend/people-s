@@ -1710,12 +1710,12 @@ export const adminReports = {
 // Program Reports Module
 export const programReports = {
   getAll: (params?: {
-    targetUserType?: string;
-    status?: string;
+    scheme?: string;
+    location?: string;
+    submitterRole?: string;
     search?: string;
-    district?: string;
-    area?: string;
-    unit?: string;
+    from?: string;
+    to?: string;
     sortBy?: string;
     sortOrder?: string;
     page?: number;
@@ -1725,121 +1725,8 @@ export const programReports = {
       `/program-reports${params ? `?${new URLSearchParams(params as any).toString()}` : ''}`
     ),
   getById: (id: string) => extendedApiClient.request(`/program-reports/${id}`),
-  create: (data: {
-    title: string;
-    description?: string;
-    targetUserType: string;
-    targetLocations?: string[];
-    status?: string;
-  }) =>
-    extendedApiClient.request('/program-reports', {
-      method: 'POST',
-      body: JSON.stringify(data),
-    }),
-  update: (id: string, data: any) =>
-    extendedApiClient.request(`/program-reports/${id}`, {
-      method: 'PUT',
-      body: JSON.stringify(data),
-    }),
   delete: (id: string) =>
     extendedApiClient.request(`/program-reports/${id}`, { method: 'DELETE' }),
-
-  // Form Configuration
-  getFormConfig: (id: string) =>
-    extendedApiClient.request(`/program-reports/${id}/form-config`),
-  updateFormConfig: (id: string, config: any) =>
-    extendedApiClient.request(`/program-reports/${id}/form-config`, {
-      method: 'PUT',
-      body: JSON.stringify(config),
-    }),
-  publishFormConfig: (id: string, data: { isPublished: boolean }) =>
-    extendedApiClient.request(`/program-reports/${id}/form-config/publish`, {
-      method: 'PATCH',
-      body: JSON.stringify(data),
-    }),
-
-  // Submissions
-  getSubmissions: (
-    id: string,
-    params?: {
-      district?: string;
-      area?: string;
-      unit?: string;
-      status?: string;
-      page?: number;
-      limit?: number;
-    }
-  ) =>
-    extendedApiClient.request(
-      `/program-reports/${id}/submissions${params ? `?${new URLSearchParams(params as any).toString()}` : ''}`
-    ),
-  saveDraft: (id: string, data: { formData: any; location?: string }) =>
-    extendedApiClient.request(`/program-reports/${id}/submissions`, {
-      method: 'POST',
-      body: JSON.stringify(data),
-    }),
-  submitForm: (id: string, submissionId: string, data?: { formData?: any }) =>
-    extendedApiClient.request(
-      `/program-reports/${id}/submissions/${submissionId}/submit`,
-      {
-        method: 'PATCH',
-        body: data ? JSON.stringify(data) : undefined,
-      }
-    ),
-  updateSubmission: (id: string, submissionId: string, data: { formData: any }) =>
-    extendedApiClient.request(`/program-reports/${id}/submissions/${submissionId}`, {
-      method: 'PATCH',
-      body: JSON.stringify(data),
-    }),
-  deleteSubmission: (id: string, submissionId: string) =>
-    extendedApiClient.request(`/program-reports/${id}/submissions/${submissionId}`, {
-      method: 'DELETE',
-    }),
-
-  // Attachments (multipart upload)
-  uploadAttachments: (
-    reportId: string,
-    submissionId: string,
-    files: File[],
-    onProgress?: (pct: number) => void
-  ): Promise<any> => {
-    return new Promise((resolve, reject) => {
-      const formData = new FormData();
-      files.forEach((f) => formData.append('files', f));
-
-      const token = localStorage.getItem('token');
-      const slug = getFranchiseSlug();
-
-      const xhr = new XMLHttpRequest();
-      xhr.open('POST', `${API_BASE_URL}/program-reports/${reportId}/submissions/${submissionId}/attachments`);
-      if (token) xhr.setRequestHeader('Authorization', `Bearer ${token}`);
-      if (slug) xhr.setRequestHeader('X-Franchise-Slug', slug);
-
-      if (onProgress) {
-        xhr.upload.onprogress = (e) => {
-          if (e.lengthComputable) onProgress(Math.round((e.loaded / e.total) * 100));
-        };
-      }
-
-      xhr.onload = () => {
-        try {
-          const data = JSON.parse(xhr.responseText);
-          if (xhr.status >= 200 && xhr.status < 300) resolve(data);
-          else reject(new Error(data.message || `Upload failed: ${xhr.status}`));
-        } catch {
-          reject(new Error('Invalid server response'));
-        }
-      };
-      xhr.onerror = () => reject(new Error('Network error during upload'));
-      xhr.send(formData);
-    });
-  },
-
-  deleteAttachment: (reportId: string, submissionId: string, attachmentId: string) =>
-    extendedApiClient.request(
-      `/program-reports/${reportId}/submissions/${submissionId}/attachments/${attachmentId}`,
-      { method: 'DELETE' }
-    ),
 };
 
 // RBAC Management

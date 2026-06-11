@@ -1,8 +1,8 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import {
-  Plus, Search, Filter, Settings, Trash2,
-  Edit, Eye, FileText, Users, CheckCircle2, Clock, XCircle, Loader2,
-  AlertCircle, RefreshCw, Send, CheckCircle, BookOpen, MapPin, User
+  Search, Trash2, Eye, RefreshCw, Loader2, AlertCircle, ImageIcon,
+  BookOpen, MapPin, User, Calendar, Download, LayoutGrid, Layers,
+  ChevronLeft, ChevronRight,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -10,255 +10,186 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import {
-  Select, SelectContent, SelectItem, SelectTrigger, SelectValue
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import {
-  Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter
+  Dialog, DialogContent, DialogHeader, DialogTitle,
 } from "@/components/ui/dialog";
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
-  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
-import VoiceTextarea from "@/components/ui/VoiceTextarea";
-import { Separator } from "@/components/ui/separator";
-import {
-  Table, TableBody, TableCell, TableHead, TableHeader, TableRow
-} from "@/components/ui/table";
-import { useNavigate } from "react-router-dom";
-import { useAuth } from "@/hooks/useAuth";
-import { programReports } from "@/lib/api";
+import { programReports, schemes } from "@/lib/api";
 import { toast } from "@/hooks/use-toast";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
+interface ProgramPhoto {
+  _id: string;
+  url: string;
+  fileName?: string;
+  mimetype?: string;
+  size?: number;
+}
+
 interface ProgramReport {
   _id: string;
   title: string;
-  description?: string;
-  targetUserType: string;
-  targetLocations: Array<{ _id: string; name: string; type: string }>;
-  hasFormConfiguration: boolean;
-  isFormPublished: boolean;
-  status: "draft" | "active" | "closed";
+  news?: string;
+  scheme?: { _id: string; name: string } | null;
+  location?: { _id: string; name: string; type?: string; code?: string } | null;
+  photos: ProgramPhoto[];
+  submittedBy?: { _id: string; name: string; email?: string } | null;
+  submitterRole?: string;
   createdAt: string;
   updatedAt: string;
-  createdBy?: { name: string; email: string };
+}
+
+interface SchemeOption {
+  _id: string;
+  name: string;
 }
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
-const USER_TYPE_LABELS: Record<string, string> = {
+const ROLE_LABELS: Record<string, string> = {
   unit_admin: "Unit Admin",
   area_admin: "Area Admin",
   district_admin: "District Admin",
+  area_president: "Area President",
 };
 
-const STATUS_CONFIG: Record<string, { color: string; icon: React.ReactNode }> = {
-  draft: {
-    color: "bg-gray-100 text-gray-700 border-gray-200",
-    icon: <Clock className="h-3 w-3" />,
-  },
-  active: {
-    color: "bg-green-100 text-green-700 border-green-200",
-    icon: <CheckCircle2 className="h-3 w-3" />,
-  },
-  closed: {
-    color: "bg-red-100 text-red-700 border-red-200",
-    icon: <XCircle className="h-3 w-3" />,
-  },
+const NO_SCHEME_KEY = "__none__";
+
+// ── Helpers ─────────────────────────────────────────────────────────────────
+
+const formatDate = (iso?: string) => {
+  if (!iso) return "—";
+  try {
+    return new Date(iso).toLocaleDateString(undefined, {
+      year: "numeric",
+      month: "short",
+      day: "numeric",
+    });
+  } catch {
+    return "—";
+  }
 };
 
-// ── Create / Edit Modal ───────────────────────────────────────────────────────
+const downloadImage = async (photo: ProgramPhoto, fallbackName: string) => {
+  try {
+    const res = await fetch(photo.url);
+    const blob = await res.blob();
+    const objectUrl = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = objectUrl;
+    a.download = photo.fileName || fallbackName;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(objectUrl);
+  } catch {
+    // Fallback: open in a new tab if direct download fails (e.g. CORS).
+    window.open(photo.url, "_blank", "noopener,noreferrer");
+  }
+};
 
-interface ReportFormModalProps {
-  open: boolean;
-  mode: "create" | "edit";
-  report: ProgramReport | null;
-  onClose: () => void;
-  onSaved: () => void;
-}
+// ── Component ─────────────────────────────────────────────────────────────────
 
-function ReportFormModal({ open, mode, report, onClose, onSaved }: ReportFormModalProps) {
-  const [title, setTitle] = useState("");
-  const [description, setDescription] = useState("");
-  const [targetUserType, setTargetUserType] = useState("unit_admin");
-  const [status, setStatus] = useState("draft");
-  const [saving, setSaving] = useState(false);
-
-  useEffect(() => {
-    if (open) {
-      if (mode === "edit" && report) {
-        setTitle(report.title);
-        setDescription(report.description || "");
-        setTargetUserType(report.targetUserType);
-        setStatus(report.status);
-      } else {
-        setTitle("");
-        setDescription("");
-        setTargetUserType("unit_admin");
-        setStatus("draft");
-      }
-    }
-  }, [open, mode, report]);
-
-  const handleSave = async () => {
-    if (!title.trim()) {
-      toast({ title: "Title is required", variant: "destructive" });
-      return;
-    }
-    setSaving(true);
-    try {
-      if (mode === "create") {
-        await programReports.create({ title, description, targetUserType, status });
-        toast({ title: "Program report created successfully" });
-      } else if (report) {
-        await programReports.update(report._id, { title, description, targetUserType, status });
-        toast({ title: "Program report updated successfully" });
-      }
-      onSaved();
-      onClose();
-    } catch {
-      toast({ title: "Failed to save program report", variant: "destructive" });
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  return (
-    <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className="max-w-lg">
-        <DialogHeader>
-          <DialogTitle>{mode === "create" ? "Create Program Report" : "Edit Program Report"}</DialogTitle>
-        </DialogHeader>
-        <div className="space-y-4 py-2">
-          <div className="space-y-1">
-            <Label htmlFor="title">Title <span className="text-red-500">*</span></Label>
-            <Input
-              id="title"
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              placeholder="Enter report title"
-            />
-          </div>
-          <div className="space-y-1">
-            <Label htmlFor="description">Description</Label>
-            <VoiceTextarea
-              id="description"
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              placeholder="Describe the purpose of this program report"
-              rows={3}
-            />
-          </div>
-          <div className="space-y-1">
-            <Label htmlFor="targetUserType">Target User Type <span className="text-red-500">*</span></Label>
-            <Select value={targetUserType} onValueChange={setTargetUserType}>
-              <SelectTrigger id="targetUserType">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {Object.entries(USER_TYPE_LABELS).map(([value, label]) => (
-                  <SelectItem key={value} value={value}>{label}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-          <div className="space-y-1">
-            <Label htmlFor="status">Status</Label>
-            <Select value={status} onValueChange={setStatus}>
-              <SelectTrigger id="status">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="draft">Draft</SelectItem>
-                <SelectItem value="active">Active</SelectItem>
-                <SelectItem value="closed">Closed</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-        </div>
-        <DialogFooter>
-          <Button variant="outline" onClick={onClose} disabled={saving}>Cancel</Button>
-          <Button onClick={handleSave} disabled={saving}>
-            {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-            {mode === "create" ? "Create" : "Save Changes"}
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
-  );
-}
-
-// ── Main Page ─────────────────────────────────────────────────────────────────
-
-export default function ProgramReports() {
-  const navigate = useNavigate();
-  const { user } = useAuth();
-  const isSuper = user?.isSuperAdmin || user?.role === "super_admin";
-  const isStateAdmin = user?.role === "state_admin";
-  const canView = isSuper || isStateAdmin;
-
+const ProgramReports = () => {
   const [reports, setReports] = useState<ProgramReport[]>([]);
+  const [schemeOptions, setSchemeOptions] = useState<SchemeOption[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // Filters
-  const [showFilters, setShowFilters] = useState(false);
   const [search, setSearch] = useState("");
-  const [filterUserType, setFilterUserType] = useState("all");
-  const [filterStatus, setFilterStatus] = useState("all");
-  const [page, setPage] = useState(1);
-  const [totalPages, setTotalPages] = useState(1);
+  const [schemeFilter, setSchemeFilter] = useState<string>("all");
+  const [groupByScheme, setGroupByScheme] = useState(false);
 
-  // Modals
-  const [modalOpen, setModalOpen] = useState(false);
-  const [modalMode, setModalMode] = useState<"create" | "edit">("create");
-  const [selectedReport, setSelectedReport] = useState<ProgramReport | null>(null);
-  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
-  const [reportToDelete, setReportToDelete] = useState<ProgramReport | null>(null);
+  const [selected, setSelected] = useState<ProgramReport | null>(null);
+  const [photoIndex, setPhotoIndex] = useState(0);
+  const [deleteTarget, setDeleteTarget] = useState<ProgramReport | null>(null);
   const [deleting, setDeleting] = useState(false);
-  const [submissionsDialogOpen, setSubmissionsDialogOpen] = useState(false);
-  const [submissionsReport, setSubmissionsReport] = useState<ProgramReport | null>(null);
 
-  const fetchReports = useCallback(async () => {
+  const loadReports = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
-      const params: any = { page, limit: 15 };
-      if (search) params.search = search;
-      if (canView) {
-        if (filterUserType !== "all") params.targetUserType = filterUserType;
-        if (filterStatus !== "all") params.status = filterStatus;
+      const params: Record<string, string> = { limit: "200" };
+      if (schemeFilter !== "all" && schemeFilter !== NO_SCHEME_KEY) {
+        params.scheme = schemeFilter;
       }
-      const res = await programReports.getAll(params);
-      setReports(res.data?.reports || []);
-      setTotalPages(res.data?.pagination?.totalPages || 1);
-    } catch {
-      setError("Failed to load program reports");
+      if (search.trim()) params.search = search.trim();
+
+      const res: any = await programReports.getAll(params);
+      const list: ProgramReport[] = res?.data?.reports || [];
+      setReports(list);
+    } catch (err: any) {
+      setError(err?.message || "Failed to load program reports");
     } finally {
       setLoading(false);
     }
-  }, [search, filterUserType, filterStatus, page, canView]);
+  }, [schemeFilter, search]);
+
+  const loadSchemes = useCallback(async () => {
+    try {
+      const res: any = await schemes.getActive();
+      const list: any[] = res?.data?.schemes || res?.data || [];
+      setSchemeOptions(list.map((s: any) => ({ _id: s._id, name: s.name })));
+    } catch {
+      // Non-fatal: filter by scheme just won't be available.
+    }
+  }, []);
 
   useEffect(() => {
-    fetchReports();
-  }, [fetchReports]);
+    loadSchemes();
+  }, [loadSchemes]);
+
+  useEffect(() => {
+    const t = setTimeout(loadReports, 300);
+    return () => clearTimeout(t);
+  }, [loadReports]);
+
+  // Client-side "no scheme" filter (the API filters by a specific scheme id).
+  const visibleReports = useMemo(() => {
+    if (schemeFilter === NO_SCHEME_KEY) {
+      return reports.filter((r) => !r.scheme);
+    }
+    return reports;
+  }, [reports, schemeFilter]);
+
+  const grouped = useMemo(() => {
+    if (!groupByScheme) return null;
+    const map = new Map<string, { name: string; reports: ProgramReport[] }>();
+    for (const r of visibleReports) {
+      const key = r.scheme?._id || NO_SCHEME_KEY;
+      const name = r.scheme?.name || "No Scheme";
+      if (!map.has(key)) map.set(key, { name, reports: [] });
+      map.get(key)!.reports.push(r);
+    }
+    return Array.from(map.entries()).sort((a, b) =>
+      a[1].name.localeCompare(b[1].name)
+    );
+  }, [groupByScheme, visibleReports]);
+
+  const openDetail = (report: ProgramReport) => {
+    setSelected(report);
+    setPhotoIndex(0);
+  };
 
   const handleDelete = async () => {
-    if (!reportToDelete) return;
+    if (!deleteTarget) return;
     setDeleting(true);
     try {
-      await programReports.delete(reportToDelete._id);
-      toast({ title: "Program report deleted" });
-      setDeleteDialogOpen(false);
-      setReportToDelete(null);
-      fetchReports();
+      await programReports.delete(deleteTarget._id);
+      toast({ title: "Deleted", description: "Program report removed." });
+      setReports((prev) => prev.filter((r) => r._id !== deleteTarget._id));
+      if (selected?._id === deleteTarget._id) setSelected(null);
+      setDeleteTarget(null);
     } catch (err: any) {
       toast({
-        title: "Cannot delete program report",
-        description: err?.message || "Failed to delete",
+        title: "Delete failed",
+        description: err?.message || "Could not delete report",
         variant: "destructive",
       });
     } finally {
@@ -266,691 +197,395 @@ export default function ProgramReports() {
     }
   };
 
+  // ── Render ──────────────────────────────────────────────────────────────────
+
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 p-4 md:p-6">
       {/* Header */}
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+      <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
         <div>
-          <h1 className="text-lg font-bold">Program Reports</h1>
-          <p className="text-muted-foreground mt-1">
-            {isSuper
-              ? "Create and manage program report forms for admins"
-              : canView
-              ? "View program reports and submissions"
-              : "Fill and submit program reports assigned to you"}
+          <h1 className="text-2xl font-bold tracking-tight">Program Reports</h1>
+          <p className="text-sm text-muted-foreground">
+            Programs and events uploaded by area coordinators.
           </p>
         </div>
-        <div className="flex items-center gap-2">
-          <Button variant="outline" size="sm" onClick={fetchReports}>
-            <RefreshCw className="h-4 w-4 mr-1" /> Refresh
-          </Button>
-          <Button
-            variant={showFilters ? "default" : "outline"}
-            size="sm"
-            onClick={() => setShowFilters(!showFilters)}
-          >
-            <Filter className="mr-2 h-4 w-4" />
-            {showFilters ? "Hide Filters" : "Show Filters"}
-          </Button>
-          {isSuper && (
-            <Button onClick={() => { setModalMode("create"); setSelectedReport(null); setModalOpen(true); }}>
-              <Plus className="h-4 w-4 mr-1" /> Create Report
-            </Button>
-          )}
-        </div>
+        <Button variant="outline" size="sm" onClick={loadReports} disabled={loading}>
+          <RefreshCw className={`mr-2 h-4 w-4 ${loading ? "animate-spin" : ""}`} />
+          Refresh
+        </Button>
       </div>
 
-      {/* Filters Panel */}
-      {showFilters && (
-        <Card>
-          <CardContent className="p-4">
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-              <div className="space-y-1">
-                <Label className="text-xs text-muted-foreground">Search</Label>
-                <div className="relative">
-                  <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-                  <Input
-                    placeholder="Search reports..."
-                    className="pl-8 h-8"
-                    value={search}
-                    onChange={(e) => { setSearch(e.target.value); setPage(1); }}
-                  />
-                </div>
-              </div>
-              {canView && (
-                <>
-                  <div className="space-y-1">
-                    <Label className="text-xs text-muted-foreground">User Type</Label>
-                    <Select value={filterUserType} onValueChange={(v) => { setFilterUserType(v); setPage(1); }}>
-                      <SelectTrigger className="h-8">
-                        <SelectValue placeholder="All types" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="all">All User Types</SelectItem>
-                        {Object.entries(USER_TYPE_LABELS).map(([v, l]) => (
-                          <SelectItem key={v} value={v}>{l}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="space-y-1">
-                    <Label className="text-xs text-muted-foreground">Status</Label>
-                    <Select value={filterStatus} onValueChange={(v) => { setFilterStatus(v); setPage(1); }}>
-                      <SelectTrigger className="h-8">
-                        <SelectValue placeholder="All statuses" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="all">All Statuses</SelectItem>
-                        <SelectItem value="draft">Draft</SelectItem>
-                        <SelectItem value="active">Active</SelectItem>
-                        <SelectItem value="closed">Closed</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </>
-              )}
-            </div>
-          </CardContent>
-        </Card>
+      {/* Filters */}
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+        <div className="relative flex-1">
+          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+          <Input
+            placeholder="Search title or news…"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="pl-9"
+          />
+        </div>
+        <Select value={schemeFilter} onValueChange={setSchemeFilter}>
+          <SelectTrigger className="w-full sm:w-56">
+            <SelectValue placeholder="All schemes" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All schemes</SelectItem>
+            <SelectItem value={NO_SCHEME_KEY}>No scheme</SelectItem>
+            {schemeOptions.map((s) => (
+              <SelectItem key={s._id} value={s._id}>
+                {s.name}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        <Button
+          variant={groupByScheme ? "default" : "outline"}
+          size="sm"
+          onClick={() => setGroupByScheme((v) => !v)}
+        >
+          {groupByScheme ? (
+            <Layers className="mr-2 h-4 w-4" />
+          ) : (
+            <LayoutGrid className="mr-2 h-4 w-4" />
+          )}
+          {groupByScheme ? "Grouped by scheme" : "Group by scheme"}
+        </Button>
+      </div>
+
+      {/* Error */}
+      {error && (
+        <Alert variant="destructive">
+          <AlertCircle className="h-4 w-4" />
+          <AlertDescription>{error}</AlertDescription>
+        </Alert>
       )}
 
-      {/* Table */}
-      <Card>
-        <CardContent className="p-6 pt-6">
-          {loading ? (
-            <div className="flex items-center justify-center py-8">
-              <Loader2 className="h-8 w-8 animate-spin" />
-              <span className="ml-2">Loading program reports...</span>
+      {/* Body */}
+      {loading ? (
+        <div className="flex items-center justify-center py-20 text-muted-foreground">
+          <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+          Loading reports…
+        </div>
+      ) : visibleReports.length === 0 ? (
+        <div className="flex flex-col items-center justify-center gap-2 py-20 text-muted-foreground">
+          <ImageIcon className="h-10 w-10 opacity-40" />
+          <p>No program reports found.</p>
+        </div>
+      ) : grouped ? (
+        <div className="space-y-8">
+          {grouped.map(([key, group]) => (
+            <div key={key} className="space-y-3">
+              <div className="flex items-center gap-2">
+                <BookOpen className="h-4 w-4 text-primary" />
+                <h2 className="text-lg font-semibold">{group.name}</h2>
+                <Badge variant="secondary">{group.reports.length}</Badge>
+              </div>
+              <ReportGrid
+                reports={group.reports}
+                onView={openDetail}
+                onDelete={setDeleteTarget}
+              />
             </div>
-          ) : error ? (
-            <Alert variant="destructive">
-              <AlertCircle className="h-4 w-4" />
-              <AlertDescription>{error}</AlertDescription>
-            </Alert>
-          ) : reports.length === 0 ? (
-            <div className="text-center py-16 text-muted-foreground">
-              <FileText className="mx-auto h-10 w-10 mb-3 opacity-40" />
-              <p className="text-sm">
-                {isSuper ? "No program reports found. Create your first report." : "No program reports are assigned to you."}
-              </p>
-            </div>
-          ) : (
-            <div className="overflow-x-auto">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Date</TableHead>
-                    <TableHead>Title</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead>User Type</TableHead>
-                    <TableHead>Form</TableHead>
-                    <TableHead className="text-right">Actions</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {reports.map((report) => {
-                    const statusCfg = STATUS_CONFIG[report.status] || STATUS_CONFIG.draft;
-                    return (
-                      <TableRow key={report._id}>
-                        <TableCell>
-                          <div className="text-sm font-mono">{new Date(report.createdAt).toLocaleDateString()}</div>
-                          <div className="text-xs text-muted-foreground">
-                            {new Date(report.updatedAt).toLocaleDateString("en-IN", { year: "numeric", month: "short", day: "numeric" })}
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          <div className="font-medium">{report.title}</div>
-                          {report.description && (
-                            <div className="text-xs text-muted-foreground line-clamp-1 max-w-xs">
-                              {report.description}
-                            </div>
-                          )}
-                          {report.createdBy && (
-                            <div className="text-xs text-muted-foreground mt-0.5">
-                              by {report.createdBy.name}
-                            </div>
-                          )}
-                        </TableCell>
-                        <TableCell>
-                          <Badge variant="outline" className={`text-xs ${statusCfg.color}`}>
-                            <span className="mr-1 inline-flex">{statusCfg.icon}</span>
-                            <span className="capitalize">{report.status}</span>
-                          </Badge>
-                        </TableCell>
-                        <TableCell>
-                          <Badge variant="outline" className="text-xs">
-                            <Users className="h-3 w-3 mr-1" />
-                            {USER_TYPE_LABELS[report.targetUserType] || report.targetUserType}
-                          </Badge>
-                        </TableCell>
-                        <TableCell>
-                          {report.isFormPublished ? (
-                            <Badge variant="outline" className="text-xs bg-green-50 text-green-700 border-green-200">
-                              Published
-                            </Badge>
-                          ) : report.hasFormConfiguration ? (
-                            <Badge variant="outline" className="text-xs bg-blue-50 text-blue-700 border-blue-200">
-                              Configured
-                            </Badge>
-                          ) : (
-                            <span className="text-xs text-muted-foreground">—</span>
-                          )}
-                        </TableCell>
-                        <TableCell className="text-right">
-                          <div className="flex justify-end gap-1">
-                            {isSuper ? (
-                              <>
-                                <Button
-                                  variant="outline"
-                                  size="sm"
-                                  onClick={() => { setSubmissionsReport(report); setSubmissionsDialogOpen(true); }}
-                                  title="View Submissions"
-                                >
-                                  <Eye className="h-4 w-4" />
-                                </Button>
-                                <Button
-                                  variant="outline"
-                                  size="sm"
-                                  onClick={() => navigate(`/program-reports/form-builder?reportId=${report._id}&reportTitle=${encodeURIComponent(report.title)}`)}
-                                  title="Configure Form"
-                                >
-                                  <Settings className="h-4 w-4" />
-                                </Button>
-                                <Button
-                                  variant="outline"
-                                  size="sm"
-                                  onClick={() => { setSelectedReport(report); setModalMode("edit"); setModalOpen(true); }}
-                                  title="Edit"
-                                >
-                                  <Edit className="h-4 w-4" />
-                                </Button>
-                                <Button
-                                  variant="outline"
-                                  size="sm"
-                                  className="text-red-600 hover:text-red-700 hover:border-red-300"
-                                  onClick={() => { setReportToDelete(report); setDeleteDialogOpen(true); }}
-                                  title="Delete"
-                                >
-                                  <Trash2 className="h-4 w-4" />
-                                </Button>
-                              </>
-                            ) : isStateAdmin ? (
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => { setSubmissionsReport(report); setSubmissionsDialogOpen(true); }}
-                                title="View Submissions"
-                              >
-                                <Eye className="h-4 w-4" />
-                              </Button>
-                            ) : (
-                              report.status === "active" && report.isFormPublished && (
-                                <Button
-                                  size="sm"
-                                  onClick={() => navigate(`/program-reports/fill?reportId=${report._id}&reportTitle=${encodeURIComponent(report.title)}`)}
-                                >
-                                  <Send className="h-3.5 w-3.5 mr-1" /> Fill Report
-                                </Button>
+          ))}
+        </div>
+      ) : (
+        <ReportGrid
+          reports={visibleReports}
+          onView={openDetail}
+          onDelete={setDeleteTarget}
+        />
+      )}
+
+      {/* Detail dialog */}
+      <Dialog open={!!selected} onOpenChange={(o) => !o && setSelected(null)}>
+        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+          {selected && (
+            <>
+              <DialogHeader>
+                <DialogTitle className="pr-6">{selected.title}</DialogTitle>
+              </DialogHeader>
+
+              <div className="space-y-4">
+                {/* Meta */}
+                <div className="flex flex-wrap gap-2">
+                  {selected.scheme && (
+                    <Badge variant="secondary" className="gap-1">
+                      <BookOpen className="h-3 w-3" />
+                      {selected.scheme.name}
+                    </Badge>
+                  )}
+                  {selected.location && (
+                    <Badge variant="outline" className="gap-1">
+                      <MapPin className="h-3 w-3" />
+                      {selected.location.name}
+                    </Badge>
+                  )}
+                  {selected.submitterRole && (
+                    <Badge variant="outline" className="gap-1">
+                      <User className="h-3 w-3" />
+                      {ROLE_LABELS[selected.submitterRole] || selected.submitterRole}
+                    </Badge>
+                  )}
+                  <Badge variant="outline" className="gap-1">
+                    <Calendar className="h-3 w-3" />
+                    {formatDate(selected.createdAt)}
+                  </Badge>
+                </div>
+
+                {selected.submittedBy?.name && (
+                  <p className="text-sm text-muted-foreground">
+                    Submitted by{" "}
+                    <span className="font-medium">{selected.submittedBy.name}</span>
+                  </p>
+                )}
+
+                {/* News */}
+                {selected.news && (
+                  <p className="whitespace-pre-wrap text-sm leading-relaxed">
+                    {selected.news}
+                  </p>
+                )}
+
+                {/* Photo viewer */}
+                {selected.photos.length > 0 && (
+                  <div className="space-y-3">
+                    <div className="relative overflow-hidden rounded-lg border bg-muted">
+                      <img
+                        src={selected.photos[photoIndex]?.url}
+                        alt={`${selected.title} ${photoIndex + 1}`}
+                        className="max-h-[50vh] w-full object-contain"
+                      />
+                      {selected.photos.length > 1 && (
+                        <>
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setPhotoIndex(
+                                (i) =>
+                                  (i - 1 + selected.photos.length) %
+                                  selected.photos.length
                               )
-                            )}
-                          </div>
-                        </TableCell>
-                      </TableRow>
-                    );
-                  })}
-                </TableBody>
-              </Table>
-            </div>
+                            }
+                            className="absolute left-2 top-1/2 -translate-y-1/2 rounded-full bg-background/80 p-1 shadow hover:bg-background"
+                          >
+                            <ChevronLeft className="h-5 w-5" />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setPhotoIndex((i) => (i + 1) % selected.photos.length)
+                            }
+                            className="absolute right-2 top-1/2 -translate-y-1/2 rounded-full bg-background/80 p-1 shadow hover:bg-background"
+                          >
+                            <ChevronRight className="h-5 w-5" />
+                          </button>
+                        </>
+                      )}
+                      <div className="absolute bottom-2 right-2 flex gap-2">
+                        <Button
+                          size="sm"
+                          variant="secondary"
+                          onClick={() =>
+                            downloadImage(
+                              selected.photos[photoIndex],
+                              `${selected.title}-${photoIndex + 1}.jpg`
+                            )
+                          }
+                        >
+                          <Download className="mr-2 h-4 w-4" />
+                          Download
+                        </Button>
+                      </div>
+                    </div>
+
+                    {/* Thumbnails */}
+                    {selected.photos.length > 1 && (
+                      <div className="flex flex-wrap gap-2">
+                        {selected.photos.map((p, idx) => (
+                          <button
+                            key={p._id || idx}
+                            type="button"
+                            onClick={() => setPhotoIndex(idx)}
+                            className={`h-16 w-16 overflow-hidden rounded border-2 ${
+                              idx === photoIndex
+                                ? "border-primary"
+                                : "border-transparent"
+                            }`}
+                          >
+                            <img
+                              src={p.url}
+                              alt={`thumb ${idx + 1}`}
+                              className="h-full w-full object-cover"
+                            />
+                          </button>
+                        ))}
+                      </div>
+                    )}
+
+                    {selected.photos.length > 1 && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={async () => {
+                          for (let i = 0; i < selected.photos.length; i++) {
+                            await downloadImage(
+                              selected.photos[i],
+                              `${selected.title}-${i + 1}.jpg`
+                            );
+                          }
+                        }}
+                      >
+                        <Download className="mr-2 h-4 w-4" />
+                        Download all ({selected.photos.length})
+                      </Button>
+                    )}
+                  </div>
+                )}
+              </div>
+            </>
           )}
+        </DialogContent>
+      </Dialog>
 
-          {/* Pagination */}
-          {totalPages > 1 && (
-            <div className="flex justify-center gap-2 pt-4 mt-2 border-t">
-              <Button variant="outline" size="sm" disabled={page === 1} onClick={() => setPage(page - 1)}>
-                Previous
-              </Button>
-              <span className="flex items-center text-sm text-muted-foreground px-2">
-                Page {page} of {totalPages}
-              </span>
-              <Button variant="outline" size="sm" disabled={page === totalPages} onClick={() => setPage(page + 1)}>
-                Next
-              </Button>
-            </div>
-          )}
-        </CardContent>
-      </Card>
-
-      {/* Submissions Dialog */}
-      <SubmissionsDialog
-        open={submissionsDialogOpen}
-        report={submissionsReport}
-        onClose={() => { setSubmissionsDialogOpen(false); setSubmissionsReport(null); }}
-      />
-
-      {/* Create / Edit Modal */}
-      <ReportFormModal
-        open={modalOpen}
-        mode={modalMode}
-        report={selectedReport}
-        onClose={() => setModalOpen(false)}
-        onSaved={fetchReports}
-      />
-
-      {/* Delete Confirmation */}
-      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+      {/* Delete confirm */}
+      <AlertDialog
+        open={!!deleteTarget}
+        onOpenChange={(o) => !o && setDeleteTarget(null)}
+      >
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Delete Program Report</AlertDialogTitle>
+            <AlertDialogTitle>Delete this program report?</AlertDialogTitle>
             <AlertDialogDescription>
-              Are you sure you want to delete <strong>{reportToDelete?.title}</strong>?
-              This will also remove its form configuration, attachments, and any draft submissions.
-              Submitted responses will block deletion.
+              "{deleteTarget?.title}" and its photos will be permanently removed.
+              This action cannot be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel disabled={deleting}>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={handleDelete} disabled={deleting} className="bg-red-600 hover:bg-red-700">
-              {deleting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              Delete
+            <AlertDialogAction
+              onClick={(e) => {
+                e.preventDefault();
+                handleDelete();
+              }}
+              disabled={deleting}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {deleting ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Deleting…
+                </>
+              ) : (
+                <>
+                  <Trash2 className="mr-2 h-4 w-4" />
+                  Delete
+                </>
+              )}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
     </div>
   );
+};
+
+// ── Grid + Card ───────────────────────────────────────────────────────────────
+
+interface GridProps {
+  reports: ProgramReport[];
+  onView: (r: ProgramReport) => void;
+  onDelete: (r: ProgramReport) => void;
 }
 
-// ── Submissions Dialog ────────────────────────────────────────────────────────
+const ReportGrid = ({ reports, onView, onDelete }: GridProps) => (
+  <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+    {reports.map((report) => (
+      <ReportCard
+        key={report._id}
+        report={report}
+        onView={onView}
+        onDelete={onDelete}
+      />
+    ))}
+  </div>
+);
 
-interface SubmissionsDialogProps {
-  open: boolean;
-  report: ProgramReport | null;
-  onClose: () => void;
+interface CardProps {
+  report: ProgramReport;
+  onView: (r: ProgramReport) => void;
+  onDelete: (r: ProgramReport) => void;
 }
 
-function SubmissionsDialog({ open, report, onClose }: SubmissionsDialogProps) {
-  const [submissions, setSubmissions] = useState<any[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [page, setPage] = useState(1);
-  const [totalPages, setTotalPages] = useState(1);
-  const [filterStatus, setFilterStatus] = useState("all");
-  const [selectedSub, setSelectedSub] = useState<any | null>(null);
-  const [fieldMap, setFieldMap] = useState<Record<string, { label: string; type: string }>>({});
-
-  useEffect(() => {
-    if (!open || !report) return;
-    setPage(1);
-    setSubmissions([]);
-    setSelectedSub(null);
-    programReports.getFormConfig(report._id).then((res) => {
-      const pages: any[] = res.data?.formConfiguration?.pages || [];
-      const map: Record<string, { label: string; type: string }> = {};
-      pages.forEach((pg: any) => {
-        (pg.fields || []).forEach((f: any) => {
-          map[`field_${f.id}`] = { label: f.label, type: f.type };
-        });
-      });
-      setFieldMap(map);
-    }).catch(() => {});
-  }, [open, report]);
-
-  useEffect(() => {
-    if (!open || !report) return;
-    const fetch = async () => {
-      setLoading(true);
-      try {
-        const params: any = { page, limit: 15 };
-        if (filterStatus !== "all") params.status = filterStatus;
-        const res = await programReports.getSubmissions(report._id, params);
-        setSubmissions(res.data?.submissions || []);
-        setTotalPages(res.data?.pagination?.totalPages || 1);
-      } catch {
-        toast({ title: "Failed to load submissions", variant: "destructive" });
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetch();
-  }, [open, report, page, filterStatus]);
-
+const ReportCard = ({ report, onView, onDelete }: CardProps) => {
+  const cover = report.photos?.[0];
   return (
-    <>
-      {/* List dialog */}
-      <Dialog open={open && !selectedSub} onOpenChange={onClose}>
-        <DialogContent className="max-w-3xl max-h-[85vh] flex flex-col">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <BookOpen className="h-5 w-5" />
-              Submissions — {report?.title}
-            </DialogTitle>
-          </DialogHeader>
-
-          {/* Filter bar */}
-          <div className="flex gap-2 mb-2">
-            <Select value={filterStatus} onValueChange={(v) => { setFilterStatus(v); setPage(1); }}>
-              <SelectTrigger className="h-8 w-40">
-                <SelectValue placeholder="All statuses" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All</SelectItem>
-                <SelectItem value="draft">Drafts</SelectItem>
-                <SelectItem value="submitted">Submitted</SelectItem>
-              </SelectContent>
-            </Select>
+    <Card className="overflow-hidden transition-shadow hover:shadow-md">
+      <button
+        type="button"
+        onClick={() => onView(report)}
+        className="relative block h-40 w-full bg-muted"
+      >
+        {cover ? (
+          <img
+            src={cover.url}
+            alt={report.title}
+            className="h-full w-full object-cover"
+          />
+        ) : (
+          <div className="flex h-full w-full items-center justify-center text-muted-foreground">
+            <ImageIcon className="h-8 w-8 opacity-40" />
           </div>
-
-          {/* Table of submissions */}
-          <div className="flex-1 overflow-y-auto">
-            {loading ? (
-              <div className="flex justify-center py-10">
-                <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-              </div>
-            ) : submissions.length === 0 ? (
-              <div className="text-center py-12 text-muted-foreground text-sm">
-                <FileText className="mx-auto h-8 w-8 mb-2 opacity-40" />
-                No submissions yet.
-              </div>
-            ) : (
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Submitted By</TableHead>
-                    <TableHead>Location</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead>Date</TableHead>
-                    <TableHead className="text-right">Actions</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {submissions.map((sub) => (
-                    <TableRow key={sub._id}>
-                      <TableCell>
-                        <div className="font-medium">{sub.submittedBy?.name || "Unknown"}</div>
-                        <div className="text-xs text-muted-foreground capitalize">
-                          {sub.submitterRole?.replace(/_/g, " ")}
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        {sub.location ? (
-                          <div className="text-sm">
-                            <div>{sub.location.name}</div>
-                            <div className="text-xs text-muted-foreground capitalize">{sub.location.type}</div>
-                          </div>
-                        ) : (
-                          <span className="text-xs text-muted-foreground">—</span>
-                        )}
-                      </TableCell>
-                      <TableCell>
-                        {sub.status === "submitted" ? (
-                          <Badge variant="outline" className="text-xs bg-green-100 text-green-700 border-green-200">
-                            <CheckCircle className="h-3 w-3 mr-1" /> Submitted
-                          </Badge>
-                        ) : (
-                          <Badge variant="outline" className="text-xs bg-yellow-100 text-yellow-700 border-yellow-200">
-                            <Clock className="h-3 w-3 mr-1" /> Draft
-                          </Badge>
-                        )}
-                      </TableCell>
-                      <TableCell>
-                        <div className="text-sm">
-                          {new Date(sub.submittedAt || sub.updatedAt).toLocaleDateString()}
-                        </div>
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => setSelectedSub(sub)}
-                          title="View Details"
-                        >
-                          <Eye className="h-4 w-4" />
-                        </Button>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            )}
-          </div>
-
-          {totalPages > 1 && (
-            <div className="flex justify-center gap-2 pt-3 border-t mt-2">
-              <Button variant="outline" size="sm" disabled={page === 1} onClick={() => setPage(p => p - 1)}>Previous</Button>
-              <span className="flex items-center text-xs text-muted-foreground px-2">Page {page} of {totalPages}</span>
-              <Button variant="outline" size="sm" disabled={page === totalPages} onClick={() => setPage(p => p + 1)}>Next</Button>
-            </div>
+        )}
+        {report.photos.length > 1 && (
+          <Badge className="absolute right-2 top-2 gap-1 bg-black/60 text-white">
+            <ImageIcon className="h-3 w-3" />
+            {report.photos.length}
+          </Badge>
+        )}
+      </button>
+      <CardContent className="space-y-2 p-4">
+        <h3 className="line-clamp-1 font-semibold">{report.title}</h3>
+        {report.news && (
+          <p className="line-clamp-2 text-sm text-muted-foreground">{report.news}</p>
+        )}
+        <div className="flex flex-wrap gap-1.5">
+          {report.scheme && (
+            <Badge variant="secondary" className="gap-1 text-xs">
+              <BookOpen className="h-3 w-3" />
+              {report.scheme.name}
+            </Badge>
           )}
-
-          <DialogFooter>
-            <Button variant="outline" onClick={onClose}>Close</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* Submission detail dialog */}
-      {selectedSub && (
-        <SubmissionDetailDialog
-          open={!!selectedSub}
-          submission={selectedSub}
-          reportTitle={report?.title || ""}
-          fieldMap={fieldMap}
-          onBack={() => setSelectedSub(null)}
-          onClose={() => { setSelectedSub(null); onClose(); }}
-        />
-      )}
-    </>
+          {report.location && (
+            <Badge variant="outline" className="gap-1 text-xs">
+              <MapPin className="h-3 w-3" />
+              {report.location.name}
+            </Badge>
+          )}
+        </div>
+        <div className="flex items-center justify-between pt-1">
+          <span className="flex items-center gap-1 text-xs text-muted-foreground">
+            <Calendar className="h-3 w-3" />
+            {formatDate(report.createdAt)}
+          </span>
+          <div className="flex gap-1">
+            <Button size="sm" variant="ghost" onClick={() => onView(report)}>
+              <Eye className="h-4 w-4" />
+            </Button>
+            <Button
+              size="sm"
+              variant="ghost"
+              className="text-destructive hover:text-destructive"
+              onClick={() => onDelete(report)}
+            >
+              <Trash2 className="h-4 w-4" />
+            </Button>
+          </div>
+        </div>
+      </CardContent>
+    </Card>
   );
-}
+};
 
-// ── Submission Detail Dialog ──────────────────────────────────────────────────
-
-interface SubmissionDetailDialogProps {
-  open: boolean;
-  submission: any;
-  reportTitle: string;
-  fieldMap: Record<string, { label: string; type: string }>;
-  onBack: () => void;
-  onClose: () => void;
-}
-
-function SubmissionDetailDialog({ open, submission, reportTitle, fieldMap, onBack, onClose }: SubmissionDetailDialogProps) {
-  const sub = submission;
-  const formEntries = sub.formData ? Object.entries(sub.formData) : [];
-  const attachments: any[] = sub.attachments || [];
-  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
-
-  const getDisplayValue = (value: any): string => {
-    if (Array.isArray(value)) return value.join(", ");
-    if (value === true) return "Yes";
-    if (value === false) return "No";
-    if (value == null || value === "") return "—";
-    return String(value);
-  };
-
-  return (
-    <>
-      <Dialog open={open} onOpenChange={onClose}>
-        <DialogContent className="max-w-2xl p-0 gap-0 overflow-hidden" style={{ maxHeight: "90vh" }}>
-          {/* Inner flex wrapper — controls scroll layout */}
-          <div className="flex flex-col h-full" style={{ maxHeight: "90vh" }}>
-          <div className="shrink-0 flex items-center gap-2 px-6 pt-6 pb-2 pr-12 text-lg font-semibold">
-            <FileText className="h-5 w-5" />
-            Submission Details
-          </div>
-
-          <div className="flex-1 overflow-y-auto min-h-0 px-6 pb-2 space-y-4">
-            {/* Submitter Information */}
-            <div className="rounded-lg border p-4 space-y-3">
-              <div className="flex items-center gap-2 font-semibold text-sm">
-                <User className="h-4 w-4 text-muted-foreground" />
-                Submitter Information
-              </div>
-              <Separator />
-              <div className="grid grid-cols-2 gap-x-6 gap-y-3 text-sm">
-                <div>
-                  <p className="text-xs text-muted-foreground font-medium">Report</p>
-                  <p className="font-medium">{reportTitle}</p>
-                </div>
-                <div>
-                  <p className="text-xs text-muted-foreground font-medium">Status</p>
-                  <div className="mt-0.5">
-                    {sub.status === "submitted" ? (
-                      <Badge variant="outline" className="text-xs bg-green-100 text-green-700 border-green-200">
-                        <CheckCircle className="h-3 w-3 mr-1" /> Submitted
-                      </Badge>
-                    ) : (
-                      <Badge variant="outline" className="text-xs bg-yellow-100 text-yellow-700 border-yellow-200">
-                        <Clock className="h-3 w-3 mr-1" /> Draft
-                      </Badge>
-                    )}
-                  </div>
-                </div>
-                <div>
-                  <p className="text-xs text-muted-foreground font-medium">Name</p>
-                  <p>{sub.submittedBy?.name || "—"}</p>
-                </div>
-                <div>
-                  <p className="text-xs text-muted-foreground font-medium">Role</p>
-                  <p className="capitalize">{sub.submitterRole?.replace(/_/g, " ") || "—"}</p>
-                </div>
-                <div>
-                  <p className="text-xs text-muted-foreground font-medium">Email</p>
-                  <p className="break-all">{sub.submittedBy?.email || "—"}</p>
-                </div>
-                <div>
-                  <p className="text-xs text-muted-foreground font-medium">Submitted Date</p>
-                  <p>{sub.submittedAt
-                    ? new Date(sub.submittedAt).toLocaleDateString("en-IN", { year: "numeric", month: "long", day: "numeric" })
-                    : new Date(sub.updatedAt).toLocaleDateString("en-IN", { year: "numeric", month: "long", day: "numeric" })
-                  }</p>
-                </div>
-                <div>
-                  <p className="text-xs text-muted-foreground font-medium">Last Updated</p>
-                  <p>{new Date(sub.updatedAt).toLocaleDateString("en-IN", { year: "numeric", month: "long", day: "numeric" })}</p>
-                </div>
-              </div>
-            </div>
-
-            {/* Location */}
-            <div className="rounded-lg border p-4 space-y-3">
-              <div className="flex items-center gap-2 font-semibold text-sm">
-                <MapPin className="h-4 w-4 text-muted-foreground" />
-                Location
-              </div>
-              <Separator />
-              {sub.location ? (
-                <div className="grid grid-cols-2 gap-x-6 gap-y-3 text-sm">
-                  <div>
-                    <p className="text-xs text-muted-foreground font-medium">Name</p>
-                    <p>{sub.location.name}</p>
-                  </div>
-                  <div>
-                    <p className="text-xs text-muted-foreground font-medium">Type</p>
-                    <p className="capitalize">{sub.location.type}</p>
-                  </div>
-                </div>
-              ) : (
-                <p className="text-sm text-muted-foreground">No location information available.</p>
-              )}
-            </div>
-
-            {/* Form Data */}
-            <div className="rounded-lg border p-4 space-y-3">
-              <div className="flex items-center gap-2 font-semibold text-sm">
-                <FileText className="h-4 w-4 text-muted-foreground" />
-                Form Data
-              </div>
-              <Separator />
-              {formEntries.length === 0 ? (
-                <p className="text-sm text-muted-foreground">No form data recorded.</p>
-              ) : (
-                <div className="divide-y divide-border/60">
-                  {formEntries.map(([key, value]) => {
-                    const info = fieldMap[key];
-                    const label = info?.label || key;
-                    const displayValue = getDisplayValue(value);
-                    return (
-                      <div key={key} className="grid grid-cols-[160px_1fr] gap-4 py-2.5 text-sm">
-                        <span className="text-muted-foreground font-medium shrink-0">{label}</span>
-                        <span className="text-foreground break-words">{displayValue}</span>
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
-            </div>
-
-            {/* Attachments */}
-            {attachments.length > 0 && (
-              <div className="rounded-lg border p-4 space-y-3">
-                <div className="flex items-center gap-2 font-semibold text-sm">
-                  <FileText className="h-4 w-4 text-muted-foreground" />
-                  Attachments ({attachments.length})
-                </div>
-                <Separator />
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                  {attachments.map((att: any) =>
-                    att.kind === "image" ? (
-                      <button
-                        key={att._id}
-                        type="button"
-                        className="group flex flex-col items-center border rounded-lg p-2 hover:bg-muted/50 transition-colors cursor-zoom-in"
-                        onClick={() => setPreviewUrl(att.url)}
-                        title="Click to enlarge"
-                      >
-                        <img
-                          src={att.url}
-                          alt={att.fileName}
-                          className="w-full h-28 object-cover rounded mb-1"
-                        />
-                        <p className="text-xs text-center truncate w-full text-muted-foreground group-hover:text-foreground">
-                          {att.fileName}
-                        </p>
-                        <Badge variant="outline" className="text-xs mt-1 capitalize">{att.kind}</Badge>
-                      </button>
-                    ) : (
-                      <a
-                        key={att._id}
-                        href={att.url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="group flex flex-col items-center border rounded-lg p-2 hover:bg-muted/50 transition-colors"
-                      >
-                        <div className="w-full h-28 flex items-center justify-center bg-muted rounded mb-1">
-                          <FileText className="h-8 w-8 text-muted-foreground" />
-                        </div>
-                        <p className="text-xs text-center truncate w-full text-muted-foreground group-hover:text-foreground">
-                          {att.fileName}
-                        </p>
-                        <Badge variant="outline" className="text-xs mt-1 capitalize">{att.kind}</Badge>
-                      </a>
-                    )
-                  )}
-                </div>
-              </div>
-            )}
-          </div>
-
-          <div className="shrink-0 flex justify-end gap-2 px-6 py-4 border-t">
-            <Button variant="outline" onClick={onBack}>← Back to List</Button>
-            <Button variant="outline" onClick={onClose}>Close</Button>
-          </div>
-          </div>
-        </DialogContent>
-      </Dialog>
-
-      {/* Image lightbox */}
-      {previewUrl && (
-        <Dialog open={!!previewUrl} onOpenChange={() => setPreviewUrl(null)}>
-          <DialogContent className="max-w-4xl p-2 bg-black/95 border-0">
-            <img
-              src={previewUrl}
-              alt="Preview"
-              className="w-full h-auto max-h-[85vh] object-contain rounded"
-            />
-          </DialogContent>
-        </Dialog>
-      )}
-    </>
-  );
-}
+export default ProgramReports;

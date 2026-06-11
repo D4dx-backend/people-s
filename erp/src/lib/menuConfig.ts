@@ -28,6 +28,8 @@ import {
   Video,
   Inbox,
   HeartHandshake,
+  Bell,
+  Download,
   type LucideIcon,
 } from "lucide-react";
 
@@ -591,6 +593,20 @@ export const menuCategories: MenuCategory[] = [
         permissions: ["communications.send"],
         keywords: ["message", "sms", "whatsapp", "notify"],
       },
+      {
+        to: "/notifications",
+        icon: Bell,
+        label: "Notifications",
+        permissions: [],
+        keywords: ["notification", "announcement", "broadcast", "alert", "notify"],
+      },
+      {
+        to: "/downloads",
+        icon: Download,
+        label: "Downloads",
+        permissions: [],
+        keywords: ["download", "files", "documents", "resources", "attachments"],
+      },
     ],
   },
 ];
@@ -688,6 +704,25 @@ export const limitedAdminMenuCategories: MenuCategory[] = [
             keywords: ["consolidation", "summary", "report", "stats"],
           },
         ],
+      },
+    ],
+  },
+  {
+    label: null,
+    items: [
+      {
+        to: "/notifications",
+        icon: Bell,
+        label: "Notifications",
+        permissions: [],
+        keywords: ["notification", "announcement", "broadcast", "alert", "notify"],
+      },
+      {
+        to: "/downloads",
+        icon: Download,
+        label: "Downloads",
+        permissions: [],
+        keywords: ["download", "files", "documents", "resources", "attachments"],
       },
     ],
   },

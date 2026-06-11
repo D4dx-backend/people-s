@@ -14,7 +14,29 @@ const notificationSchema = new mongoose.Schema({
     required: [true, 'Notification message is required'],
     maxlength: [1000, 'Message cannot exceed 1000 characters']
   },
-  
+
+  // Rich content (for admin-composed announcements rendered in app / web)
+  // htmlContent holds sanitized HTML authored via the rich-text editor.
+  htmlContent: {
+    type: String,
+    maxlength: [20000, 'HTML content cannot exceed 20000 characters']
+  },
+  // Images uploaded in the composer (stored on DigitalOcean Spaces)
+  images: [{
+    url: String,
+    key: String,
+    caption: String
+  }],
+  // Optional call-to-action link shown with the notification
+  linkUrl: {
+    type: String,
+    trim: true
+  },
+  linkLabel: {
+    type: String,
+    trim: true
+  },
+
   // Notification Type and Category
   type: {
     type: String,
