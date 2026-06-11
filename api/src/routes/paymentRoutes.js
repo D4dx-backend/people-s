@@ -183,6 +183,16 @@ router.get('/',
         { $unwind: { path: '$initiatedBy', preserveNullAndEmptyArrays: true } }
       );
 
+      // Location lookups (application's district/area/unit) for list quick-view
+      pipeline.push(
+        { $lookup: { from: 'locations', localField: 'application.district', foreignField: '_id', as: 'appDistrict' } },
+        { $lookup: { from: 'locations', localField: 'application.area', foreignField: '_id', as: 'appArea' } },
+        { $lookup: { from: 'locations', localField: 'application.unit', foreignField: '_id', as: 'appUnit' } },
+        { $unwind: { path: '$appDistrict', preserveNullAndEmptyArrays: true } },
+        { $unwind: { path: '$appArea', preserveNullAndEmptyArrays: true } },
+        { $unwind: { path: '$appUnit', preserveNullAndEmptyArrays: true } }
+      );
+
       // Apply regional scope filter based on admin's jurisdiction
       const regionalFilter = buildRegionalMatchStage(req);
       if (regionalFilter) {
@@ -303,6 +313,16 @@ router.get('/',
         { $unwind: { path: '$scheme', preserveNullAndEmptyArrays: true } }
       );
 
+      // Location lookups (application's district/area/unit) for list quick-view
+      recurringPipeline.push(
+        { $lookup: { from: 'locations', localField: 'application.district', foreignField: '_id', as: 'appDistrict' } },
+        { $lookup: { from: 'locations', localField: 'application.area', foreignField: '_id', as: 'appArea' } },
+        { $lookup: { from: 'locations', localField: 'application.unit', foreignField: '_id', as: 'appUnit' } },
+        { $unwind: { path: '$appDistrict', preserveNullAndEmptyArrays: true } },
+        { $unwind: { path: '$appArea', preserveNullAndEmptyArrays: true } },
+        { $unwind: { path: '$appUnit', preserveNullAndEmptyArrays: true } }
+      );
+
       // Apply regional scope filter to recurring payments
       if (regionalFilter) {
         recurringPipeline.push({ $match: regionalFilter });
@@ -365,6 +385,13 @@ router.get('/',
         paymentDate: payment.timeline?.completedAt,
         chequeNumber: payment.cheque?.number,
         distributionTimeline: payment.distributionTimeline || [],
+        district: payment.appDistrict?.name || null,
+        area: payment.appArea?.name || null,
+        unit: payment.appUnit?.name || null,
+        appliedDate: payment.application?.createdAt || null,
+        applicationNumber: payment.application?.applicationNumber || null,
+        totalStages: payment.installment?.totalInstallments || null,
+        currentStage: payment.installment?.number || null,
         isRecurring: false
       }));
 
@@ -428,7 +455,14 @@ router.get('/',
           totalCycles: payment.totalCycles,
           phaseNumber: payment.phaseNumber,
           totalPhases: payment.totalPhases,
-          hasDistributionTimeline: payment.totalPhases > 0
+          hasDistributionTimeline: payment.totalPhases > 0,
+          district: payment.appDistrict?.name || null,
+          area: payment.appArea?.name || null,
+          unit: payment.appUnit?.name || null,
+          appliedDate: payment.application?.createdAt || null,
+          applicationNumber: payment.application?.applicationNumber || null,
+          totalStages: payment.totalPhases || payment.totalPayments || null,
+          currentStage: payment.phaseNumber || payment.paymentNumber || null
         };
       });
 
@@ -536,10 +570,49 @@ router.get('/:id',
         });
       }
 
+      // Enrich with application-level details for the mobile detail view.
+      const appId = payment.application?._id || payment.application;
+      let appliedDate = payment.application?.createdAt || null;
+      let firstPaymentDate = null;
+      let currentPaymentStage = payment.installment?.number || null;
+      let totalPaymentStages = payment.installment?.totalInstallments || null;
+
+      if (appId) {
+        try {
+          const appPayments = await Payment.find({ application: appId })
+            .sort({ createdAt: 1 })
+            .select('_id status timeline.completedAt createdAt')
+            .lean();
+
+          if (appPayments.length > 0) {
+            // First payment actually received (completed) for this application.
+            const firstCompleted = appPayments.find(p => p.status === 'completed');
+            firstPaymentDate = firstCompleted?.timeline?.completedAt || null;
+
+            // Fall back to counting payments as stages when no installment metadata.
+            if (!totalPaymentStages) {
+              totalPaymentStages = appPayments.length;
+              const idx = appPayments.findIndex(
+                p => p._id.toString() === payment._id.toString()
+              );
+              if (idx !== -1) currentPaymentStage = idx + 1;
+            }
+          }
+        } catch (e) {
+          console.error('Payment detail enrichment failed:', e.message);
+        }
+      }
+
+      const paymentObj = payment.toObject();
+      paymentObj.appliedDate = appliedDate;
+      paymentObj.firstPaymentDate = firstPaymentDate;
+      paymentObj.currentStage = currentPaymentStage;
+      paymentObj.totalStages = totalPaymentStages;
+
       res.json({
         success: true,
         message: 'Payment details retrieved successfully',
-        data: payment,
+        data: paymentObj,
         timestamp: new Date().toISOString()
       });
 
