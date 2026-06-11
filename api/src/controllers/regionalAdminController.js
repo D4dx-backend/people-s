@@ -350,8 +350,8 @@ class RegionalAdminController {
         .populate('reviewedBy', 'name role')
         .populate('approvedBy', 'name role')
         .populate('district', 'name code')
-        .populate('area', 'name code')
-        .populate('unit', 'name code');
+        .populate('area', 'name code contactPerson')
+        .populate('unit', 'name code contactPerson');
 
       if (!application) {
         return ResponseHelper.error(res, 'Application not found', 404);

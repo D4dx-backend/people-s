@@ -177,8 +177,8 @@ const getApplication = async (req, res) => {
       .populate('project')
       .populate('state', 'name code')
       .populate('district', 'name code')
-      .populate('area', 'name code')
-      .populate('unit', 'name code')
+      .populate('area', 'name code contactPerson')
+      .populate('unit', 'name code contactPerson')
       .populate('originalLocation.district', 'name code')
       .populate('originalLocation.area', 'name code')
       .populate('originalLocation.unit', 'name code')
@@ -2687,7 +2687,31 @@ const updateApplicationLocation = async (req, res) => {
 
     const effectiveUser = getEffectiveUserForFilter(req);
 
-    if (!hasAccessToApplication(effectiveUser, application)) {
+    let hasAccess = hasAccessToApplication(effectiveUser, application);
+
+    // Fallback 1: franchise-scope check may fail if UserFranchise.adminScope.regions
+    // is not populated in the DB.  Re-try using the raw User.adminScope (User model)
+    // which is populated from the legacy adminScope field and is more likely to have
+    // district/area/unit set even on older records.
+    if (!hasAccess && req.user.adminScope) {
+      const userViaModel = {
+        role: effectiveUser.role,
+        adminScope: req.user.adminScope,
+        isSuperAdmin: req.user.isSuperAdmin,
+      };
+      hasAccess = hasAccessToApplication(userViaModel, application);
+    }
+
+    // Fallback 2: RBAC middleware check (uses UserRole collection, same as GET endpoint).
+    if (!hasAccess) {
+      try {
+        hasAccess = await RBACMiddleware.checkApplicationAccess(req.user, application);
+      } catch (_rbacErr) {
+        // fall through — hasAccess stays false
+      }
+    }
+
+    if (!hasAccess) {
       return res.status(403).json({ success: false, message: 'Access denied' });
     }
 

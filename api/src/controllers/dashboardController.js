@@ -218,18 +218,27 @@ class DashboardController {
         .populate('beneficiary', 'name phone')
         .populate('scheme', 'name')
         .populate('project', 'name')
+        .populate('district', 'name')
+        .populate('area', 'name')
+        .populate('unit', 'name')
         .sort({ createdAt: -1 })
         .limit(parseInt(limit));
 
       const recentApplications = applications.map(app => ({
         _id: app._id.toString(),
         id: app.applicationNumber,
+        applicationNumber: app.applicationNumber,
         applicant: app.beneficiary?.name || 'Unknown',
+        phone: app.beneficiary?.phone || '',
+        district: app.district?.name || null,
+        area: app.area?.name || null,
+        unit: app.unit?.name || null,
         scheme: app.scheme?.name || 'Unknown Scheme',
         project: app.project?.name || 'Unknown Project',
         status: app.status,
         date: app.createdAt,
-        amount: app.requestedAmount
+        amount: app.requestedAmount,
+        approvedAmount: app.approvedAmount || 0
       }));
 
       return ResponseHelper.success(res, { applications: recentApplications });
