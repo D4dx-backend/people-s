@@ -55,6 +55,8 @@ import Units from "./pages/Units";
 import UserManagement from "./pages/UserManagement";
 import RoleManagement from "./pages/RoleManagement";
 import Communications from "./pages/Communications";
+import Notifications from "./pages/Notifications";
+import Downloads from "./pages/Downloads";
 import Settings from "./pages/Settings";
 import Auth from "./pages/Auth";
 import Beneficiaries from "./pages/Beneficiaries";
@@ -100,8 +102,6 @@ import AdminReports from "./pages/AdminReports";
 import AdminReportFormBuilder from "./pages/AdminReportFormBuilder";
 import AdminReportFill from "./pages/AdminReportFill";
 import ProgramReports from "./pages/ProgramReports";
-import ProgramReportFormBuilder from "./pages/ProgramReportFormBuilder";
-import ProgramReportFill from "./pages/ProgramReportFill";
 import Profile from "./pages/Profile";
 import GlobalAdmin from "./pages/GlobalAdmin";
 
@@ -149,8 +149,6 @@ const App = () => (
             <Route path="/admin-reports/form-builder" element={<AuthGuard><Layout><AdminReportFormBuilder /></Layout></AuthGuard>} />
             <Route path="/admin-reports/fill" element={<AuthGuard><Layout><AdminReportFill /></Layout></AuthGuard>} />
             <Route path="/program-reports" element={<AuthGuard><Layout><ProgramReports /></Layout></AuthGuard>} />
-            <Route path="/program-reports/form-builder" element={<AuthGuard><Layout><ProgramReportFormBuilder /></Layout></AuthGuard>} />
-            <Route path="/program-reports/fill" element={<AuthGuard><Layout><ProgramReportFill /></Layout></AuthGuard>} />
             <Route path="/applications/all" element={<AuthGuard><Layout><AllApplications /></Layout></AuthGuard>} />
             <Route path="/applications/pending" element={<AuthGuard><Layout><PendingApplications /></Layout></AuthGuard>} />
             <Route path="/applications/under-review" element={<AuthGuard><Layout><UnderReviewApplications /></Layout></AuthGuard>} />
@@ -195,6 +193,8 @@ const App = () => (
             <Route path="/roles" element={<AuthGuard><Layout><RoleManagement /></Layout></AuthGuard>} />
 
             <Route path="/communications" element={<AuthGuard><Layout><Communications /></Layout></AuthGuard>} />
+            <Route path="/notifications" element={<AuthGuard><Layout><Notifications /></Layout></AuthGuard>} />
+            <Route path="/downloads" element={<AuthGuard><Layout><Downloads /></Layout></AuthGuard>} />
             <Route path="/settings" element={<AuthGuard><Layout><Settings /></Layout></AuthGuard>} />
             <Route path="/profile" element={<AuthGuard><Layout><Profile /></Layout></AuthGuard>} />
             <Route path="/activity-logs" element={<AuthGuard><Layout><ActivityLogs /></Layout></AuthGuard>} />

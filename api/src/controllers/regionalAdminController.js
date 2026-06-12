@@ -260,7 +260,12 @@ class RegionalAdminController {
       }
 
       // Additional filters
-      if (status) filter.status = status;
+      // Beneficiary drafts (unsubmitted) must never be visible to authorities
+      if (status && status !== 'draft') {
+        filter.status = status;
+      } else {
+        filter.status = { $ne: 'draft' };
+      }
       if (scheme) filter.scheme = scheme;
       if (search) {
         filter.applicationNumber = { $regex: search, $options: 'i' };

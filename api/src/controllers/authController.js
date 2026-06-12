@@ -266,7 +266,7 @@ class AuthController {
   async updateProfile(req, res) {
     try {
       const userId = req.user._id;
-      const updates = req.body;
+      const updates = { ...req.body };
 
       // Remove sensitive fields that shouldn't be updated via profile
       delete updates.password;
@@ -276,12 +276,22 @@ class AuthController {
       delete updates.isActive;
       delete updates.isVerified;
 
+      // Flatten the nested `profile` object into dot-notation paths so a partial
+      // profile update (e.g. only the avatar, or only dateOfBirth + gender) does
+      // NOT overwrite the entire profile sub-document and wipe other fields
+      // such as the avatar, address or location.
+      const setOps = { updatedBy: userId };
+      if (updates.profile && typeof updates.profile === 'object') {
+        for (const [key, value] of Object.entries(updates.profile)) {
+          setOps[`profile.${key}`] = value;
+        }
+        delete updates.profile;
+      }
+      Object.assign(setOps, updates);
+
       const user = await User.findByIdAndUpdate(
         userId,
-        { 
-          ...updates,
-          updatedBy: userId
-        },
+        { $set: setOps },
         { new: true, runValidators: true }
       )
         .populate('adminScope.regions', 'name type code')

@@ -27,11 +27,25 @@ export interface Notification {
   _id: string;
   title: string;
   message: string;
+  htmlContent?: string;
+  images?: { url: string; key?: string; caption?: string }[];
+  linkUrl?: string;
+  linkLabel?: string;
   type: 'sms' | 'email' | 'push' | 'in_app' | 'whatsapp';
   category: 'application_status' | 'payment' | 'reminder' | 'announcement' | 'alert' | 'system' | 'marketing';
   priority: 'low' | 'medium' | 'high' | 'critical';
   recipients: NotificationRecipient[];
   relatedEntities?: NotificationEntity;
+  targeting?: {
+    userRoles?: string[];
+    regions?: string[];
+  };
+  delivery?: {
+    status?: string;
+    totalRecipients?: number;
+    sentCount?: number;
+    readCount?: number;
+  };
   createdBy?: {
     _id: string;
     name: string;
@@ -39,6 +53,28 @@ export interface Notification {
   createdAt: string;
   updatedAt: string;
 }
+
+export interface BroadcastPayload {
+  title: string;
+  message: string;
+  htmlContent?: string;
+  images?: { url: string; key?: string; caption?: string }[];
+  linkUrl?: string;
+  linkLabel?: string;
+  priority?: 'low' | 'medium' | 'high' | 'critical';
+  category?: string;
+  targeting: {
+    userRoles: string[];
+    locationIds?: string[];
+  };
+}
+
+export interface RecipientStats {
+  total: number;
+  read: number;
+  unread: number;
+}
+
 
 export interface NotificationFilters {
   type?: string;
@@ -83,6 +119,61 @@ export const markAllNotificationsAsRead = async (): Promise<void> => {
 export const deleteNotification = async (notificationId: string): Promise<void> => {
   await api.request(`/notifications/${notificationId}`, { method: 'DELETE' });
 };
+
+// ── Admin broadcast management ──
+
+// Create a broadcast (announcement) targeted at roles
+export const createBroadcast = async (
+  payload: BroadcastPayload,
+): Promise<{ notification: Notification; recipientCount: number }> => {
+  const response = await api.request<{ notification: Notification; recipientCount: number }>(
+    '/notifications',
+    { method: 'POST', body: JSON.stringify(payload) },
+  );
+  return response.data as { notification: Notification; recipientCount: number };
+};
+
+// List sent broadcasts
+export const getSentNotifications = async (
+  filters: { limit?: number; offset?: number } = {},
+): Promise<Notification[]> => {
+  const params = new URLSearchParams();
+  if (filters.limit) params.append('limit', String(filters.limit));
+  if (filters.offset) params.append('offset', String(filters.offset));
+  const queryStr = params.toString();
+  const response = await api.request<{ notifications: Notification[] }>(
+    `/notifications/sent${queryStr ? `?${queryStr}` : ''}`,
+  );
+  return response.data?.notifications || [];
+};
+
+// Get a single broadcast with stats
+export const getNotificationById = async (
+  id: string,
+): Promise<{ notification: Notification; stats: RecipientStats } | null> => {
+  const response = await api.request<{ notification: Notification; stats: RecipientStats }>(
+    `/notifications/sent/${id}`,
+  );
+  return response.data ?? null;
+};
+
+// Update a broadcast
+export const updateNotification = async (
+  id: string,
+  payload: Partial<BroadcastPayload>,
+): Promise<Notification | null> => {
+  const response = await api.request<{ notification: Notification }>(
+    `/notifications/sent/${id}`,
+    { method: 'PUT', body: JSON.stringify(payload) },
+  );
+  return response.data?.notification ?? null;
+};
+
+// Delete a broadcast for everyone
+export const deleteSentNotification = async (id: string): Promise<void> => {
+  await api.request(`/notifications/sent/${id}`, { method: 'DELETE' });
+};
+
 
 // Helper: get readable time ago string
 export const getTimeAgo = (dateString: string): string => {

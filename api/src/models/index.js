@@ -22,6 +22,7 @@ const Counter = require('./Counter');
 const LoginLog = require('./LoginLog');
 const ErrorLog = require('./ErrorLog');
 const SchemeTarget = require('./SchemeTarget');
+const Download = require('./Download');
 
 // Website Management Models
 const WebsiteSettings = require('./WebsiteSettings');
@@ -44,8 +45,6 @@ const AdminReportSubmission = require('./AdminReportSubmission');
 
 // Program Report Module
 const ProgramReport = require('./ProgramReport');
-const ProgramReportFormConfig = require('./ProgramReportFormConfig');
-const ProgramReportSubmission = require('./ProgramReportSubmission');
 
 // RBAC Models
 const Role = require('./Role');
@@ -80,6 +79,7 @@ module.exports = {
   LoginLog,
   ErrorLog,
   SchemeTarget,
+  Download,
 
   WebsiteSettings,
   NewsEvent,
@@ -99,8 +99,6 @@ module.exports = {
   AdminReportSubmission,
 
   ProgramReport,
-  ProgramReportFormConfig,
-  ProgramReportSubmission,
 
   Role,
   Permission,

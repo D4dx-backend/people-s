@@ -75,9 +75,13 @@ const getApplications = async (req, res) => {
       ];
     }
     
-    if (status) {
+    // Beneficiary drafts (unsubmitted applications) must never be visible to
+    // authorities. Only the beneficiary can see/manage their own drafts.
+    if (status && status !== 'draft') {
       filter.status = status;
       console.log('✅ Status filter applied:', status);
+    } else {
+      filter.status = { $ne: 'draft' };
     }
     if (scheme) filter.scheme = scheme;
     if (project) filter.project = project;
@@ -142,6 +146,10 @@ const getApplications = async (req, res) => {
           return allowed.some(r => listVisibleRoles.includes(r));
         });
       }
+      // Explicit flag for list/card views: the application has been relocated
+      // from where it was originally submitted.
+      appObj.isTransferred = !!(appObj.originalLocation && appObj.originalLocation.capturedAt) ||
+        (Array.isArray(appObj.locationChangeHistory) && appObj.locationChangeHistory.length > 0);
       return appObj;
     });
 
@@ -2516,7 +2524,12 @@ const getApplicationConsolidation = async (req, res) => {
     }
 
     if (scheme) baseFilter.scheme = new mongoose.Types.ObjectId(scheme);
-    if (status) baseFilter.status = status;
+    // Exclude beneficiary drafts (unsubmitted) from authority-facing counts
+    if (status && status !== 'draft') {
+      baseFilter.status = status;
+    } else {
+      baseFilter.status = { $ne: 'draft' };
+    }
 
     // Count by status using a single aggregation
     const statusGroups = await Application.aggregate([
@@ -2802,6 +2815,42 @@ const updateApplicationLocation = async (req, res) => {
       .populate('originalLocation.district', 'name code')
       .populate('originalLocation.area', 'name code')
       .populate('originalLocation.unit', 'name code');
+
+    // Record a meaningful entry in the central activity log so transfers are
+    // auditable ("applied here → moved there"). Resolve the previous location
+    // names for a human-readable description.
+    try {
+      const ActivityLogService = require('../services/activityLogService');
+      const [pDist, pArea, pUnit] = await Promise.all([
+        previousValues.previousDistrict ? Location.findById(previousValues.previousDistrict).select('name') : null,
+        previousValues.previousArea ? Location.findById(previousValues.previousArea).select('name') : null,
+        previousValues.previousUnit ? Location.findById(previousValues.previousUnit).select('name') : null,
+      ]);
+      const fromLabel = [pDist?.name, pArea?.name, pUnit?.name].filter(Boolean).join(' › ');
+      const toLabel = [updated.district?.name, updated.area?.name, updated.unit?.name].filter(Boolean).join(' › ');
+      const appNo = application.applicationNumber ? ` ${application.applicationNumber}` : '';
+      await ActivityLogService.logActivity({
+        userId: req.user._id,
+        action: 'application_transferred',
+        resource: 'application',
+        resourceId: application._id,
+        description: `${req.user.name || 'An admin'} transferred application${appNo} from ${fromLabel || 'N/A'} to ${toLabel || 'N/A'}`,
+        details: {
+          applicationNumber: application.applicationNumber || null,
+          from: { district: pDist?.name || null, area: pArea?.name || null, unit: pUnit?.name || null },
+          to: {
+            district: updated.district?.name || null,
+            area: updated.area?.name || null,
+            unit: updated.unit?.name || null,
+          },
+          reason: reason || '',
+        },
+        req,
+        severity: 'medium',
+      });
+    } catch (logErr) {
+      console.error('Transfer activity log failed:', logErr.message);
+    }
 
     res.json({
       success: true,

@@ -35,6 +35,7 @@ const activityLogSchema = new mongoose.Schema({
       // Application management
       'application_created', 'application_updated', 'application_submitted', 'application_approved', 'application_rejected',
       'application_deleted', 'application_create_failed', 'application_update_failed', 'application_delete_failed',
+      'application_transferred',
       
       // Project management
       'project_created', 'project_updated', 'project_deleted', 'project_activated', 'project_deactivated',

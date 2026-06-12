@@ -91,7 +91,12 @@ const applicationPopulate = [
 
 function applicationFilterBuilder(filters) {
   const query = {};
-  if (filters.status && filters.status !== 'all') query.status = filters.status;
+  // Beneficiary drafts (unsubmitted) must never be exported by authorities
+  if (filters.status && filters.status !== 'all' && filters.status !== 'draft') {
+    query.status = filters.status;
+  } else {
+    query.status = { $ne: 'draft' };
+  }
   if (filters.scheme) query.scheme = filters.scheme;
   if (filters.project) query.project = filters.project;
   if (filters.district) query.district = filters.district;
