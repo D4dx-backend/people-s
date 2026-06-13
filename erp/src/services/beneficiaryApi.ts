@@ -101,6 +101,14 @@ export interface BeneficiaryNotification {
   createdAt: string;
 }
 
+export interface BeneficiaryCoordinator {
+  role: string;
+  roleLabel: string;
+  name: string;
+  phone: string;
+  location: string;
+}
+
 class BeneficiaryApiService {
   private getFranchiseSlug(): string {
     // Read the same env var that api.ts uses
@@ -240,6 +248,15 @@ class BeneficiaryApiService {
     });
 
     return this.handleResponse<{ user: any }>(response);
+  }
+
+  // Get the beneficiary's coordinators (unit / area / district admins) for contact
+  async getCoordinators(): Promise<{ coordinators: BeneficiaryCoordinator[] }> {
+    const response = await fetch(`${API_BASE_URL}/beneficiary/auth/coordinators`, {
+      headers: this.getAuthHeaders()
+    });
+
+    return this.handleResponse<{ coordinators: BeneficiaryCoordinator[] }>(response);
   }
 
   // Scheme methods

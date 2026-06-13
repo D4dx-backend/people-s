@@ -72,6 +72,7 @@ import BeneficiarySchemes from "./pages/BeneficiarySchemes";
 import BeneficiaryApplication from "./pages/BeneficiaryApplication";
 import BeneficiaryAuthGuard from "./components/BeneficiaryAuthGuard";
 import ApplicationTracking from "./pages/ApplicationTracking";
+import BeneficiaryCoordinators from "./pages/BeneficiaryCoordinators";
 import ActivityLogs from "./pages/ActivityLogs";
 import ActivityLogAnalytics from "./pages/ActivityLogAnalytics";
 import UserActivity from "./pages/UserActivity";
@@ -137,6 +138,7 @@ const App = () => (
             <Route path="/beneficiary/schemes" element={<BeneficiaryAuthGuard><BeneficiarySchemes /></BeneficiaryAuthGuard>} />
             <Route path="/beneficiary/apply/:schemeId" element={<BeneficiaryAuthGuard><BeneficiaryApplication /></BeneficiaryAuthGuard>} />
             <Route path="/beneficiary/track/:id" element={<BeneficiaryAuthGuard><ApplicationTracking /></BeneficiaryAuthGuard>} />
+            <Route path="/beneficiary/coordinators" element={<BeneficiaryAuthGuard><BeneficiaryCoordinators /></BeneficiaryAuthGuard>} />
 
             {/* Admin Routes - Protected */}
             <Route path="/dashboard" element={<AuthGuard><Layout><Dashboard /></Layout></AuthGuard>} />

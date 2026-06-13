@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { LogOut, FileText, IndianRupee, Loader2, User, RefreshCw, MapPin, Search, Sparkles, ListFilter, Bell, FileEdit, XCircle, ArrowRight, PauseCircle } from "lucide-react";
+import { LogOut, FileText, IndianRupee, Loader2, User, RefreshCw, MapPin, Search, Sparkles, ListFilter, Bell, FileEdit, XCircle, ArrowRight, PauseCircle, Headset } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -446,6 +446,16 @@ export default function BeneficiaryDashboard() {
           </div>
           
           <div className="flex items-center gap-2">
+            {/* Contact Coordinator */}
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => navigate("/beneficiary/coordinators")}
+            >
+              <Headset className="h-4 w-4 sm:mr-2" />
+              <span className="hidden sm:inline">Contact</span>
+            </Button>
+
             {/* Update Profile */}
             <Button 
               variant="ghost" 
