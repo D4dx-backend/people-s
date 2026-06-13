@@ -214,6 +214,9 @@ class DashboardController {
       // Franchise scope
       Object.assign(locationFilter, buildFranchiseReadFilter(req));
 
+      // Exclude draft applications (not yet submitted)
+      locationFilter.status = { $ne: 'draft' };
+
       const applications = await Application.find(locationFilter)
         .populate('beneficiary', 'name phone')
         .populate('scheme', 'name')

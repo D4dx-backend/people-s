@@ -1725,6 +1725,38 @@ export const programReports = {
       `/program-reports${params ? `?${new URLSearchParams(params as any).toString()}` : ''}`
     ),
   getById: (id: string) => extendedApiClient.request(`/program-reports/${id}`),
+  create: (data: { title: string; news?: string; scheme?: string; photos?: File[] }) => {
+    const formData = new FormData();
+    formData.append('title', data.title);
+    if (data.news) formData.append('news', data.news);
+    if (data.scheme) formData.append('scheme', data.scheme);
+    (data.photos || []).forEach((file) => formData.append('photos', file));
+    return extendedApiClient.request('/program-reports', {
+      method: 'POST',
+      body: formData,
+    });
+  },
+  update: (id: string, data: { title?: string; news?: string; scheme?: string | null }) =>
+    extendedApiClient.request(`/program-reports/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify({
+        ...(data.title !== undefined ? { title: data.title } : {}),
+        ...(data.news !== undefined ? { news: data.news } : {}),
+        ...(data.scheme !== undefined ? { scheme: data.scheme ?? '' } : {}),
+      }),
+    }),
+  addPhotos: (id: string, photos: File[]) => {
+    const formData = new FormData();
+    photos.forEach((file) => formData.append('photos', file));
+    return extendedApiClient.request(`/program-reports/${id}/photos`, {
+      method: 'POST',
+      body: formData,
+    });
+  },
+  deletePhoto: (id: string, photoId: string) =>
+    extendedApiClient.request(`/program-reports/${id}/photos/${photoId}`, {
+      method: 'DELETE',
+    }),
   delete: (id: string) =>
     extendedApiClient.request(`/program-reports/${id}`, { method: 'DELETE' }),
 };
