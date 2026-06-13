@@ -406,25 +406,32 @@ export default function ApplicationTracking() {
                 Interview Scheduled
               </CardTitle>
             </CardHeader>
-            <CardContent className="grid gap-4 sm:grid-cols-2">
-              {application.interview.scheduledDate && (
-                <div className="flex items-center gap-2">
-                  <Calendar className="h-4 w-4 text-muted-foreground" />
-                  <div>
-                    <p className="text-sm text-muted-foreground">Date</p>
-                    <p className="font-semibold">{new Date(application.interview.scheduledDate).toLocaleDateString()}</p>
-                  </div>
+            <CardContent className="space-y-4">
+              {/* Date + Time on a single row */}
+              {(application.interview.scheduledDate || application.interview.scheduledTime) && (
+                <div className="grid grid-cols-2 gap-4">
+                  {application.interview.scheduledDate && (
+                    <div className="flex items-center gap-2">
+                      <Calendar className="h-4 w-4 text-muted-foreground" />
+                      <div>
+                        <p className="text-sm text-muted-foreground">Date</p>
+                        <p className="font-semibold">{new Date(application.interview.scheduledDate).toLocaleDateString()}</p>
+                      </div>
+                    </div>
+                  )}
+                  {application.interview.scheduledTime && (
+                    <div className="flex items-center gap-2">
+                      <Clock className="h-4 w-4 text-muted-foreground" />
+                      <div>
+                        <p className="text-sm text-muted-foreground">Time</p>
+                        <p className="font-semibold">{application.interview.scheduledTime}</p>
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
-              {application.interview.scheduledTime && (
-                <div className="flex items-center gap-2">
-                  <Clock className="h-4 w-4 text-muted-foreground" />
-                  <div>
-                    <p className="text-sm text-muted-foreground">Time</p>
-                    <p className="font-semibold">{application.interview.scheduledTime}</p>
-                  </div>
-                </div>
-              )}
+
+              {/* Mode */}
               <div className="flex items-center gap-2">
                 <FileText className="h-4 w-4 text-muted-foreground" />
                 <div>
@@ -434,6 +441,8 @@ export default function ApplicationTracking() {
                   </p>
                 </div>
               </div>
+
+              {/* Location */}
               {application.interview.type !== 'online' && application.interview.location && (
                 <div className="flex items-center gap-2">
                   <MapPin className="h-4 w-4 text-muted-foreground" />
@@ -444,7 +453,7 @@ export default function ApplicationTracking() {
                 </div>
               )}
               {application.interview.type === 'online' && application.interview.meetingLink && (
-                <div className="flex items-center gap-2 sm:col-span-2">
+                <div className="flex items-center gap-2">
                   <Eye className="h-4 w-4 text-muted-foreground" />
                   <div className="min-w-0">
                     <p className="text-sm text-muted-foreground">Meeting Link</p>
@@ -460,7 +469,7 @@ export default function ApplicationTracking() {
                 </div>
               )}
               {application.interview.notes && (
-                <div className="flex items-start gap-2 sm:col-span-2">
+                <div className="flex items-start gap-2">
                   <FileText className="h-4 w-4 text-muted-foreground mt-0.5" />
                   <div>
                     <p className="text-sm text-muted-foreground">Notes</p>

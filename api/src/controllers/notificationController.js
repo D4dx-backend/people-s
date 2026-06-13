@@ -83,6 +83,20 @@ class NotificationController {
   // ============================================
 
   /**
+   * Build the sender's role + admin scope for hierarchy-aware recipient
+   * resolution (e.g. scoping beneficiary broadcasts to the sender's unit/area/
+   * district). Admin role/scope live on UserFranchise in the multi-tenant
+   * model, with a legacy fallback to the User document.
+   */
+  _buildSender(req) {
+    return {
+      role: req.userRole || req.user?.role,
+      isSuperAdmin: !!req.user?.isSuperAdmin,
+      adminScope: req.userFranchise?.adminScope || req.user?.adminScope || {}
+    };
+  }
+
+  /**
    * Create an admin broadcast (announcement)
    * POST /api/notifications
    */
@@ -124,7 +138,8 @@ class NotificationController {
         priority: priority || 'medium',
         category: category || 'announcement',
         createdBy: req.user._id,
-        franchise: getWriteFranchiseId(req)
+        franchise: getWriteFranchiseId(req),
+        sender: this._buildSender(req)
       });
 
       return ResponseHelper.success(
@@ -184,7 +199,7 @@ class NotificationController {
   async updateBroadcast(req, res) {
     try {
       const filter = { _id: req.params.id, ...buildFranchiseReadFilter(req) };
-      const updates = { ...req.body, updatedBy: req.user._id };
+      const updates = { ...req.body, updatedBy: req.user._id, sender: this._buildSender(req) };
       if (updates.targeting && Array.isArray(updates.targeting.locationIds) === false) {
         updates.targeting.locationIds = [];
       }

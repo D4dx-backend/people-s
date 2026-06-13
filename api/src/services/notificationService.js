@@ -27,7 +27,8 @@ class NotificationService {
         priority = 'medium',
         relatedEntities = {},
         variables = {},
-        templateId = null
+        templateId = null,
+        franchise = null
       } = notificationData;
 
       // Create notification record
@@ -38,6 +39,7 @@ class NotificationService {
         category,
         priority,
         relatedEntities,
+        franchise: franchise || undefined,
         delivery: {
           status: 'sending',
           totalRecipients: 1
@@ -110,7 +112,8 @@ class NotificationService {
         targeting = {},
         relatedEntities = {},
         variables = {},
-        templateId = null
+        templateId = null,
+        franchise = null
       } = bulkData;
 
       // Create notification record
@@ -122,6 +125,7 @@ class NotificationService {
         priority,
         targeting,
         relatedEntities,
+        franchise: franchise || undefined,
         delivery: {
           status: 'sending',
           totalRecipients: recipients.length
@@ -202,7 +206,8 @@ class NotificationService {
         targeting,
         category = 'general',
         priority = 'medium',
-        variables = {}
+        variables = {},
+        franchise = null
       } = targetingData;
 
       const recipients = await this.findTargetedRecipients(targeting);
@@ -224,6 +229,7 @@ class NotificationService {
         targeting,
         variables,
         relatedEntities: targetingData.relatedEntities,
+        franchise,
         createdBy: targetingData.createdBy
       });
     } catch (error) {
@@ -525,7 +531,16 @@ class NotificationService {
       let query = { 'recipients.user': userId };
       if (type) query.type = type;
       if (category) query.category = category;
-      if (franchise) query.franchise = franchise;
+      // Franchise scoping: the user is already constrained via recipients.user,
+      // so it is safe to also surface notifications that have no franchise set
+      // (domain notifications such as interview-scheduled were created without one).
+      if (franchise) {
+        query.$or = [
+          { franchise },
+          { franchise: { $exists: false } },
+          { franchise: null }
+        ];
+      }
       if (unreadOnly) {
         query.recipients = { $elemMatch: { user: userId, status: { $ne: 'read' } } };
       }
@@ -609,43 +624,113 @@ class NotificationService {
 
   /**
    * Resolve the set of recipient Users for a broadcast based on targeting.
-   * Roles live on UserFranchise in the multi-tenant model, so we query there.
+   *
+   * Admin roles live on UserFranchise in the multi-tenant model, so we query
+   * there. Beneficiaries are NOT in UserFranchise — they live in the
+   * franchise-scoped Beneficiary collection and log in as a User (role
+   * 'beneficiary') matched by phone — so they are resolved separately and
+   * scoped to the SENDER's hierarchy (unit/area/district admins reach only the
+   * beneficiaries under them; super/state admins reach all beneficiaries).
+   *
    * @param {Object} targeting - { userRoles: [], locationIds: [] }
    * @param {ObjectId} franchise - franchise to scope membership lookup
+   * @param {Object} sender - { role, isSuperAdmin, adminScope } of the composer
    * @returns {Promise<Array<{_id, phone, name}>>}
    */
-  async _resolveBroadcastRecipients(targeting = {}, franchise = null) {
+  async _resolveBroadcastRecipients(targeting = {}, franchise = null, sender = {}) {
     const UserFranchise = require('../models/UserFranchise');
     const roles = (targeting.userRoles || []).filter(Boolean);
+    const includeBeneficiaries = roles.includes('beneficiary');
+    const adminRoles = roles.filter(r => r !== 'beneficiary');
     const locationIds = (targeting.locationIds || []).filter(Boolean);
-
-    const query = { isActive: true };
-    if (franchise) query.franchise = franchise;
-    if (roles.length) query.role = { $in: roles };
-    if (locationIds.length) {
-      query.$or = [
-        { 'adminScope.district': { $in: locationIds } },
-        { 'adminScope.area': { $in: locationIds } },
-        { 'adminScope.unit': { $in: locationIds } },
-        { 'adminScope.regions': { $in: locationIds } }
-      ];
-    }
-
-    const memberships = await UserFranchise.find(query)
-      .populate('user', 'name phone isActive')
-      .lean();
 
     const seen = new Set();
     const users = [];
-    for (const m of memberships) {
-      const u = m.user;
-      if (!u || u.isActive === false) continue;
-      const id = u._id.toString();
-      if (seen.has(id)) continue;
-      seen.add(id);
-      users.push({ _id: u._id, phone: u.phone, name: u.name });
+    const pushUser = (id, phone, name) => {
+      if (!id) return;
+      const key = id.toString();
+      if (seen.has(key)) return;
+      seen.add(key);
+      users.push({ _id: id, phone, name });
+    };
+
+    // ── Admin recipients (roles stored on UserFranchise) ──────────────────────
+    if (adminRoles.length) {
+      const query = { isActive: true };
+      if (franchise) query.franchise = franchise;
+      query.role = { $in: adminRoles };
+      if (locationIds.length) {
+        query.$or = [
+          { 'adminScope.district': { $in: locationIds } },
+          { 'adminScope.area': { $in: locationIds } },
+          { 'adminScope.unit': { $in: locationIds } },
+          { 'adminScope.regions': { $in: locationIds } }
+        ];
+      }
+
+      const memberships = await UserFranchise.find(query)
+        .populate('user', 'name phone isActive')
+        .lean();
+      for (const m of memberships) {
+        const u = m.user;
+        if (!u || u.isActive === false) continue;
+        pushUser(u._id, u.phone, u.name);
+      }
     }
+
+    // ── Beneficiary recipients (scoped to the sender's hierarchy) ─────────────
+    if (includeBeneficiaries) {
+      const beneficiaryUsers = await this._resolveBeneficiaryRecipients(franchise, sender);
+      for (const b of beneficiaryUsers) pushUser(b._id, b.phone, b.name);
+    }
+
     return users;
+  }
+
+  /**
+   * Resolve beneficiary login Users for a broadcast, scoped to the sender's
+   * administrative hierarchy:
+   *   - super_admin / state_admin → all beneficiaries in the franchise
+   *   - district_admin            → beneficiaries in the sender's district
+   *   - area_admin / area_president → beneficiaries in the sender's area
+   *   - unit_admin                → beneficiaries in the sender's unit
+   * Anyone without a resolvable scope reaches no beneficiaries (fail-closed).
+   * @returns {Promise<Array<{_id, phone, name}>>}
+   */
+  async _resolveBeneficiaryRecipients(franchise = null, sender = {}) {
+    const role = sender.role;
+    const scope = sender.adminScope || {};
+
+    const query = { isDeleted: { $ne: true } };
+    if (franchise) query.franchise = franchise;
+
+    if (sender.isSuperAdmin || role === 'super_admin' || role === 'state_admin') {
+      // No hierarchy filter — all beneficiaries in the franchise.
+    } else if (role === 'district_admin' && scope.district) {
+      query.district = scope.district;
+    } else if ((role === 'area_admin' || role === 'area_president') && scope.area) {
+      query.area = scope.area;
+    } else if (role === 'unit_admin' && scope.unit) {
+      query.unit = scope.unit;
+    } else {
+      // Insufficient scope to target beneficiaries safely.
+      return [];
+    }
+
+    const beneficiaries = await Beneficiary.find(query)
+      .setOptions({ bypassFranchise: !franchise })
+      .select('phone')
+      .lean();
+    const phones = [...new Set(beneficiaries.map(b => b.phone).filter(Boolean))];
+    if (!phones.length) return [];
+
+    const loginUsers = await User.find({ phone: { $in: phones }, role: 'beneficiary' })
+      .select('name phone isActive')
+      .lean();
+
+    return loginUsers
+      .filter(u => u.isActive !== false)
+      .map(u => ({ _id: u._id, phone: u.phone, name: u.name }));
   }
 
   /**
@@ -666,10 +751,11 @@ class NotificationService {
         category = 'announcement',
         relatedEntities = {},
         createdBy,
-        franchise = null
+        franchise = null,
+        sender = {}
       } = data;
 
-      const recipientUsers = await this._resolveBroadcastRecipients(targeting, franchise);
+      const recipientUsers = await this._resolveBroadcastRecipients(targeting, franchise, sender);
 
       const now = new Date();
       const notification = new Notification({
@@ -779,7 +865,8 @@ class NotificationService {
     if (updates.targeting && (updates.targeting.userRoles || updates.targeting.locationIds)) {
       const recipientUsers = await this._resolveBroadcastRecipients(
         updates.targeting,
-        notification.franchise
+        notification.franchise,
+        updates.sender || {}
       );
       const existingByUser = new Map(
         (notification.recipients || [])
@@ -840,7 +927,7 @@ class NotificationService {
   /**
    * Helper: Send WhatsApp + Push + In-App to targeted admins
    */
-  _notifyAdminRole({ role, filterField, filterValue, title, message, category, priority, relatedEntities, pushData, createdBy }) {
+  _notifyAdminRole({ role, filterField, filterValue, title, message, category, priority, relatedEntities, pushData, createdBy, franchise }) {
     if (!filterValue) return [];
 
     const targeting = {
@@ -850,17 +937,17 @@ class NotificationService {
 
     return [
       this.sendTargetedNotification({
-        type: 'whatsapp', title, message, category, priority, targeting, createdBy
+        type: 'whatsapp', title, message, category, priority, targeting, franchise, createdBy
       }).catch(err => console.error(`WhatsApp to ${role} failed:`, err)),
 
       this.sendTargetedNotification({
         type: 'push', title, message, category, priority, targeting,
-        variables: pushData || {}, createdBy
+        variables: pushData || {}, franchise, createdBy
       }).catch(err => console.error(`Push to ${role} failed:`, err)),
 
       this.sendTargetedNotification({
         type: 'in_app', title, message, category, priority, targeting,
-        relatedEntities, createdBy
+        relatedEntities, franchise, createdBy
       }).catch(err => console.error(`In-app to ${role} failed:`, err))
     ];
   }
@@ -868,19 +955,19 @@ class NotificationService {
   /**
    * Helper: Send WhatsApp + Push + In-App to a specific recipient (e.g. beneficiary)
    */
-  _notifyRecipient({ recipient, title, message, category, priority, relatedEntities, pushData, createdBy }) {
+  _notifyRecipient({ recipient, title, message, category, priority, relatedEntities, pushData, createdBy, franchise }) {
     return [
       this.sendNotification({
-        type: 'whatsapp', recipient, title, message, category, priority, relatedEntities, createdBy
+        type: 'whatsapp', recipient, title, message, category, priority, relatedEntities, franchise, createdBy
       }).catch(err => console.error('WhatsApp to recipient failed:', err)),
 
       this.sendNotification({
         type: 'push', recipient, title, message, category, priority, relatedEntities,
-        variables: pushData || {}, createdBy
+        variables: pushData || {}, franchise, createdBy
       }).catch(err => console.error('Push to recipient failed:', err)),
 
       this.sendNotification({
-        type: 'in_app', recipient, title, message, category, priority, relatedEntities, createdBy
+        type: 'in_app', recipient, title, message, category, priority, relatedEntities, franchise, createdBy
       }).catch(err => console.error('In-app to recipient failed:', err))
     ];
   }
