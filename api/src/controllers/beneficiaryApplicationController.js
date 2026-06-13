@@ -936,7 +936,7 @@ class BeneficiaryApplicationController {
         .populate('district', 'name')
         .populate('area', 'name')
         .populate('unit', 'name')
-        .select('applicationNumber scheme beneficiary status createdAt reviewedAt approvedAt requestedAmount approvedAmount district area unit');
+        .select('applicationNumber scheme beneficiary status createdAt reviewedAt approvedAt requestedAmount approvedAmount district area unit interview');
 
       if (!application) {
         return ResponseHelper.error(res, 'Application not found', 404);
@@ -967,7 +967,18 @@ class BeneficiaryApplicationController {
           district: application.district?.name || null,
           area: application.area?.name || null,
           unit: application.unit?.name || null
-        }
+        },
+        interview: (application.interview && (application.interview.scheduledDate || application.interview.scheduledTime))
+          ? {
+              scheduledDate: application.interview.scheduledDate,
+              scheduledTime: application.interview.scheduledTime,
+              type: application.interview.type,
+              location: application.interview.location,
+              meetingLink: application.interview.meetingLink,
+              notes: application.interview.notes,
+              result: application.interview.result
+            }
+          : null
       };
 
       return ResponseHelper.success(res, { application: formattedApplication }, 'Application tracking retrieved successfully');

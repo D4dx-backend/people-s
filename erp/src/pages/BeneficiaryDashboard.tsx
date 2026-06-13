@@ -7,7 +7,7 @@ import { LogOut, FileText, IndianRupee, Loader2, User, RefreshCw, MapPin, Search
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { beneficiaryApi } from "@/services/beneficiaryApi";
+import { beneficiaryApi, type BeneficiaryNotification } from "@/services/beneficiaryApi";
 import { useOrgLogoUrl } from "@/hooks/useOrgLogoUrl";
 import defaultLogo from "@/assets/logo.png";
 import { toast } from "@/hooks/use-toast";
@@ -78,6 +78,11 @@ export default function BeneficiaryDashboard() {
   const [schemesLoading, setSchemesLoading] = useState(false);
   const [schemeSearch, setSchemeSearch] = useState("");
   const [schemeCategory, setSchemeCategory] = useState("all");
+
+  // Notifications tab state
+  const [notifications, setNotifications] = useState<BeneficiaryNotification[]>([]);
+  const [notificationsLoaded, setNotificationsLoaded] = useState(false);
+  const [notificationsLoading, setNotificationsLoading] = useState(false);
 
   const phoneNumber = localStorage.getItem("user_phone") || "";
 
@@ -191,6 +196,43 @@ export default function BeneficiaryDashboard() {
       });
     } finally {
       setSchemesLoading(false);
+    }
+  };
+
+  const loadNotifications = async () => {
+    if (notificationsLoading) return;
+    try {
+      setNotificationsLoading(true);
+      const response = await beneficiaryApi.getMyNotifications();
+      setNotifications(Array.isArray(response.notifications) ? response.notifications : []);
+      setNotificationsLoaded(true);
+    } catch (error: any) {
+      // Non-critical — show empty state on failure
+      setNotificationsLoaded(true);
+    } finally {
+      setNotificationsLoading(false);
+    }
+  };
+
+  const handleNotificationClick = async (n: BeneficiaryNotification) => {
+    const isUnread = (n.recipients || []).some(r => r.status !== 'read' && !r.readAt);
+    if (isUnread) {
+      try {
+        await beneficiaryApi.markNotificationRead(n._id);
+        setNotifications(prev =>
+          prev.map(item =>
+            item._id === n._id
+              ? { ...item, recipients: (item.recipients || []).map(r => ({ ...r, status: 'read', readAt: new Date().toISOString() })) }
+              : item
+          )
+        );
+      } catch {
+        // ignore mark-read failure
+      }
+    }
+    const appId = n.relatedEntities?.application?._id;
+    if (appId) {
+      navigate(`/beneficiary/track/${appId}`);
     }
   };
 
@@ -549,7 +591,7 @@ export default function BeneficiaryDashboard() {
         <Tabs
           value={activeTab}
           className="w-full"
-          onValueChange={(v) => { setActiveTab(v); if (v === "schemes") loadSchemes(); }}
+          onValueChange={(v) => { setActiveTab(v); if (v === "schemes") loadSchemes(); if (v === "notifications") loadNotifications(); }}
         >
           <TabsList className="hidden md:grid w-full grid-cols-3 mb-4">
             <TabsTrigger value="applications" className="flex items-center gap-2">
@@ -805,15 +847,58 @@ export default function BeneficiaryDashboard() {
           {/* ---------- Notifications ---------- */}
           <TabsContent value="notifications" className="space-y-3 mt-0">
             <h2 className="text-base sm:text-lg font-bold px-1">Notifications</h2>
-            <Card className="text-center py-10">
-              <CardContent>
-                <Bell className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-                <h3 className="text-lg font-semibold mb-2">No notifications yet</h3>
-                <p className="text-muted-foreground text-sm">
-                  Updates about your applications and announcements will appear here.
-                </p>
-              </CardContent>
-            </Card>
+            {notificationsLoading && !notificationsLoaded ? (
+              <Card className="text-center py-10">
+                <CardContent>
+                  <Loader2 className="h-8 w-8 mx-auto text-muted-foreground animate-spin" />
+                </CardContent>
+              </Card>
+            ) : notifications.length === 0 ? (
+              <Card className="text-center py-10">
+                <CardContent>
+                  <Bell className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+                  <h3 className="text-lg font-semibold mb-2">No notifications yet</h3>
+                  <p className="text-muted-foreground text-sm">
+                    Updates about your applications and announcements will appear here.
+                  </p>
+                </CardContent>
+              </Card>
+            ) : (
+              notifications.map((n) => {
+                const isUnread = (n.recipients || []).some(r => r.status !== "read" && !r.readAt);
+                const hasApplication = !!n.relatedEntities?.application?._id;
+                return (
+                  <Card
+                    key={n._id}
+                    className={`shadow-sm transition-colors ${hasApplication ? "cursor-pointer hover:bg-muted/50" : ""} ${isUnread ? "border-l-4 border-l-primary" : ""}`}
+                    onClick={() => handleNotificationClick(n)}
+                  >
+                    <CardContent className="py-4">
+                      <div className="flex items-start gap-3">
+                        <div className="mt-0.5">
+                          <Bell className={`h-5 w-5 ${isUnread ? "text-primary" : "text-muted-foreground"}`} />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-start justify-between gap-2">
+                            <h3 className={`text-sm sm:text-base ${isUnread ? "font-bold" : "font-semibold"}`}>{n.title}</h3>
+                            {isUnread && <Badge className="bg-primary text-[10px] flex-shrink-0">New</Badge>}
+                          </div>
+                          <p className="text-sm text-muted-foreground mt-1 whitespace-pre-line">{n.message}</p>
+                          <div className="flex items-center justify-between gap-2 mt-2">
+                            <p className="text-xs text-muted-foreground">{new Date(n.createdAt).toLocaleString()}</p>
+                            {hasApplication && (
+                              <span className="text-xs font-medium text-primary inline-flex items-center gap-1">
+                                View Application <ArrowRight className="h-3 w-3" />
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                );
+              })
+            )}
           </TabsContent>
         </Tabs>
 
@@ -872,7 +957,7 @@ export default function BeneficiaryDashboard() {
 
           <button
             type="button"
-            onClick={() => { setActiveTab("notifications"); window.scrollTo({ top: 0, behavior: "smooth" }); }}
+            onClick={() => { setActiveTab("notifications"); loadNotifications(); window.scrollTo({ top: 0, behavior: "smooth" }); }}
             className={`flex flex-col items-center justify-center gap-0.5 transition-colors ${activeTab === "notifications" ? "text-primary" : "text-muted-foreground"}`}
             aria-label="Notifications"
           >

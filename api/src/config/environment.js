@@ -42,6 +42,15 @@ module.exports = {
   SMTP_PORT: getOptionalEnvVar('SMTP_PORT') ? parseInt(getOptionalEnvVar('SMTP_PORT'), 10) : undefined,
   SMTP_USER: getOptionalEnvVar('SMTP_USER'),
   SMTP_PASS: getOptionalEnvVar('SMTP_PASS'),
+
+  // OneSignal Push Notifications (OPTIONAL)
+  //   ONESIGNAL_APP_ID:        OneSignal application id (same as the mobile app).
+  //   ONESIGNAL_REST_API_KEY:  OneSignal REST API key (server secret).
+  //   ONESIGNAL_AUTH_SCHEME:   Authorization scheme — 'Basic' (classic keys) or
+  //                            'Key' (new rich-auth keys). Defaults to 'Basic'.
+  ONESIGNAL_APP_ID: getOptionalEnvVar('ONESIGNAL_APP_ID', 'a3474faf-4a9c-4de6-9377-dfa77b9c3013'),
+  ONESIGNAL_REST_API_KEY: getOptionalEnvVar('ONESIGNAL_REST_API_KEY'),
+  ONESIGNAL_AUTH_SCHEME: getOptionalEnvVar('ONESIGNAL_AUTH_SCHEME', 'Basic'),
   
   // File Upload (REQUIRED)
   UPLOAD_PATH: getEnvVar('UPLOAD_PATH', 'File upload directory path'),

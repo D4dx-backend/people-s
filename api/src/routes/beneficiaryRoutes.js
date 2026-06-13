@@ -61,6 +61,13 @@ router.get('/auth/profile',
   authorize('beneficiary'), 
   beneficiaryAuthController.getProfile
 );
+
+// Get the beneficiary's coordinators (unit / area / district admins) for contact
+router.get('/auth/coordinators',
+  authenticate, crossFranchiseResolver,
+  authorize('beneficiary'),
+  beneficiaryAuthController.getCoordinators
+);
 router.put('/auth/profile', 
   authenticate, crossFranchiseResolver, 
   authorize('beneficiary'),
