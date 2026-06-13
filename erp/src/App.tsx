@@ -15,6 +15,7 @@ import Index from "./pages/Index";
 import SiteHome from "./pages/site/SiteHome";
 import GalleryAlbumPage from "./pages/site/GalleryAlbumPage";
 import BlogDetailPage from "./pages/site/BlogDetailPage";
+import PrivacyPolicy from "./pages/site/PrivacyPolicy";
 import Dashboard from "./pages/Dashboard";
 import Projects from "./pages/Projects";
 import Schemes from "./pages/Schemes";
@@ -124,6 +125,7 @@ const App = () => (
             <Route path="/home-legacy" element={<Index />} />
             <Route path="/gallery/:id" element={<GalleryAlbumPage />} />
             <Route path="/blog/:slug" element={<BlogDetailPage />} />
+            <Route path="/privacy-policy" element={<PrivacyPolicy />} />
             <Route path="/auth" element={<Auth />} />
             <Route path="/login" element={<Login />} />
             <Route path="/beneficiary-login" element={<BeneficiaryLogin />} />

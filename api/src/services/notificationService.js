@@ -2,6 +2,7 @@ const { Notification, User, Beneficiary } = require('../models');
 const dxingSmsService = require('./dxingSmsService');
 const dxingWhatsappService = require('./dxingWhatsappService');
 const firebaseService = require('./firebaseService');
+const oneSignalService = require('./oneSignalService');
 const config = require('../config/environment');
 
 class NotificationService {
@@ -107,6 +108,7 @@ class NotificationService {
         category = 'general',
         priority = 'medium',
         targeting = {},
+        relatedEntities = {},
         variables = {},
         templateId = null
       } = bulkData;
@@ -119,6 +121,7 @@ class NotificationService {
         category,
         priority,
         targeting,
+        relatedEntities,
         delivery: {
           status: 'sending',
           totalRecipients: recipients.length
@@ -330,12 +333,30 @@ class NotificationService {
   }
 
   /**
-   * Send push notification via Firebase
+   * Send push notification via OneSignal (falls back to Firebase FCM).
+   *
+   * The mobile app registers each user with OneSignal using their backend
+   * User._id as the `external_id` alias (OneSignal.login(user.id)), so we
+   * target pushes by `recipient.user`. Firebase is kept as a legacy fallback
+   * for any device that still has an FCM token registered.
    */
   async sendPushNotification(recipient, title, message, data = {}) {
     try {
+      // Primary: OneSignal by external_id (User._id)
+      if (oneSignalService.isReady() && recipient.user) {
+        const result = await oneSignalService.sendToExternalIds(
+          [recipient.user.toString()],
+          title,
+          message,
+          data
+        );
+        if (result.success) {
+          return result;
+        }
+      }
+
+      // Legacy fallback: Firebase FCM via device tokens
       if (!recipient.fcmToken) {
-        // Try to get tokens from all user devices
         if (recipient.user) {
           const user = await User.findById(recipient.user).select('devices');
           if (user && user.devices && user.devices.length > 0) {
@@ -345,16 +366,38 @@ class NotificationService {
             }
           }
         }
-        return { success: false, error: 'No FCM token available', provider: 'Firebase' };
+        return { success: false, error: 'No push destination available', provider: 'OneSignal' };
       }
 
       return await firebaseService.sendPushToDevice(recipient.fcmToken, title, message, data);
     } catch (error) {
-      return { success: false, error: error.message, provider: 'Firebase' };
+      return { success: false, error: error.message, provider: 'OneSignal' };
     }
   }
 
   async sendBulkPushNotification(recipients, title, message, data = {}) {
+    // Prefer a single batched OneSignal call targeting all external_ids.
+    if (oneSignalService.isReady()) {
+      const externalIds = recipients
+        .map(r => (r.user ? r.user.toString() : null))
+        .filter(Boolean);
+
+      if (externalIds.length > 0) {
+        const bulkResult = await oneSignalService.sendToExternalIds(externalIds, title, message, data);
+        // Map the batch outcome back to per-recipient results so the caller
+        // can update each recipient's delivery status.
+        return recipients.map(r => {
+          if (!r.user) {
+            return { success: false, error: 'No user id for push', provider: 'OneSignal' };
+          }
+          return bulkResult.success
+            ? { success: true, provider: 'OneSignal' }
+            : { success: false, error: bulkResult.error, provider: 'OneSignal' };
+        });
+      }
+    }
+
+    // Fallback: per-recipient (OneSignal single / Firebase)
     const results = [];
     for (const recipient of recipients) {
       const result = await this.sendPushNotification(recipient, title, message, data);
@@ -383,6 +426,29 @@ class NotificationService {
       }
     } else if (typeof recipient === 'object') {
       Object.assign(recipientData, recipient);
+
+      // Beneficiaries log in as a User document (role: 'beneficiary'), while
+      // domain events pass the Beneficiary._id. The in-app feed queries
+      // `recipients.user === req.user._id` (the login User._id), so we must
+      // resolve the login User by phone — otherwise beneficiaries never see
+      // their own notifications.
+      if (recipientData.beneficiary && recipientData.phone) {
+        try {
+          const loginUser = await User.findOne({
+            phone: recipientData.phone,
+            role: 'beneficiary',
+            isDeleted: { $ne: true }
+          }).select('_id devices');
+          if (loginUser) {
+            recipientData.user = loginUser._id;
+            if (!recipientData.fcmToken && loginUser.devices && loginUser.devices.length > 0) {
+              recipientData.fcmToken = loginUser.devices[0].fcmToken;
+            }
+          }
+        } catch (err) {
+          console.error('⚠️  Failed to resolve beneficiary login user for notification:', err.message);
+        }
+      }
     }
 
     return recipientData;
@@ -639,6 +705,25 @@ class NotificationService {
       });
 
       await notification.save();
+
+      // Fire a OneSignal push so recipients are alerted on their device, not
+      // just inside the in-app feed. Targeted by User._id (external_id alias).
+      try {
+        if (oneSignalService.isReady() && recipientUsers.length > 0) {
+          const externalIds = recipientUsers.map(u => u._id.toString());
+          await oneSignalService.sendToExternalIds(externalIds, title, message, {
+            type: 'broadcast',
+            notificationId: notification._id.toString(),
+            category,
+            ...(relatedEntities.application
+              ? { applicationId: relatedEntities.application.toString() }
+              : {})
+          });
+        }
+      } catch (pushErr) {
+        console.error('⚠️ [ONESIGNAL] Broadcast push failed:', pushErr.message);
+      }
+
       return notification;
     } catch (error) {
       console.error('❌ Create Admin Broadcast Error:', error);

@@ -1,4 +1,5 @@
 import { Facebook, Instagram, Youtube, Twitter, Linkedin, Mail, Phone, MapPin } from "lucide-react";
+import { Link } from "react-router-dom";
 import { useConfig } from "@/contexts/ConfigContext";
 import { useOrgLogoUrl } from "@/hooks/useOrgLogoUrl";
 import defaultLogo from "@/assets/logo.png";
@@ -85,12 +86,16 @@ export function SiteFooter({ settings }: SiteFooterProps) {
             {(footer.links && footer.links.length > 0
               ? footer.links
               : [
-                  { label: "Privacy Policy", url: "#" },
+                  { label: "Privacy Policy", url: "/privacy-policy" },
                   { label: "Terms & Conditions", url: "#" },
                 ]
             ).map((l, i) => (
               <li key={i}>
-                <a href={l.url} className="transition-colors hover:text-primary">{l.label}</a>
+                {l.url?.startsWith("/") ? (
+                  <Link to={l.url} className="transition-colors hover:text-primary">{l.label}</Link>
+                ) : (
+                  <a href={l.url} className="transition-colors hover:text-primary">{l.label}</a>
+                )}
               </li>
             ))}
           </ul>

@@ -426,6 +426,75 @@ class BeneficiaryAuthController {
   }
 
   /**
+   * Get the beneficiary's coordinators (unit / area / district admins).
+   * GET /api/beneficiary/auth/coordinators
+   *
+   * Resolves the admins responsible for the beneficiary's own location so the
+   * beneficiary can contact (and directly call) the person handling their area.
+   */
+  async getCoordinators(req, res) {
+    try {
+      const user = await User.findById(req.user._id)
+        .select('profile.location')
+        .populate('profile.location.district', 'name')
+        .populate('profile.location.area', 'name')
+        .populate('profile.location.unit', 'name');
+
+      if (!user) {
+        return ResponseHelper.error(res, 'User not found', 404);
+      }
+
+      const loc = user.profile?.location || {};
+      const idOf = (l) => (l && l._id ? l._id : l);
+      const nameOf = (l) => (l && l.name ? l.name : '');
+
+      // role → { adminScope field, location id, location name } for each tier
+      const tiers = [
+        { role: 'unit_admin', label: 'Unit Admin', field: 'adminScope.unit', locId: idOf(loc.unit), locName: nameOf(loc.unit) },
+        { role: 'area_admin', label: 'Area Admin', field: 'adminScope.area', locId: idOf(loc.area), locName: nameOf(loc.area) },
+        { role: 'district_admin', label: 'District Admin', field: 'adminScope.district', locId: idOf(loc.district), locName: nameOf(loc.district) },
+      ];
+
+      const query = { isActive: true };
+      if (req.franchiseId) query.franchise = req.franchiseId;
+
+      const coordinators = [];
+      for (const tier of tiers) {
+        if (!tier.locId) continue;
+
+        const membership = await UserFranchise.findOne({
+          ...query,
+          role: tier.role,
+          $or: [
+            { [tier.field]: tier.locId },
+            { 'adminScope.regions': tier.locId },
+          ],
+        }).populate('user', 'name phone isActive');
+
+        const admin = membership?.user;
+        if (!admin || admin.isActive === false) continue;
+
+        coordinators.push({
+          role: tier.role,
+          roleLabel: tier.label,
+          name: admin.name || '',
+          phone: admin.phone || '',
+          location: tier.locName,
+        });
+      }
+
+      return ResponseHelper.success(
+        res,
+        { coordinators },
+        'Coordinators retrieved successfully'
+      );
+    } catch (error) {
+      console.error('❌ Get Beneficiary Coordinators Error:', error);
+      return ResponseHelper.error(res, 'Failed to retrieve coordinators', 500);
+    }
+  }
+
+  /**
    * Resend OTP
    * POST /api/beneficiary/auth/resend-otp
    */

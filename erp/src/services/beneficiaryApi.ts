@@ -82,6 +82,25 @@ interface Application {
   };
 }
 
+export interface BeneficiaryNotification {
+  _id: string;
+  title: string;
+  message: string;
+  category?: string;
+  priority?: string;
+  linkUrl?: string;
+  linkLabel?: string;
+  relatedEntities?: {
+    application?: {
+      _id: string;
+      applicationNumber?: string;
+      status?: string;
+    };
+  };
+  recipients?: { status?: string; readAt?: string }[];
+  createdAt: string;
+}
+
 class BeneficiaryApiService {
   private getFranchiseSlug(): string {
     // Read the same env var that api.ts uses
@@ -397,6 +416,21 @@ class BeneficiaryApiService {
     });
 
     return this.handleResponse<{ application: Application }>(response);
+  }
+
+  async getMyNotifications(): Promise<{ notifications: BeneficiaryNotification[] }> {
+    const response = await fetch(`${API_BASE_URL}/notifications/me?limit=50`, {
+      headers: this.getAuthHeaders()
+    });
+
+    return this.handleResponse<{ notifications: BeneficiaryNotification[] }>(response);
+  }
+
+  async markNotificationRead(notificationId: string): Promise<void> {
+    await fetch(`${API_BASE_URL}/notifications/${notificationId}/read`, {
+      method: 'PATCH',
+      headers: this.getAuthHeaders()
+    });
   }
 
   async cancelApplication(applicationId: string, reason?: string): Promise<{ application: Application }> {

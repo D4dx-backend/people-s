@@ -29,6 +29,15 @@ interface ApplicationData {
     area: string | null;
     unit: string | null;
   };
+  interview?: {
+    scheduledDate?: string;
+    scheduledTime?: string;
+    type?: string;
+    location?: string;
+    meetingLink?: string;
+    notes?: string;
+    result?: string;
+  } | null;
 }
 
 export default function ApplicationTracking() {
@@ -387,6 +396,81 @@ export default function ApplicationTracking() {
             )}
           </CardContent>
         </Card>
+
+        {/* Interview Details (shown once an interview is scheduled) */}
+        {application.interview && (application.interview.scheduledDate || application.interview.scheduledTime) && (
+          <Card className="mb-6 shadow-sm border-blue-200">
+            <CardHeader className="pb-3">
+              <CardTitle className="flex items-center gap-2 text-base text-blue-700">
+                <Calendar className="h-5 w-5" />
+                Interview Scheduled
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="grid gap-4 sm:grid-cols-2">
+              {application.interview.scheduledDate && (
+                <div className="flex items-center gap-2">
+                  <Calendar className="h-4 w-4 text-muted-foreground" />
+                  <div>
+                    <p className="text-sm text-muted-foreground">Date</p>
+                    <p className="font-semibold">{new Date(application.interview.scheduledDate).toLocaleDateString()}</p>
+                  </div>
+                </div>
+              )}
+              {application.interview.scheduledTime && (
+                <div className="flex items-center gap-2">
+                  <Clock className="h-4 w-4 text-muted-foreground" />
+                  <div>
+                    <p className="text-sm text-muted-foreground">Time</p>
+                    <p className="font-semibold">{application.interview.scheduledTime}</p>
+                  </div>
+                </div>
+              )}
+              <div className="flex items-center gap-2">
+                <FileText className="h-4 w-4 text-muted-foreground" />
+                <div>
+                  <p className="text-sm text-muted-foreground">Mode</p>
+                  <p className="font-semibold capitalize">
+                    {application.interview.type === 'online' ? 'Online' : 'In-person'}
+                  </p>
+                </div>
+              </div>
+              {application.interview.type !== 'online' && application.interview.location && (
+                <div className="flex items-center gap-2">
+                  <MapPin className="h-4 w-4 text-muted-foreground" />
+                  <div>
+                    <p className="text-sm text-muted-foreground">Location</p>
+                    <p className="font-semibold">{application.interview.location}</p>
+                  </div>
+                </div>
+              )}
+              {application.interview.type === 'online' && application.interview.meetingLink && (
+                <div className="flex items-center gap-2 sm:col-span-2">
+                  <Eye className="h-4 w-4 text-muted-foreground" />
+                  <div className="min-w-0">
+                    <p className="text-sm text-muted-foreground">Meeting Link</p>
+                    <a
+                      href={application.interview.meetingLink}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="font-medium text-blue-600 underline break-all"
+                    >
+                      {application.interview.meetingLink}
+                    </a>
+                  </div>
+                </div>
+              )}
+              {application.interview.notes && (
+                <div className="flex items-start gap-2 sm:col-span-2">
+                  <FileText className="h-4 w-4 text-muted-foreground mt-0.5" />
+                  <div>
+                    <p className="text-sm text-muted-foreground">Notes</p>
+                    <p className="font-medium">{application.interview.notes}</p>
+                  </div>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        )}
 
         {/* Timeline */}
         <Card className="shadow-sm">
